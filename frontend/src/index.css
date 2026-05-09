@@ -1,0 +1,171 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+
+@import './components/Modal.css';
+:root {
+  /* Ultra-Premium Dark Theme (Tiimi + Enterprise) */
+  --bg: #050b0a;
+  --surface: #0a1614;
+  --surface-hover: #122824;
+  --border: rgba(176, 228, 204, 0.08);
+  --primary: #f59e0b; 
+  --primary-glow: rgba(245, 158, 11, 0.15);
+  --accent: #408a71;
+  --text-main: #e2f3ec;
+  --text-dim: #8ba89c;
+  --shadow-sm: 0 2px 8px rgba(0,0,0,0.4);
+  --shadow-lg: 0 20px 40px -12px rgba(0,0,0,0.6);
+  --glass: rgba(10, 22, 20, 0.7);
+  --mesh: radial-gradient(at 0% 0%, rgba(64, 138, 113, 0.15) 0%, transparent 50%),
+          radial-gradient(at 100% 100%, rgba(245, 158, 11, 0.05) 0%, transparent 50%);
+}
+
+[data-theme='light'] {
+  /* Ultra-Premium Light Theme */
+  --bg: #f8fafc;
+  --surface: #ffffff;
+  --surface-hover: #f1f5f9;
+  --border: #e2e8f0;
+  --primary: #f59e0b;
+  --primary-glow: rgba(245, 158, 11, 0.1);
+  --accent: #0f172a;
+  --text-main: #0f172a;
+  --text-dim: #64748b;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+  --shadow-lg: 0 10px 25px -5px rgba(0,0,0,0.05);
+  --glass: rgba(255, 255, 255, 0.8);
+  --mesh: radial-gradient(at 0% 0%, rgba(245, 158, 11, 0.05) 0%, transparent 50%),
+          radial-gradient(at 100% 100%, rgba(15, 23, 42, 0.03) 0%, transparent 50%);
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Outfit', sans-serif;
+  background-color: var(--bg);
+  color: var(--text-main);
+  overflow-x: hidden;
+  width: 100%;
+}
+
+body {
+  background-image: var(--mesh);
+  background-attachment: fixed;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  min-height: 100vh;
+}
+
+
+.btn-primary {
+  background: var(--primary);
+  color: #000;
+  font-weight: 700;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+}
+
+
+/* Glassmorphic Container */
+.glass-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: var(--shadow);
+  transition: all 0.3s ease;
+}
+
+.glass-card:hover {
+  border-color: var(--primary);
+  transform: translateY(-2px);
+}
+
+/* Typography */
+h1, h2, h3, h4 {
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.mono {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 24px;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  font-family: inherit;
+  gap: 10px;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: #000;
+}
+
+.btn-primary:hover {
+  background: var(--primary-hover);
+  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+}
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-main);
+}
+
+.btn-ghost:hover {
+  background: var(--surface-hover);
+  border-color: var(--primary);
+}
+
+.btn-block {
+  width: 100%;
+}
+
+/* Status Badges */
+.badge {
+  padding: 4px 12px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.badge-active {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+

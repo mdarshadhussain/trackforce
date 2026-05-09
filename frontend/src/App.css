@@ -1,0 +1,70 @@
+.app-container {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+  background-color: var(--bg);
+  overflow-x: hidden;
+}
+
+
+.sidebar-overlay {
+  display: none;
+}
+
+.sidebar-wrapper {
+  width: 260px;
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+
+@media (max-width: 1024px) {
+  .sidebar-wrapper {
+    width: 0 !important;
+    min-width: 0 !important;
+    overflow: visible;
+  }
+
+  
+  .sidebar-overlay.active {
+    display: block;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+    z-index: 1500;
+  }
+}
+
+
+.main-stage {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-width: 0;
+}
+
+.content-area {
+  flex: 1;
+  padding: 40px;
+  overflow-y: auto;
+}
+
+@media (max-width: 768px) {
+  .content-area {
+    padding: 20px;
+  }
+}
+
+
+/* Page Transitions */
+.page-enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.page-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 300ms, transform 300ms;
+}

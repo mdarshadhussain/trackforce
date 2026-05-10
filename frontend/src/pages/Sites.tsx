@@ -9,18 +9,50 @@ import {
   MoreVertical,
   Users
 } from 'lucide-react';
-import { useState } from 'react';
 import './Sites.css';
 
-const mockSites = [
-  { id: 'site_1', name: 'North Hub HQ', address: '123 Enterprise Way', employees: 42, status: 'ACTIVE', radius: '500m', alerts: 0 },
-  { id: 'site_2', name: 'West Side Distribution', address: '456 Logistics Ave', employees: 28, status: 'ACTIVE', radius: '800m', alerts: 2 },
-  { id: 'site_3', name: 'South Park Facility', address: '789 Industry Blvd', employees: 15, status: 'MAINTENANCE', radius: '300m', alerts: 0 },
-];
+import { useEffect, useState } from 'react';
+import { fetchSites, updateSiteCoordinates } from '../api/api';
 
 const Sites = () => {
-  const [sites, setSites] = useState(mockSites);
+  const [sites, setSites] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadSites();
+  }, []);
+
+  const loadSites = async () => {
+    try {
+      const data = await fetchSites();
+      setSites(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSetLocation = async (siteId: string) => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(async (position) => {
+      const { latitude, longitude } = position.coords;
+      try {
+        await updateSiteCoordinates(siteId, latitude, longitude);
+        alert("Hub location updated successfully!");
+        loadSites(); // Refresh data
+      } catch (err: any) {
+        alert(err.message);
+      }
+    }, (error) => {
+      alert("Please allow location access to set hub coordinates.");
+    });
+  };
 
   return (
     <div className="sites-page">
@@ -61,35 +93,42 @@ const Sites = () => {
                     <MapPin size={20} />
                   </div>
                   <div className="site-status">
-                    <span className={`status-dot ${site.status.toLowerCase()}`}></span>
-                    {site.status}
+                    <span className="status-dot active"></span>
+                    ACTIVE
                   </div>
                   <button className="icon-btn-small"><MoreVertical size={16} /></button>
                 </div>
                 
                 <div className="site-card-body">
                   <h3>{site.name}</h3>
-                  <p className="address">{site.address}</p>
+                  <p className="address">{site.location}</p>
                   
                   <div className="site-stats-row">
                     <div className="site-stat">
                       <Users size={14} />
-                      <span>{site.employees} Employees</span>
+                      <span>{site._count?.employees || 0} Employees</span>
                     </div>
                     <div className="site-stat">
                       <Shield size={14} />
-                      <span>{site.radius} Fence</span>
+                      <span>300m Fence</span>
                     </div>
                   </div>
+                  
+                  {site.latitude && site.latitude !== 0 ? (
+                    <div className="coord-badge">
+                      📍 {site.latitude.toFixed(4)}, {site.longitude.toFixed(4)}
+                    </div>
+                  ) : (
+                    <div className="coord-badge warning">
+                      ⚠️ No Geofence Set
+                    </div>
+                  )}
                 </div>
 
                 <div className="site-card-footer">
-                  <button className="btn-text">
-                    <Settings size={14} /> Configure Geofence
+                  <button className="btn-text" onClick={() => handleSetLocation(site.id)}>
+                    <MapPin size={14} /> Set Hub Location
                   </button>
-                  {site.alerts > 0 && (
-                    <span className="alert-badge">{site.alerts} Alerts</span>
-                  )}
                 </div>
               </motion.div>
             ))}

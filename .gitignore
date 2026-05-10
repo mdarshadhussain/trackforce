@@ -12,16 +12,22 @@ lerna-debug.log*
 .env.local
 .env.*.local
 
+# Databases
+*.db
+*.db-journal
+backend/prisma/dev.db
+
+# IDEs
+.vscode
+.idea
+
 # Build outputs
-dist
-dist-ssr
-build
-out
-.next
+dist/
+dist-ssr/
+build/
 
 # Dependency directories
-node_modules
-jspm_packages
+node_modules/
 
 # OS files
 .DS_Store

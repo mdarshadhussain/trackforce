@@ -1,22 +1,34 @@
-import React, { useState } from 'react';
-import { X, User, Briefcase, MapPin, Shield, Camera } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, User, Briefcase, MapPin, Shield, Camera, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '../context/AuthContext';
+import { fetchSites } from '../api/api';
 
 interface AddEmployeeModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (employee: any) => void;
+  onAdd: (employee: any) => Promise<void> | void;
 }
 
 const AddEmployeeModal = ({ isOpen, onClose, onAdd }: AddEmployeeModalProps) => {
+  const { isAdmin } = useAuth();
+  const [hubs, setHubs] = useState<any[]>([]);
   const [formData, setFormData] = useState({
+    employeeId: '',
     firstName: '',
     lastName: '',
     email: '',
+    password: '',
     designation: '',
-    role: 'USER',
+    role: 'EMPLOYEE',
     siteId: '',
   });
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchSites().then(setHubs).catch(console.error);
+    }
+  }, [isOpen]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,6 +52,20 @@ const AddEmployeeModal = ({ isOpen, onClose, onAdd }: AddEmployeeModalProps) => 
             </div>
 
             <form onSubmit={handleSubmit} className="modal-form">
+              <div className="form-group">
+                <label>Employee ID (Login ID)</label>
+                <div className="input-with-icon">
+                  <Shield size={16} />
+                  <input 
+                    type="text" 
+                    required 
+                    value={formData.employeeId}
+                    onChange={(e) => setFormData({...formData, employeeId: e.target.value})}
+                    placeholder="e.g. TF005" 
+                  />
+                </div>
+              </div>
+
               <div className="form-grid">
                 <div className="form-group">
                   <label>First Name</label>
@@ -69,15 +95,30 @@ const AddEmployeeModal = ({ isOpen, onClose, onAdd }: AddEmployeeModalProps) => 
                 </div>
               </div>
 
-              <div className="form-group">
-                <label>Email Address</label>
-                <input 
-                  type="email" 
-                  required 
-                  value={formData.email}
-                  onChange={(e) => setFormData({...formData, email: e.target.value})}
-                  placeholder="john.doe@company.com" 
-                />
+              <div className="form-grid">
+                <div className="form-group">
+                  <label>Email Address</label>
+                  <input 
+                    type="email" 
+                    required 
+                    value={formData.email}
+                    onChange={(e) => setFormData({...formData, email: e.target.value})}
+                    placeholder="john.doe@company.com" 
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Initial Password</label>
+                  <div className="input-with-icon">
+                    <Lock size={16} />
+                    <input 
+                      type="password" 
+                      required 
+                      value={formData.password}
+                      onChange={(e) => setFormData({...formData, password: e.target.value})}
+                      placeholder="••••••••" 
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="form-grid">
@@ -97,13 +138,20 @@ const AddEmployeeModal = ({ isOpen, onClose, onAdd }: AddEmployeeModalProps) => 
                   <label>Access Level</label>
                   <div className="input-with-icon">
                     <Shield size={16} />
-                    <select 
-                      value={formData.role}
-                      onChange={(e) => setFormData({...formData, role: e.target.value})}
-                    >
-                      <option value="USER">Standard Employee</option>
-                      <option value="ADMIN">Administrator</option>
-                    </select>
+                    {isAdmin ? (
+                      <select 
+                        value={formData.role}
+                        onChange={(e) => setFormData({...formData, role: e.target.value})}
+                      >
+                        <option value="EMPLOYEE">Standard Employee</option>
+                        <option value="MANAGER">Manager</option>
+                        <option value="ADMIN">Administrator</option>
+                      </select>
+                    ) : (
+                      <select disabled value="EMPLOYEE">
+                        <option value="EMPLOYEE">Standard Employee (Fixed)</option>
+                      </select>
+                    )}
                   </div>
                 </div>
               </div>
@@ -113,12 +161,14 @@ const AddEmployeeModal = ({ isOpen, onClose, onAdd }: AddEmployeeModalProps) => 
                 <div className="input-with-icon">
                   <MapPin size={16} />
                   <select 
+                    required
                     value={formData.siteId}
                     onChange={(e) => setFormData({...formData, siteId: e.target.value})}
                   >
                     <option value="">Select a hub...</option>
-                    <option value="site_1">North Hub HQ</option>
-                    <option value="site_2">West Side Distribution</option>
+                    {hubs.map(hub => (
+                      <option key={hub.id} value={hub.id}>{hub.name}</option>
+                    ))}
                   </select>
                 </div>
               </div>

@@ -16,16 +16,19 @@ import {
   Shield
 } from 'lucide-react';
 import { useEffect } from 'react';
-import { fetchEmployees, fetchStats, clockIn, fetchTodayLogs } from '../api/api';
-import { useRole } from '../context/RoleContext';
+import { clockIn, fetchTodayLogs } from '../api/api';
+import { useAuth } from '../context/AuthContext';
 
 import './Attendance.css';
 
 
 const Attendance = () => {
-  const { role } = useRole();
-  const [isScanning, setIsScanning] = useState(false);
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
+  const isManager = user?.role === 'MANAGER';
+  const isManagement = isAdmin || isManager;
 
+  const [isScanning, setIsScanning] = useState(false);
   const [scanStatus, setScanStatus] = useState<'idle' | 'scanning' | 'success'>('idle');
 
   const adminLogs = [
@@ -35,35 +38,55 @@ const Attendance = () => {
   ];
 
   const [logs, setLogs] = useState<any[]>([]);
-  const MOCK_EMP_ID = "emp_123"; // This will come from Auth later
 
   useEffect(() => {
-    fetchTodayLogs(MOCK_EMP_ID).then(setLogs).catch(console.error);
-  }, []);
+    if (user) {
+      fetchTodayLogs(user.id).then(setLogs).catch(console.error);
+    }
+  }, [user]);
 
   const handleClockAction = async () => {
+    if (!user) return;
     setIsScanning(true);
     setScanStatus('scanning');
     
-    try {
-      await clockIn(MOCK_EMP_ID);
-      setScanStatus('success');
-      // Refresh logs after clock in
-      const updatedLogs = await fetchTodayLogs(MOCK_EMP_ID);
-      setLogs(updatedLogs);
-    } catch (err) {
-      console.error(err);
+    // 1. Get Current Location
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser");
       setScanStatus('idle');
+      setIsScanning(false);
+      return;
     }
 
-    setTimeout(() => {
-      setIsScanning(false);
-      setScanStatus('idle');
-    }, 2000);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        try {
+          // 2. Attempt Clock In with Coordinates
+          await clockIn(user.id, latitude, longitude);
+          setScanStatus('success');
+          const updatedLogs = await fetchTodayLogs(user.id);
+          setLogs(updatedLogs);
+        } catch (err: any) {
+          alert(err.message);
+          setScanStatus('idle');
+        } finally {
+          setTimeout(() => {
+            setIsScanning(false);
+            setScanStatus('idle');
+          }, 2000);
+        }
+      },
+      (error) => {
+        alert("Please enable location access to clock in.");
+        setScanStatus('idle');
+        setIsScanning(false);
+      },
+      { enableHighAccuracy: true }
+    );
   };
 
-
-  if (role === 'user') {
+  if (!isManagement) {
     return (
       <div className="enterprise-page user-view">
         
@@ -150,12 +173,9 @@ const Attendance = () => {
     );
   }
 
-  // Admin View (Existing code with role switcher)
+  // Admin View
   return (
     <div className="enterprise-page">
-      <div className="role-badge-float" onClick={() => setRole('user')}>
-        Viewing as Admin (Switch to User)
-      </div>
       <div className="attendance-layout">
         {/* Left Profile Sidebar */}
         <aside className="profile-sidebar glass-card">

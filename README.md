@@ -15,12 +15,10 @@ TrackForce is a premium, enterprise-grade workforce management platform designed
 
 - **Frontend:** React, TypeScript, Vite, Lucide Icons, Framer Motion.
 - **Backend:** Node.js, Express, Prisma ORM.
-- **Database:** PostgreSQL.
-- **Deployment:** Docker, Nginx (Production-ready).
+- **Database:** SQLite (Temporary for Development) / MySQL (Production).
+- **Deployment:** Hostinger / Manual Deployment.
 
-## 🐳 Quick Start with Docker
-
-The easiest way to get TrackForce up and running is using Docker.
+## 🚀 Quick Start (Local Development)
 
 1. **Clone the repository:**
    ```bash
@@ -28,16 +26,21 @@ The easiest way to get TrackForce up and running is using Docker.
    cd TrackForce
    ```
 
-2. **Start the platform:**
-   ```bash
-   docker-compose up -d
-   ```
+2. **Backend Setup:**
+   - Go to `backend` folder.
+   - Install dependencies: `npm install`.
+   - The `.env` is pre-configured for **SQLite** (no setup needed).
+   - Run `npx prisma generate`.
+   - Run `npx prisma db push` (to create the local `dev.db` file).
+   - Run `npx prisma db seed` (to add test data).
+   - Start: `npm run dev`.
 
-The platform will be available at:
-- **Frontend:** http://localhost (Port 80)
-- **Backend API:** http://localhost:5000
+3. **Frontend Setup:**
+   - Go to `frontend` folder.
+   - Install dependencies: `npm install`.
+   - Start: `npm run dev`.
 
-## 👨‍💻 Local Development
+## 👨‍💻 Deployment to Hostinger
 
 If you prefer to run the services individually for development:
 

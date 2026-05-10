@@ -1,9 +1,12 @@
-import { PrismaClient, Role, Status } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
 async function main() {
   console.log('Starting seed...');
+
+  const hashedPassword = await bcrypt.hash('password123', 10);
 
   // Create a default Site
   const mainSite = await prisma.site.upsert({
@@ -22,29 +25,32 @@ async function main() {
   // Create some dummy employees
   const employees = [
     {
+      employeeId: 'TF001',
       firstName: 'John',
       lastName: 'Doe',
       email: 'john.doe@trackforce.com',
-      password: 'password123',
-      role: Role.ADMIN,
+      password: hashedPassword,
+      role: 'ADMIN',
       designation: 'Project Lead',
       siteId: mainSite.id,
     },
     {
+      employeeId: 'TF002',
       firstName: 'Sarah',
       lastName: 'Jenkins',
       email: 'sarah.j@trackforce.com',
-      password: 'password123',
-      role: Role.EMPLOYEE,
+      password: hashedPassword,
+      role: 'EMPLOYEE',
       designation: 'Field Agent',
       siteId: mainSite.id,
     },
     {
+      employeeId: 'TF003',
       firstName: 'Michael',
       lastName: 'Chen',
       email: 'm.chen@trackforce.com',
-      password: 'password123',
-      role: Role.MANAGER,
+      password: hashedPassword,
+      role: 'MANAGER',
       designation: 'Operations Manager',
       siteId: mainSite.id,
     },
@@ -54,7 +60,7 @@ async function main() {
   for (const emp of employees) {
     const user = await prisma.employee.upsert({
       where: { email: emp.email },
-      update: {},
+      update: { password: hashedPassword },
       create: emp,
     });
     console.log(`Created employee: ${user.firstName} ${user.lastName}`);

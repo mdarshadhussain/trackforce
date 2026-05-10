@@ -56,56 +56,66 @@ const StatCard = ({ icon, label, value, trend, color }: any) => (
   </motion.div>
 );
 
-import { useRole } from '../context/RoleContext';
+import { useAuth } from '../context/AuthContext';
 
 const Dashboard = () => {
   const [stats, setStats] = useState<any>(null);
-  const { role } = useRole();
+  const { user } = useAuth();
   
   useEffect(() => {
     fetchStats().then(setStats).catch(console.error);
   }, []);
 
-  const isAdmin = role === 'admin';
+  const isAdmin = user?.role === 'ADMIN';
+  const isManager = user?.role === 'MANAGER';
+  const isManagement = isAdmin || isManager;
 
   return (
     <div className="dashboard-wrapper">
       <header className="dashboard-header-premium">
         <div className="header-text">
-          <h1>{isAdmin ? 'Workforce Intelligence' : 'My Performance'}</h1>
-          <p>{isAdmin ? 'Real-time insights and performance metrics across all hubs.' : 'Track your daily progress and shift efficiency.'}</p>
+          <h1>
+            {isAdmin ? 'Workforce Intelligence' : isManager ? 'Hub Operations' : 'My Performance'}
+          </h1>
+          <p>
+            {isAdmin 
+              ? 'Real-time insights and performance metrics across all hubs.' 
+              : isManager 
+                ? 'Managing site efficiency and workforce attendance.' 
+                : 'Track your daily progress and shift efficiency.'}
+          </p>
         </div>
         <div className="header-actions">
-          {isAdmin && <button className="btn btn-ghost">Download Report</button>}
-          <button className="btn btn-primary">{isAdmin ? 'Configuration' : 'Request Shift'}</button>
+          {isManagement && <button className="btn btn-ghost">Download Report</button>}
+          <button className="btn btn-primary">{isManagement ? 'Configuration' : 'Request Shift'}</button>
         </div>
       </header>
 
       <section className="stats-grid-premium">
         <StatCard 
           icon={<Users size={24} />} 
-          label={isAdmin ? "Total Workforce" : "My Weekly Hours"} 
-          value={isAdmin ? (stats?.totalEmployees || 0) : "38.5h"} 
+          label={isAdmin ? "Total Workforce" : isManager ? "Site Workforce" : "My Weekly Hours"} 
+          value={isAdmin ? (stats?.totalEmployees || 0) : isManager ? (stats?.totalEmployees || 0) : "38.5h"} 
           trend={12.5} 
           color="var(--accent)" 
         />
         <StatCard 
           icon={<Activity size={24} />} 
-          label={isAdmin ? "Current Attendance" : "My Efficiency"} 
-          value={isAdmin ? `${stats?.activeNow || 0}%` : "94%"} 
+          label={isManagement ? "Current Attendance" : "My Efficiency"} 
+          value={isManagement ? `${stats?.activeNow || 0}%` : "94%"} 
           trend={3.2} 
           color="var(--primary)" 
         />
         <StatCard 
           icon={<MapPin size={24} />} 
-          label={isAdmin ? "Operational Sites" : "Active Site"} 
+          label={isAdmin ? "Operational Sites" : isManager ? "Current Hub" : "Active Site"} 
           value={isAdmin ? (stats?.sites || 0) : "North Hub"} 
           color="var(--accent)" 
         />
         <StatCard 
           icon={<Clock size={24} />} 
-          label={isAdmin ? "Avg. Shift Duration" : "Total Earnings"} 
-          value={isAdmin ? "8.4h" : "$1,240"} 
+          label={isManagement ? "Avg. Shift Duration" : "Total Earnings"} 
+          value={isManagement ? "8.4h" : "$1,240"} 
           trend={-1.2} 
           color="var(--primary)" 
         />
@@ -113,7 +123,7 @@ const Dashboard = () => {
 
 
 
-      {isAdmin && (
+      {isManagement && (
         <div className="main-content-grid">
           <div className="glass-card main-chart">
             <div className="card-header">

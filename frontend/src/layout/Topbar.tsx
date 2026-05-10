@@ -3,8 +3,10 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Topbar.css';
 
-const Topbar = ({ onMenuClick }: { onMenuClick?: () => void }) => {
+import { useAuth } from '../context/AuthContext';
 
+const Topbar = ({ onMenuClick }: { onMenuClick?: () => void }) => {
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
 
@@ -18,7 +20,8 @@ const Topbar = ({ onMenuClick }: { onMenuClick?: () => void }) => {
   };
 
   const handleLogout = () => {
-    navigate('/');
+    logout();
+    navigate('/login');
   };
 
   return (
@@ -48,8 +51,8 @@ const Topbar = ({ onMenuClick }: { onMenuClick?: () => void }) => {
         
         <div className="user-profile">
           <div className="user-info">
-            <span className="user-name">Alex Rivera</span>
-            <span className="user-role">Super Admin</span>
+            <span className="user-name">{user ? `${user.firstName} ${user.lastName}` : 'Guest'}</span>
+            <span className="user-role">{user?.role || 'Guest'}</span>
           </div>
           <div className="avatar">
             <User size={20} />

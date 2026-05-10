@@ -16,7 +16,11 @@ import { fetchEmployees } from '../api/api';
 
 import AddEmployeeModal from '../components/AddEmployeeModal';
 
+import { useAuth } from '../context/AuthContext';
+
 const Employees = () => {
+  const { user, isAdmin } = useAuth();
+  const isManagement = isAdmin || user?.role === 'MANAGER';
   const [employees, setEmployees] = useState<any[]>([]);
   const [filteredEmployees, setFilteredEmployees] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -50,21 +54,25 @@ const Employees = () => {
     }
   };
 
-  const handleAddEmployee = (newEmp: any) => {
-    // In a real app, this would be an API call
-    console.log('Adding employee:', newEmp);
-    // Mocking the new employee in state
-    const mockNewEmp = {
-      id: `emp_${Math.random().toString(36).substr(2, 9)}`,
-      firstName: newEmp.firstName,
-      lastName: newEmp.lastName,
-      email: newEmp.email,
-      designation: newEmp.designation,
-      role: newEmp.role,
-      status: 'ACTIVE',
-      site: { name: 'North Hub HQ' }
-    };
-    setEmployees([...employees, mockNewEmp]);
+  const handleAddEmployee = async (newEmp: any) => {
+    try {
+      const created = await createEmployee(newEmp);
+      setEmployees([...employees, created]);
+      setIsModalOpen(false);
+    } catch (err: any) {
+      alert(err.message || 'Failed to add employee');
+    }
+  };
+
+  const handleDeleteEmployee = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this employee?')) return;
+    
+    try {
+      await deleteEmployee(id);
+      setEmployees(employees.filter(emp => emp.id !== id));
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete employee');
+    }
   };
 
   if (loading) return <div className="loading-state">Loading workforce...</div>;
@@ -91,9 +99,11 @@ const Employees = () => {
             <Download size={18} />
             Export CSV
           </button>
-          <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
-            + Add New Employee
-          </button>
+          {isManagement && (
+            <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
+              + Add New Employee
+            </button>
+          )}
         </div>
       </header>
 
@@ -137,7 +147,7 @@ const Employees = () => {
                     <span>{emp.firstName} {emp.lastName}</span>
                   </div>
                 </td>
-                <td><span className="mono">{emp.id.substring(0, 8).toUpperCase()}</span></td>
+                <td><span className="mono">{emp.employeeId}</span></td>
                 <td>
                   <div className="dept-role">
                     <span className="dept">{emp.designation || 'General'}</span>
@@ -156,9 +166,16 @@ const Employees = () => {
                   </span>
                 </td>
                 <td>
-                  <button className="icon-btn">
-                    <MoreHorizontal size={18} />
-                  </button>
+                  <div className="table-actions">
+                    {isAdmin && (
+                      <button className="icon-btn" onClick={() => handleDeleteEmployee(emp.id)} title="Delete Employee">
+                        <XCircle size={18} color="var(--error)" />
+                      </button>
+                    )}
+                    <button className="icon-btn">
+                      <MoreHorizontal size={18} />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}

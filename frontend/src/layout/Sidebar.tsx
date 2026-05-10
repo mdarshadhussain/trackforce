@@ -1,6 +1,6 @@
 import { Search, Bell, User, Sun, Moon, LogOut, Menu, X, Shield, LayoutDashboard, Users, Clock, MapPin, Wallet, Building2, Settings, Calendar } from 'lucide-react';
-import { NavLink, useLocation } from 'react-router-dom';
-import { useRole } from '../context/RoleContext';
+import { NavLink } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import './Sidebar.css';
 
 interface SidebarProps {
@@ -8,16 +8,21 @@ interface SidebarProps {
 }
 
 const Sidebar = ({ onClose }: SidebarProps) => {
-  const { role } = useRole();
-  const isAdmin = role === 'admin';
+  const { user, isAdmin, logout } = useAuth();
+  const isManager = user?.role === 'MANAGER' || isAdmin;
 
   const menuItems = [
     { icon: <LayoutDashboard size={20} />, label: 'Dashboard', path: '/dashboard' },
-    ...(isAdmin ? [{ icon: <Users size={20} />, label: 'Employees', path: '/employees' }] : []),
+    // Admins and Managers can see the employee list
+    ...(isManager ? [{ icon: <Users size={20} />, label: 'Employees', path: '/employees' }] : []),
+    // Admins and Managers see full Attendance
     { icon: <Calendar size={20} />, label: 'Attendance', path: '/attendance' },
+    // Only Admins see Live Tracking (GPS)
     ...(isAdmin ? [{ icon: <MapPin size={20} />, label: 'Live Tracking', path: '/tracking' }] : []),
-    { icon: <Wallet size={20} />, label: 'Payroll', path: '/payroll' },
-    { icon: <Building2 size={20} />, label: 'Sites', path: '/sites' },
+    // Admins and Managers see Payroll
+    ...(isManager ? [{ icon: <Wallet size={20} />, label: 'Payroll', path: '/payroll' }] : []),
+    // Sites are for management
+    ...(isManager ? [{ icon: <Building2 size={20} />, label: 'Sites', path: '/sites' }] : []),
   ];
 
   return (
@@ -50,6 +55,10 @@ const Sidebar = ({ onClose }: SidebarProps) => {
           <Settings size={20} />
           <span>Settings</span>
         </NavLink>
+        <button onClick={logout} className="nav-item logout-btn-sidebar" style={{ background: 'none', border: 'none', width: '100%', cursor: 'pointer' }}>
+          <LogOut size={20} />
+          <span>Logout</span>
+        </button>
       </div>
     </aside>
   );

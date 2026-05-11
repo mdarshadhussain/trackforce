@@ -20,7 +20,7 @@ app.use(helmet({
 }));
 
 const corsOptions = {
-  origin: process.env.FRONTEND_URL || '*',
+  origin: true, // Reflects the request origin, allowing all during initial setup
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true

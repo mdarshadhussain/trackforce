@@ -2,9 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, 
   UserPlus, 
-  Filter,
   Download,
-  CheckCircle2,
   Shield,
   Edit3,
   XCircle,
@@ -30,7 +28,6 @@ import { useNavigate } from 'react-router-dom';
 const Employees = () => {
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
-  const isManagement = isAdmin;
   
   const [employees, setEmployees] = useState<any[]>([]);
   const [filteredEmployees, setFilteredEmployees] = useState<any[]>([]);

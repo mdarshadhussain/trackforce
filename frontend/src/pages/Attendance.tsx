@@ -9,12 +9,9 @@ import {
   Calendar, 
   ChevronLeft, 
   Clock,
-  Scan,
-  CheckCircle2,
   Camera,
   MapPin,
   Shield,
-  Search,
   Trash2,
   UserPlus
 } from 'lucide-react';

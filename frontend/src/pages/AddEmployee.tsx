@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 import { 
   User, 
   Briefcase, 
@@ -21,7 +20,6 @@ const AddEmployee = () => {
   const { id } = useParams();
   const isEditMode = !!id;
   const { isAdmin } = useAuth();
-  const { t } = useTranslation();
   const navigate = useNavigate();
   const [hubs, setHubs] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);

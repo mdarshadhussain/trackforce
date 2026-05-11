@@ -46,6 +46,7 @@ model Site {
   
   // Relations
   employees   Employee[]
+  attendance  Attendance[]
   
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
@@ -55,6 +56,8 @@ model Attendance {
   id          String    @id @default(uuid())
   employeeId  String
   employee    Employee  @relation(fields: [employeeId], references: [id])
+  siteId      String?
+  site        Site?     @relation(fields: [siteId], references: [id])
   date        DateTime  @default(now())
   clockIn     DateTime  @default(now())
   clockOut    DateTime?

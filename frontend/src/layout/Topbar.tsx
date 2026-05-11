@@ -1,17 +1,10 @@
 import { 
-  Search, 
-  Bell, 
-  User, 
   Sun, 
   Moon, 
   LogOut, 
   Menu, 
-  Languages, 
-  Settings as SettingsIcon,
-  Shield,
-  Database,
   Globe,
-  ChevronDown
+  User
 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -24,9 +17,7 @@ const Topbar = ({ onMenuClick }: { onMenuClick?: () => void }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
-  const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
   const [showLangDropdown, setShowLangDropdown] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
   const langRef = useRef<HTMLDivElement>(null);
   const { i18n } = useTranslation();
 
@@ -37,9 +28,6 @@ const Topbar = ({ onMenuClick }: { onMenuClick?: () => void }) => {
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setShowSettingsDropdown(false);
-      }
       if (langRef.current && !langRef.current.contains(event.target as Node)) {
         setShowLangDropdown(false);
       }
@@ -55,17 +43,6 @@ const Topbar = ({ onMenuClick }: { onMenuClick?: () => void }) => {
   const handleLogout = () => {
     logout();
     navigate('/login');
-  };
-
-  const navigateToSection = (sectionId: string) => {
-    navigate('/settings');
-    setTimeout(() => {
-      const element = document.getElementById(sectionId);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    }, 100);
-    setShowSettingsDropdown(false);
   };
 
   return (
@@ -93,7 +70,6 @@ const Topbar = ({ onMenuClick }: { onMenuClick?: () => void }) => {
             <div className="premium-dropdown lang-dropdown">
               <button 
                 className={`dropdown-item ${i18n.language === 'en' ? 'active' : ''}`} 
-                onChange={() => i18n.changeLanguage('en')}
                 onClick={() => { i18n.changeLanguage('en'); setShowLangDropdown(false); }}
               >
                 <span>English (UK)</span>
@@ -107,6 +83,11 @@ const Topbar = ({ onMenuClick }: { onMenuClick?: () => void }) => {
             </div>
           )}
         </div>
+
+        {/* Logout Node */}
+        <button className="action-btn logout-btn" onClick={handleLogout} title="Logout Session">
+          <LogOut size={20} />
+        </button>
         
         <div className="user-profile">
           <div className="user-info">

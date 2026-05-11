@@ -9,6 +9,16 @@ const getAuthHeaders = () => {
   };
 };
 
+const handleResponse = async (response: Response) => {
+  if (response.status === 401 || response.status === 403) {
+    localStorage.removeItem('tf_token');
+    localStorage.removeItem('tf_user');
+    window.location.href = '/login';
+    throw new Error('Session expired. Please login again.');
+  }
+  return response;
+};
+
 export const loginUser = async (employeeId: string, password: string) => {
   const response = await fetch(`${BASE_URL}/auth/login`, {
     method: 'POST',
@@ -27,6 +37,7 @@ export const fetchEmployees = async () => {
   const response = await fetch(`${BASE_URL}/employees`, {
     headers: getAuthHeaders()
   });
+  await handleResponse(response);
   if (!response.ok) throw new Error('Failed to fetch employees');
   return response.json();
 };
@@ -61,12 +72,13 @@ export const fetchStats = async () => {
   return response.json();
 };
 
-export const clockIn = async (employeeId: string, latitude: number, longitude: number) => {
+export const clockIn = async (employeeId: string, latitude: number, longitude: number, biometricProof?: string) => {
   const response = await fetch(`${BASE_URL}/attendance/clock-in/${employeeId}`, {
     method: 'POST',
     headers: getAuthHeaders(),
-    body: JSON.stringify({ latitude, longitude })
+    body: JSON.stringify({ latitude, longitude, biometricProof })
   });
+  await handleResponse(response);
   if (!response.ok) {
     const errorData = await response.json();
     throw new Error(errorData.error || 'Failed to clock in');
@@ -78,17 +90,21 @@ export const fetchTodayLogs = async (employeeId: string) => {
   const response = await fetch(`${BASE_URL}/attendance/today/${employeeId}`, {
     headers: getAuthHeaders()
   });
+  await handleResponse(response);
   if (!response.ok) throw new Error('Failed to fetch logs');
   return response.json();
 };
 
-export const clockOut = async (employeeId: string) => {
+export const clockOut = async (employeeId: string, latitude?: number, longitude?: number) => {
   const response = await fetch(`${BASE_URL}/attendance/clock-out/${employeeId}`, {
-    headers: getAuthHeaders()
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ latitude, longitude })
   });
+  await handleResponse(response);
   if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.error || 'Failed to clock out');
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to clock out');
   }
   return response.json();
 };
@@ -115,6 +131,7 @@ export const fetchSites = async () => {
   const response = await fetch(`${BASE_URL}/sites`, {
     headers: getAuthHeaders()
   });
+  await handleResponse(response);
   if (!response.ok) throw new Error('Failed to fetch sites');
   return response.json();
 };
@@ -134,5 +151,111 @@ export const fetchLiveTracking = async () => {
     headers: getAuthHeaders()
   });
   if (!response.ok) throw new Error('Failed to fetch tracking data');
+  return response.json();
+};
+
+export const fetchPayroll = async () => {
+  const response = await fetch(`${BASE_URL}/payroll`, {
+    headers: getAuthHeaders()
+  });
+  await handleResponse(response);
+  if (!response.ok) throw new Error('Failed to fetch payroll data');
+  return response.json();
+};
+
+export const updateAttendanceStatus = async (id: string, status: 'APPROVED' | 'REJECTED') => {
+  const response = await fetch(`${BASE_URL}/attendance/${id}`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ status })
+  });
+  await handleResponse(response);
+  if (!response.ok) throw new Error('Failed to update status');
+  return response.json();
+};
+
+export const processPayroll = async () => {
+  const response = await fetch(`${BASE_URL}/payroll/process`, {
+    method: 'POST',
+    headers: getAuthHeaders()
+  });
+  if (!response.ok) throw new Error('Failed to process payroll');
+  return response.json();
+};
+
+export const fetchSecurityAlerts = async () => {
+  const response = await fetch(`${BASE_URL}/security/alerts`, {
+    headers: getAuthHeaders()
+  });
+  await handleResponse(response);
+  if (!response.ok) throw new Error('Failed to fetch security alerts');
+  return response.json();
+};
+
+export const createSite = async (siteData: any) => {
+  const response = await fetch(`${BASE_URL}/sites`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(siteData)
+  });
+  if (!response.ok) throw new Error('Failed to create site');
+  return response.json();
+};
+
+export const fetchAllLogs = async () => {
+  const response = await fetch(`${BASE_URL}/attendance/all`, {
+    headers: getAuthHeaders()
+  });
+  await handleResponse(response);
+  if (!response.ok) throw new Error('Failed to fetch all logs');
+  return response.json();
+};
+export const enrollBiometric = async (id: string, faceDescriptor: number[]) => {
+  const response = await fetch(`${BASE_URL}/employees/${id}/enroll`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ faceDescriptor })
+  });
+  await handleResponse(response);
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || 'Failed to enroll');
+  }
+  return response.json();
+};
+export const fetchPayrollStats = async () => {
+  const response = await fetch(`${BASE_URL}/payroll/stats`, {
+    headers: getAuthHeaders()
+  });
+  await handleResponse(response);
+  if (!response.ok) throw new Error('Failed to fetch payroll stats');
+  return response.json();
+};
+
+export const fetchConfig = async () => {
+  const response = await fetch(`${BASE_URL}/config`, {
+    headers: getAuthHeaders()
+  });
+  await handleResponse(response);
+  return response.json();
+};
+
+export const updateConfig = async (configData: any) => {
+  const response = await fetch(`${BASE_URL}/config`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(configData)
+  });
+  await handleResponse(response);
+  return response.json();
+};
+
+export const createSecurityAlert = async (alertData: any) => {
+  const response = await fetch(`${BASE_URL}/security/alerts`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(alertData)
+  });
+  if (!response.ok) throw new Error('Failed to create security alert');
   return response.json();
 };

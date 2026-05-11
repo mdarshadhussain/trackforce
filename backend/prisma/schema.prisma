@@ -3,6 +3,7 @@
 
 generator client {
   provider = "prisma-client-js"
+  output   = "../src/generated/client"
 }
 
 datasource db {
@@ -21,12 +22,16 @@ model Employee {
   phone       String?
   designation String?
   status      String   @default("ACTIVE")   // Changed from Status enum for SQLite
+  avatar      String?  // Base64 profile image
   
   // Relations
   siteId      String?
   site        Site?       @relation(fields: [siteId], references: [id])
   attendance  Attendance[]
   tracking    Tracking[]
+  
+  isBiometricEnrolled Boolean @default(false)
+  biometricToken      String?  // Store a hash of facial features or public key
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -54,9 +59,12 @@ model Attendance {
   date        DateTime  @default(now())
   clockIn     DateTime  @default(now())
   clockOut    DateTime?
-  latitude    Float?    // Location at clock-in
-  longitude   Float?    // Location at clock-in
-  status      String    @default("PRESENT") // PRESENT, LATE, ABSENT
+  clockInLat  Float?
+  clockInLong Float?
+  clockOutLat Float?
+  clockOutLong Float?
+  biometricProof String? // Base64 snapshot or verification token
+  status         String    @default("PENDING") // PENDING, APPROVED, REJECTED, PRESENT, LATE, ABSENT
   
   // Relations
   breaks      Break[]
@@ -98,3 +106,13 @@ model Tracking {
 //   INACTIVE
 //   ON_LEAVE
 // }
+
+model SecurityAlert {
+  id          String   @id @default(uuid())
+  type        String   // 'GEOFENCE_VIOLATION', 'BIOMETRIC_MISMATCH'
+  message     String
+  severity    String   @default("LOW") // LOW, MEDIUM, HIGH
+  employeeId  String?
+  siteId      String?
+  timestamp   DateTime @default(now())
+}

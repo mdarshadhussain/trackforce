@@ -1,0 +1,148 @@
+.payroll-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.payroll-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+.payroll-stat-card {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+.payroll-stat-card::after {
+  content: '';
+  position: absolute;
+  top: 0; right: 0;
+  width: 100px; height: 100px;
+  background: radial-gradient(circle, var(--accent-color) 0%, transparent 70%);
+  opacity: 0.1;
+  transform: translate(30%, -30%);
+}
+
+.p-stat-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--primary-container);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary);
+  border: 1px solid var(--border);
+}
+
+.p-stat-label {
+  display: block;
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+}
+
+.p-stat-value {
+  font-size: 24px;
+  font-weight: 800;
+  margin: 0;
+  color: var(--text-main);
+}
+
+.table-header-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.emp-brief {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.emp-initials {
+  width: 36px;
+  height: 36px;
+  background: var(--surface-bright);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: var(--primary);
+  border: 1px solid var(--border);
+}
+
+.v-stack {
+  display: flex;
+  flex-direction: column;
+}
+
+.v-stack .name {
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.v-stack .id {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.ot-badge {
+  padding: 2px 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.ot-badge.active {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.gross-value {
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.status-pill.pending {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--primary);
+}
+
+.icon-btn-small {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 4px;
+  transition: all 0.2s ease;
+}
+
+.icon-btn-small:hover {
+  color: var(--primary);
+  transform: translateX(2px);
+}
+
+@media (max-width: 768px) {
+  .payroll-stats-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .enterprise-table th:nth-child(3),
+  .enterprise-table td:nth-child(3),
+  .enterprise-table th:nth-child(4),
+  .enterprise-table td:nth-child(4) {
+    display: none;
+  }
+}

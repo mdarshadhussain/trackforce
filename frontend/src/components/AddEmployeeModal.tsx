@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { X, User, Briefcase, MapPin, Shield, Camera, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
@@ -12,6 +13,7 @@ interface AddEmployeeModalProps {
 
 const AddEmployeeModal = ({ isOpen, onClose, onAdd }: AddEmployeeModalProps) => {
   const { isAdmin } = useAuth();
+  const { t } = useTranslation();
   const [hubs, setHubs] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     employeeId: '',
@@ -22,6 +24,7 @@ const AddEmployeeModal = ({ isOpen, onClose, onAdd }: AddEmployeeModalProps) => 
     designation: '',
     role: 'EMPLOYEE',
     siteId: '',
+    avatar: null as string | null
   });
 
   useEffect(() => {
@@ -29,6 +32,17 @@ const AddEmployeeModal = ({ isOpen, onClose, onAdd }: AddEmployeeModalProps) => 
       fetchSites().then(setHubs).catch(console.error);
     }
   }, [isOpen]);
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData({ ...formData, avatar: reader.result as string });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,13 +61,38 @@ const AddEmployeeModal = ({ isOpen, onClose, onAdd }: AddEmployeeModalProps) => 
             className="glass-card modal-content"
           >
             <div className="modal-header">
-              <h3>Add New Employee</h3>
+              <h3>{t('addNewEmployee')}</h3>
               <button onClick={onClose} className="icon-btn"><X size={20} /></button>
             </div>
 
             <form onSubmit={handleSubmit} className="modal-form">
+              {/* Profile Image Upload */}
+              <div className="profile-upload-section">
+                <div className="avatar-preview">
+                  {formData.avatar ? (
+                    <img src={formData.avatar} alt="Preview" />
+                  ) : (
+                    <User size={40} />
+                  )}
+                  <label htmlFor="avatar-upload" className="upload-badge">
+                    <Camera size={16} />
+                  </label>
+                </div>
+                <input 
+                  id="avatar-upload"
+                  type="file" 
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  style={{ display: 'none' }}
+                />
+                <div className="upload-info">
+                  <h4>{t('profilePicture')}</h4>
+                  <p>{t('uploadPhotoInfo')}</p>
+                </div>
+              </div>
+
               <div className="form-group">
-                <label>Employee ID (Login ID)</label>
+                <label>{t('employeeID')}</label>
                 <div className="input-with-icon">
                   <Shield size={16} />
                   <input 
@@ -68,7 +107,7 @@ const AddEmployeeModal = ({ isOpen, onClose, onAdd }: AddEmployeeModalProps) => 
 
               <div className="form-grid">
                 <div className="form-group">
-                  <label>First Name</label>
+                  <label>{t('firstName')}</label>
                   <div className="input-with-icon">
                     <User size={16} />
                     <input 
@@ -81,7 +120,7 @@ const AddEmployeeModal = ({ isOpen, onClose, onAdd }: AddEmployeeModalProps) => 
                   </div>
                 </div>
                 <div className="form-group">
-                  <label>Last Name</label>
+                  <label>{t('lastName')}</label>
                   <div className="input-with-icon">
                     <User size={16} />
                     <input 
@@ -97,7 +136,7 @@ const AddEmployeeModal = ({ isOpen, onClose, onAdd }: AddEmployeeModalProps) => 
 
               <div className="form-grid">
                 <div className="form-group">
-                  <label>Email Address</label>
+                  <label>{t('emailAddress')}</label>
                   <input 
                     type="email" 
                     required 
@@ -107,7 +146,7 @@ const AddEmployeeModal = ({ isOpen, onClose, onAdd }: AddEmployeeModalProps) => 
                   />
                 </div>
                 <div className="form-group">
-                  <label>Initial Password</label>
+                  <label>{t('initialPassword')}</label>
                   <div className="input-with-icon">
                     <Lock size={16} />
                     <input 
@@ -123,7 +162,7 @@ const AddEmployeeModal = ({ isOpen, onClose, onAdd }: AddEmployeeModalProps) => 
 
               <div className="form-grid">
                 <div className="form-group">
-                  <label>Designation</label>
+                  <label>{t('designation')}</label>
                   <div className="input-with-icon">
                     <Briefcase size={16} />
                     <input 
@@ -135,7 +174,7 @@ const AddEmployeeModal = ({ isOpen, onClose, onAdd }: AddEmployeeModalProps) => 
                   </div>
                 </div>
                 <div className="form-group">
-                  <label>Access Level</label>
+                  <label>{t('accessLevel')}</label>
                   <div className="input-with-icon">
                     <Shield size={16} />
                     {isAdmin ? (
@@ -182,8 +221,8 @@ const AddEmployeeModal = ({ isOpen, onClose, onAdd }: AddEmployeeModalProps) => 
               </div>
 
               <div className="modal-footer">
-                <button type="button" onClick={onClose} className="btn btn-ghost">Cancel</button>
-                <button type="submit" className="btn btn-primary">Create Employee Profile</button>
+                <button type="button" onClick={onClose} className="btn btn-ghost">{t('cancel')}</button>
+                <button type="submit" className="btn btn-primary">{t('createProfile')}</button>
               </div>
             </form>
           </motion.div>

@@ -7,26 +7,28 @@ import {
   Download,
   CheckCircle2,
   XCircle,
-  Clock
+  Shield
 } from 'lucide-react';
 import './Employees.css';
 
 import { useEffect, useState } from 'react';
-import { fetchEmployees } from '../api/api';
-
-import AddEmployeeModal from '../components/AddEmployeeModal';
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
+import { fetchEmployees, deleteEmployee } from '../api/api';
+import { exportToCSV } from '../utils/export';
 
 import { useAuth } from '../context/AuthContext';
 
 const Employees = () => {
   const { user, isAdmin } = useAuth();
+  const { t } = useTranslation();
+  const navigate = useNavigate();
   const isManagement = isAdmin || user?.role === 'MANAGER';
   const [employees, setEmployees] = useState<any[]>([]);
   const [filteredEmployees, setFilteredEmployees] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     loadEmployees();
@@ -54,15 +56,6 @@ const Employees = () => {
     }
   };
 
-  const handleAddEmployee = async (newEmp: any) => {
-    try {
-      const created = await createEmployee(newEmp);
-      setEmployees([...employees, created]);
-      setIsModalOpen(false);
-    } catch (err: any) {
-      alert(err.message || 'Failed to add employee');
-    }
-  };
 
   const handleDeleteEmployee = async (id: string) => {
     if (!window.confirm('Are you sure you want to delete this employee?')) return;
@@ -73,6 +66,10 @@ const Employees = () => {
     } catch (err: any) {
       alert(err.message || 'Failed to delete employee');
     }
+  };
+
+  const handleExport = () => {
+    exportToCSV(employees, 'Workforce_Report');
   };
 
   if (loading) return <div className="loading-state">Loading workforce...</div>;
@@ -90,18 +87,18 @@ const Employees = () => {
             <UserPlus size={24} />
           </div>
           <div className="profile-info">
-            <h2>Workforce Management</h2>
-            <p className="subtitle">Manage your {employees.length} active employees and site assignments</p>
+            <h2>{t('workforceManagement')}</h2>
+            <p className="subtitle">{t('manageActiveEmployees', { count: employees.length })}</p>
           </div>
         </div>
         <div className="header-actions">
-          <button className="btn btn-ghost">
+          <button className="btn btn-ghost" onClick={handleExport}>
             <Download size={18} />
-            Export CSV
+            {t('exportCSV')}
           </button>
           {isManagement && (
-            <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
-              + Add New Employee
+            <button className="btn btn-primary" onClick={() => navigate('/employees/add')}>
+              + {t('addNewEmployee')}
             </button>
           )}
         </div>
@@ -129,12 +126,12 @@ const Employees = () => {
         <table className="employee-table">
           <thead>
             <tr>
-              <th>Employee</th>
-              <th>ID</th>
-              <th>Dept / Role</th>
-              <th>Assigned Site</th>
-              <th>Face ID</th>
-              <th>Status</th>
+              <th>{t('employee')}</th>
+              <th>{t('id')}</th>
+              <th>{t('deptRole')}</th>
+              <th>{t('assignedSite')}</th>
+              <th>{t('faceID')}</th>
+              <th>{t('status')}</th>
               <th></th>
             </tr>
           </thead>
@@ -143,7 +140,13 @@ const Employees = () => {
               <tr key={emp.id}>
                 <td>
                   <div className="emp-info">
-                    <div className="emp-avatar">{emp.firstName.charAt(0)}</div>
+                    <div className="emp-avatar">
+                      {emp.avatar ? (
+                        <img src={emp.avatar} alt={emp.firstName} />
+                      ) : (
+                        emp.firstName.charAt(0)
+                      )}
+                    </div>
                     <span>{emp.firstName} {emp.lastName}</span>
                   </div>
                 </td>
@@ -156,8 +159,12 @@ const Employees = () => {
                 </td>
                 <td>{emp.site?.name || 'Unassigned'}</td>
                 <td>
-                  <span className="face-status enrolled">
-                    <CheckCircle2 size={14} /> Enrolled
+                  <span className={`face-status ${emp.isBiometricEnrolled ? 'enrolled' : 'not-enrolled'}`}>
+                    {emp.isBiometricEnrolled ? (
+                      <><CheckCircle2 size={14} /> {t('enrolled')}</>
+                    ) : (
+                      <><Shield size={14} /> {t('pending')}</>
+                    )}
                   </span>
                 </td>
                 <td>
@@ -183,11 +190,6 @@ const Employees = () => {
         </table>
       </div>
 
-      <AddEmployeeModal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
-        onAdd={handleAddEmployee}
-      />
     </motion.div>
   );
 };

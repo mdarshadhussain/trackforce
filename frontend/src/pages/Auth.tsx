@@ -1,7 +1,8 @@
 import { motion } from 'framer-motion';
-import { User, Lock, ArrowRight, Shield, AlertCircle } from 'lucide-react';
+import { User, Lock, ArrowRight, Shield, AlertCircle, Languages } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import { loginUser } from '../api/api';
 import './Auth.css';
@@ -14,6 +15,12 @@ export const Login = () => {
   
   const { login } = useAuth();
   const navigate = useNavigate();
+  const { t, i18n } = useTranslation();
+
+  const toggleLanguage = () => {
+    const nextLng = i18n.language === 'en' ? 'vi' : 'en';
+    i18n.changeLanguage(nextLng);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,32 +40,46 @@ export const Login = () => {
 
   return (
     <div className="auth-page">
+      <div className="lang-toggle-auth">
+        <button className="lang-btn-auth" onClick={toggleLanguage}>
+          <Languages size={18} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+          {i18n.language === 'en' ? 'Tiếng Việt' : 'English'}
+        </button>
+      </div>
+
       <div className="auth-container">
         <motion.div 
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="auth-card glass-card"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          className="auth-card-premium"
         >
           <div className="auth-header">
-            <h2>Welcome Back</h2>
-            <p>Enter your credentials to access the hub.</p>
+            <div className="auth-logo">
+              <div className="logo-icon">
+                <Shield size={28} />
+              </div>
+              <h2 style={{ fontSize: '24px', margin: 0 }}>TrackForce</h2>
+            </div>
+            <h2>{t('welcomeBack')}</h2>
+            <p>{t('loginSubtext')}</p>
           </div>
 
           {error && (
-            <div className="auth-error">
-              <AlertCircle size={16} />
+            <div className="auth-error-premium">
+              <AlertCircle size={20} />
               <span>{error}</span>
             </div>
           )}
 
           <form className="auth-form" onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label>Employee ID</label>
-              <div className="input-wrapper">
-                <User size={18} />
+            <div className="form-group-premium">
+              <label>{t('employeeID')}</label>
+              <div className="input-wrapper-premium">
+                <User size={20} />
                 <input 
                   type="text" 
-                  placeholder="e.g. TF001" 
+                  placeholder={i18n.language === 'en' ? "e.g. TF001" : "Vd: TF001"} 
                   value={employeeId}
                   onChange={(e) => setEmployeeId(e.target.value)}
                   required
@@ -66,10 +87,10 @@ export const Login = () => {
               </div>
             </div>
 
-            <div className="form-group">
-              <label>Password</label>
-              <div className="input-wrapper">
-                <Lock size={18} />
+            <div className="form-group-premium">
+              <label>{t('initialPassword')}</label>
+              <div className="input-wrapper-premium">
+                <Lock size={20} />
                 <input 
                   type="password" 
                   placeholder="••••••••" 
@@ -82,30 +103,24 @@ export const Login = () => {
 
             <div className="auth-actions">
               <label className="checkbox-label">
-                <input type="checkbox" /> Remember me
+                <input type="checkbox" /> {t('rememberMe')}
               </label>
-              <a href="#" className="forgot-link">Forgot Password?</a>
+              <a href="#" className="forgot-link">{t('forgotPassword')}</a>
             </div>
 
-            <button className="btn btn-primary btn-block" disabled={loading}>
-              {loading ? 'Authenticating...' : 'Sign In'} <ArrowRight size={18} />
+            <button className="btn btn-premium btn-primary-premium" disabled={loading}>
+              {loading ? t('verifying') : t('dashboard')} <ArrowRight size={20} />
             </button>
           </form>
 
           <div className="auth-divider">
-            <span>or continue with</span>
+            <span>{t('orContinueWith')}</span>
           </div>
 
-          <button className="btn btn-ghost btn-block">
-            <Shield size={18} /> Enterprise SSO
+          <button className="btn btn-premium btn-ghost-premium btn-block">
+            <Shield size={20} /> {t('enterpriseSSO')}
           </button>
         </motion.div>
-      </div>
-      <div className="auth-visual">
-        <div className="visual-content">
-          <h3>TrackForce Enterprise</h3>
-          <p>Secure. Scalable. Sophisticated.</p>
-        </div>
       </div>
     </div>
   );

@@ -5,16 +5,20 @@ import {
   Search, 
   Activity, 
   Shield, 
-  Settings,
   MoreVertical,
   Users
 } from 'lucide-react';
 import './Sites.css';
 
 import { useEffect, useState } from 'react';
-import { fetchSites, updateSiteCoordinates } from '../api/api';
+import { fetchSites, updateSiteCoordinates, createSite } from '../api/api';
+import { useAuth } from '../context/AuthContext';
 
 const Sites = () => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
+  const isManager = user?.role === 'MANAGER' || isAdmin;
+
   const [sites, setSites] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
@@ -26,7 +30,12 @@ const Sites = () => {
   const loadSites = async () => {
     try {
       const data = await fetchSites();
-      setSites(data);
+      if (isManager) {
+        setSites(data);
+      } else {
+        // Employee only sees their assigned site
+        setSites(data.filter((s: any) => s.id === user?.siteId));
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -35,23 +44,70 @@ const Sites = () => {
   };
 
   const handleSetLocation = async (siteId: string) => {
-    if (!navigator.geolocation) {
-      alert("Geolocation is not supported");
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(async (position) => {
-      const { latitude, longitude } = position.coords;
-      try {
-        await updateSiteCoordinates(siteId, latitude, longitude);
-        alert("Hub location updated successfully!");
-        loadSites(); // Refresh data
-      } catch (err: any) {
-        alert(err.message);
+    const method = window.confirm("Set location using current device GPS? (Click 'Cancel' to search for an address instead)");
+    
+    if (method) {
+      if (!navigator.geolocation) {
+        alert("Geolocation is not supported");
+        return;
       }
-    }, (error) => {
-      alert("Please allow location access to set hub coordinates.");
-    });
+
+      navigator.geolocation.getCurrentPosition(async (position) => {
+        const { latitude, longitude } = position.coords;
+        try {
+          await updateSiteCoordinates(siteId, latitude, longitude);
+          alert("Hub location updated successfully via GPS!");
+          loadSites();
+        } catch (err: any) {
+          alert(err.message);
+        }
+      }, (error) => {
+        alert("Please allow location access to set hub coordinates.");
+      });
+    } else {
+      const address = window.prompt("Enter the site address to search for:");
+      if (!address) return;
+
+      setLoading(true);
+      try {
+        // Simple geocoding using Nominatim (OpenStreetMap)
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`);
+        const data = await response.json();
+
+        if (data && data.length > 0) {
+          const { lat, lon, display_name } = data[0];
+          const confirmUpdate = window.confirm(`Found location: ${display_name}\n\nUpdate site coordinates to: ${lat}, ${lon}?`);
+          
+          if (confirmUpdate) {
+            await updateSiteCoordinates(siteId, parseFloat(lat), parseFloat(lon));
+            alert("Hub location updated successfully via address search!");
+            loadSites();
+          }
+        } else {
+          alert("Location not found. Please try a more specific address.");
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Failed to search for location. Please try again later.");
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  const handleAddSite = async () => {
+    const name = window.prompt('Enter Site Name:');
+    if (!name) return;
+    const location = window.prompt('Enter Site Location (Address):');
+    if (!location) return;
+
+    try {
+      await createSite({ name, location, managerName: 'Auto Assigned' });
+      alert('Site created successfully!');
+      loadSites();
+    } catch (err: any) {
+      alert(err.message);
+    }
   };
 
   return (
@@ -61,9 +117,11 @@ const Sites = () => {
           <h1>Operational Hubs</h1>
           <p>Configure geo-fencing and manage site-specific workforce assignments.</p>
         </div>
-        <button className="btn btn-primary">
-          <Plus size={18} /> Add New Site
-        </button>
+        {isManager && (
+          <button className="btn btn-primary" onClick={handleAddSite}>
+            <Plus size={18} /> Add New Site
+          </button>
+        )}
       </header>
 
       <div className="sites-layout">
@@ -96,7 +154,7 @@ const Sites = () => {
                     <span className="status-dot active"></span>
                     ACTIVE
                   </div>
-                  <button className="icon-btn-small"><MoreVertical size={16} /></button>
+                  {isManager && <button className="icon-btn-small"><MoreVertical size={16} /></button>}
                 </div>
                 
                 <div className="site-card-body">
@@ -126,9 +184,11 @@ const Sites = () => {
                 </div>
 
                 <div className="site-card-footer">
-                  <button className="btn-text" onClick={() => handleSetLocation(site.id)}>
-                    <MapPin size={14} /> Set Hub Location
-                  </button>
+                  {isManager && (
+                    <button className="btn-text" onClick={() => handleSetLocation(site.id)}>
+                      <MapPin size={14} /> Set Hub Location
+                    </button>
+                  )}
                 </div>
               </motion.div>
             ))}
@@ -151,9 +211,18 @@ const Sites = () => {
               <div className="visual-circle sub-hub-2"></div>
               <div className="map-grid-overlay"></div>
               
-              <div className="map-label h1" style={{ top: '40%', left: '45%' }}>HQ</div>
-              <div className="map-label h2" style={{ top: '20%', left: '70%' }}>West</div>
-              <div className="map-label h3" style={{ top: '70%', left: '20%' }}>South</div>
+              {sites.slice(0, 3).map((site, idx) => (
+                <div 
+                  key={site.id} 
+                  className={`map-label h${idx + 1}`} 
+                  style={{ 
+                    top: idx === 0 ? '40%' : idx === 1 ? '20%' : '70%',
+                    left: idx === 0 ? '45%' : idx === 1 ? '70%' : '20%'
+                  }}
+                >
+                  {site.name}
+                </div>
+              ))}
             </div>
             <div className="map-footer-info">
               <Activity size={16} color="var(--primary)" />

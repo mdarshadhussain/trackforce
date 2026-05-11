@@ -204,25 +204,71 @@
 }
 
 .alert-panel {
-  background: rgba(251, 113, 133, 0.05);
-  border-color: rgba(251, 113, 133, 0.2);
+  border-color: rgba(239, 68, 68, 0.2);
+  display: flex;
+  flex-direction: column;
+  max-height: 300px;
+}
+
+.alerts-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 .alert-item {
-  margin-top: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.3s ease;
+}
+
+.alert-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  transform: translateX(4px);
+}
+
+.alert-item.medium {
+  border-left: 4px solid #f59e0b;
+}
+
+.alert-item.high {
+  border-left: 4px solid #ef4444;
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.alert-badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #ef4444;
+  margin-bottom: 4px;
+  letter-spacing: 0.5px;
+}
+
+.alert-item.medium .alert-badge {
+  color: #f59e0b;
+}
+
+.alert-item p {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
 }
 
 .alert-time {
   font-size: 11px;
-  color: #fb7185;
-  font-weight: 600;
+  color: rgba(255, 255, 255, 0.3);
 }
 
-.alert-item p {
-  font-size: 12px;
-  margin-top: 4px;
-  color: var(--text-secondary);
-  line-height: 1.4;
+.alert-item.empty {
+  text-align: center;
+  padding: 40px 20px;
+  opacity: 0.5;
 }
 
 @keyframes pulse-map {

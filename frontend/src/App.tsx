@@ -4,17 +4,18 @@ import Landing from './pages/Landing';
 import { Login } from './pages/Auth';
 import Dashboard from './pages/Dashboard';
 import Employees from './pages/Employees';
+import AddEmployee from './pages/AddEmployee';
 import Attendance from './pages/Attendance';
 import Tracking from './pages/Tracking';
 import Payroll from './pages/Payroll';
 import Sites from './pages/Sites';
+import Settings from './pages/Settings';
 import Sidebar from './layout/Sidebar';
 import Topbar from './layout/Topbar';
 import './App.css';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
 
-// Protected Route Component
 const ProtectedRoute = ({ children, adminOnly = false }: { children: React.ReactNode, adminOnly?: boolean }) => {
   const { isAuthenticated, isAdmin } = useAuth();
   
@@ -45,21 +46,6 @@ const PlatformLayout = ({ children }: { children: React.ReactNode }) => {
         <div className="content-area">
           {children}
         </div>
-        
-        <div className="role-badge-float" style={{ 
-          position: 'fixed', 
-          bottom: '20px', 
-          right: '20px', 
-          background: 'var(--primary)', 
-          color: 'black', 
-          padding: '10px 20px', 
-          borderRadius: '30px', 
-          fontWeight: 'bold',
-          zIndex: 9999,
-          boxShadow: '0 4px 15px rgba(0,0,0,0.3)'
-        }}>
-          DEBUG ROLE: {user?.role || 'NOT LOGGED IN'}
-        </div>
       </main>
     </div>
   );
@@ -77,10 +63,12 @@ function App() {
           {/* Private/Platform Routes */}
           <Route path="/dashboard" element={<ProtectedRoute><PlatformLayout><Dashboard /></PlatformLayout></ProtectedRoute>} />
           <Route path="/employees" element={<ProtectedRoute><PlatformLayout><Employees /></PlatformLayout></ProtectedRoute>} />
+          <Route path="/employees/add" element={<ProtectedRoute adminOnly><PlatformLayout><AddEmployee /></PlatformLayout></ProtectedRoute>} />
           <Route path="/attendance" element={<ProtectedRoute><PlatformLayout><Attendance /></PlatformLayout></ProtectedRoute>} />
           <Route path="/tracking" element={<ProtectedRoute><PlatformLayout><Tracking /></PlatformLayout></ProtectedRoute>} />
           <Route path="/payroll" element={<ProtectedRoute><PlatformLayout><Payroll /></PlatformLayout></ProtectedRoute>} />
           <Route path="/sites" element={<ProtectedRoute><PlatformLayout><Sites /></PlatformLayout></ProtectedRoute>} />
+          <Route path="/settings" element={<ProtectedRoute><PlatformLayout><Settings /></PlatformLayout></ProtectedRoute>} />
 
           {/* Redirect any other path to Landing */}
           <Route path="*" element={<Navigate to="/" replace />} />

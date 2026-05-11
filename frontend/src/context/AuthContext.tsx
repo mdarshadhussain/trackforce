@@ -7,6 +7,15 @@ interface User {
   lastName: string;
   email: string;
   role: 'ADMIN' | 'MANAGER' | 'EMPLOYEE';
+  site?: {
+    id: string;
+    name: string;
+    location: string;
+  };
+  avatar?: string;
+  designation?: string;
+  siteId?: string;
+  isBiometricEnrolled?: boolean;
 }
 
 interface AuthContextType {

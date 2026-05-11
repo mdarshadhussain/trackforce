@@ -3,13 +3,11 @@ import {
   Users, 
   MapPin, 
   Clock, 
-  AlertTriangle,
   TrendingUp,
-  Activity
+  Activity,
+  CheckCircle2
 } from 'lucide-react';
 import { 
-  BarChart, 
-  Bar, 
   XAxis, 
   YAxis, 
   CartesianGrid, 
@@ -18,20 +16,14 @@ import {
   AreaChart,
   Area
 } from 'recharts';
+import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { exportToCSV } from '../utils/export';
 import './Dashboard.css';
-
-const data = [
-  { name: 'Mon', attendance: 400, expected: 450 },
-  { name: 'Tue', attendance: 420, expected: 450 },
-  { name: 'Wed', attendance: 380, expected: 450 },
-  { name: 'Thu', attendance: 440, expected: 450 },
-  { name: 'Fri', attendance: 430, expected: 450 },
-  { name: 'Sat', attendance: 120, expected: 150 },
-  { name: 'Sun', attendance: 80, expected: 100 },
-];
 
 import { useEffect, useState } from 'react';
 import { fetchStats } from '../api/api';
+import { useAuth } from '../context/AuthContext';
 
 const StatCard = ({ icon, label, value, trend, color }: any) => (
   <motion.div 
@@ -56,85 +48,91 @@ const StatCard = ({ icon, label, value, trend, color }: any) => (
   </motion.div>
 );
 
-import { useAuth } from '../context/AuthContext';
-
 const Dashboard = () => {
   const [stats, setStats] = useState<any>(null);
   const { user } = useAuth();
+  const { t } = useTranslation();
+  const navigate = useNavigate();
   
   useEffect(() => {
     fetchStats().then(setStats).catch(console.error);
   }, []);
 
+  const handleExport = () => {
+    exportToCSV([stats], 'Dashboard_Stats');
+  };
+
   const isAdmin = user?.role === 'ADMIN';
   const isManager = user?.role === 'MANAGER';
   const isManagement = isAdmin || isManager;
+
+  const chartData = stats?.weeklyTrend || [];
 
   return (
     <div className="dashboard-wrapper">
       <header className="dashboard-header-premium">
         <div className="header-text">
           <h1>
-            {isAdmin ? 'Workforce Intelligence' : isManager ? 'Hub Operations' : 'My Performance'}
+            {isAdmin ? t('workforceIntelligence') : isManager ? t('hubOperations') : t('myPerformance')}
           </h1>
           <p>
             {isAdmin 
-              ? 'Real-time insights and performance metrics across all hubs.' 
+              ? t('adminDashboardSubtext') 
               : isManager 
-                ? 'Managing site efficiency and workforce attendance.' 
-                : 'Track your daily progress and shift efficiency.'}
+                ? t('managerDashboardSubtext') 
+                : t('employeeDashboardSubtext')}
           </p>
         </div>
         <div className="header-actions">
-          {isManagement && <button className="btn btn-ghost">Download Report</button>}
-          <button className="btn btn-primary">{isManagement ? 'Configuration' : 'Request Shift'}</button>
+          {isManagement && <button className="btn btn-ghost" onClick={handleExport}>{t('exportReport')}</button>}
+          <button className="btn btn-primary" onClick={() => isManagement ? navigate('/settings') : navigate('/attendance')}>
+            {isManagement ? t('configuration') : "Clock In / Out"}
+          </button>
         </div>
       </header>
 
       <section className="stats-grid-premium">
         <StatCard 
           icon={<Users size={24} />} 
-          label={isAdmin ? "Total Workforce" : isManager ? "Site Workforce" : "My Weekly Hours"} 
-          value={isAdmin ? (stats?.totalEmployees || 0) : isManager ? (stats?.totalEmployees || 0) : "38.5h"} 
+          label={isAdmin ? t('totalWorkforce') : isManager ? t('siteWorkforce') : t('myWeeklyHours')} 
+          value={isAdmin ? (stats?.totalEmployees || 0) : isManager ? (stats?.totalEmployees || 0) : "Live"} 
           trend={12.5} 
           color="var(--accent)" 
         />
         <StatCard 
           icon={<Activity size={24} />} 
-          label={isManagement ? "Current Attendance" : "My Efficiency"} 
-          value={isManagement ? `${stats?.activeNow || 0}%` : "94%"} 
+          label={isManagement ? t('currentAttendance') : t('myEfficiency')} 
+          value={isManagement ? `${stats?.activeNow || 0}` : "94%"} 
           trend={3.2} 
           color="var(--primary)" 
         />
         <StatCard 
           icon={<MapPin size={24} />} 
-          label={isAdmin ? "Operational Sites" : isManager ? "Current Hub" : "Active Site"} 
-          value={isAdmin ? (stats?.sites || 0) : "North Hub"} 
+          label={isAdmin ? t('operationalSites') : isManager ? t('currentHub') : t('activeSite')} 
+          value={isAdmin ? (stats?.sites || 0) : (user?.site?.name || 'Global')} 
           color="var(--accent)" 
         />
         <StatCard 
           icon={<Clock size={24} />} 
-          label={isManagement ? "Avg. Shift Duration" : "Total Earnings"} 
-          value={isManagement ? "8.4h" : "$1,240"} 
+          label={isManagement ? t('avgShiftDuration') : t('totalEarnings')} 
+          value={isManagement ? `${stats?.avgShift || 0}h` : "Synced"} 
           trend={-1.2} 
           color="var(--primary)" 
         />
       </section>
 
-
-
-      {isManagement && (
+      {isManagement ? (
         <div className="main-content-grid">
           <div className="glass-card main-chart">
             <div className="card-header">
-              <h3>Attendance Efficiency</h3>
+              <h3>{t('attendanceEfficiency')}</h3>
               <div className="chart-legend">
-                <span className="dot"></span> Target (90%)
+                <span className="dot"></span> {t('activeNow')} ({stats?.activeNow})
               </div>
             </div>
             <div className="chart-h-400">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={data}>
+                <AreaChart data={chartData}>
                   <defs>
                     <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.2}/>
@@ -142,11 +140,10 @@ const Dashboard = () => {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                  <XAxis dataKey="name" stroke="var(--text-dim)" axisLine={false} tickLine={false} dy={10} />
-                  <YAxis stroke="var(--text-dim)" axisLine={false} tickLine={false} />
+                  <XAxis dataKey="name" stroke="var(--text-secondary)" axisLine={false} tickLine={false} dy={10} />
+                  <YAxis stroke="var(--text-secondary)" axisLine={false} tickLine={false} />
                   <Tooltip 
-                    contentStyle={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', boxShadow: 'var(--shadow)' }}
-                    itemStyle={{ color: 'var(--text-main)' }}
+                    contentStyle={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px' }}
                   />
                   <Area type="monotone" dataKey="attendance" stroke="var(--primary)" fill="url(#chartGradient)" strokeWidth={3} />
                 </AreaChart>
@@ -156,20 +153,62 @@ const Dashboard = () => {
 
           <div className="glass-card side-list">
             <div className="card-header">
-              <h3>Hub Performance</h3>
+              <h3>{t('hubPerformance')}</h3>
             </div>
             <div className="performance-list">
-              {['North Hub', 'South Terminal', 'East Wing'].map((hub, idx) => (
+              {(stats?.sitePerformance || []).map((site: any, idx: number) => (
                 <div key={idx} className="performance-item">
                   <div className="hub-info">
-                    <span className="hub-name">{hub}</span>
+                    <span className="hub-name">{site.name}</span>
                     <div className="progress-bar-premium">
-                      <div className="progress-fill-premium" style={{ width: `${90 - idx * 10}%` }}></div>
+                      <div className="progress-fill-premium" style={{ width: `${Math.min(site.count * 10, 100)}%` }}></div>
                     </div>
                   </div>
-                  <span className="hub-value">{90 - idx * 10}%</span>
+                  <span className="hub-value">{site.count} Active</span>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="main-content-grid">
+          <div className="glass-card main-chart">
+            <div className="card-header">
+              <h3>{t('myWeeklyProgress')}</h3>
+            </div>
+            <div className="chart-h-400">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                  <XAxis dataKey="name" stroke="var(--text-dim)" axisLine={false} tickLine={false} />
+                  <YAxis stroke="var(--text-dim)" axisLine={false} tickLine={false} />
+                  <Tooltip />
+                  <Area type="monotone" dataKey="attendance" stroke="var(--primary)" fill="rgba(245, 158, 11, 0.1)" strokeWidth={3} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+          <div className="glass-card side-list">
+            <div className="card-header">
+              <h3>Recent System Events</h3>
+            </div>
+            <div className="notifications-list-premium">
+              {(stats?.recentLogs || []).length > 0 ? (
+                stats.recentLogs.map((log: any, idx: number) => (
+                  <div key={idx} className="notification-item-premium">
+                    <div className={`n-icon ${log.type === 'ALERT' ? 'alert' : 'approved'}`}>
+                      {log.type === 'ALERT' ? <Clock size={16} /> : <CheckCircle2 size={16} />}
+                    </div>
+                    <div className="n-text">
+                      <strong>{log.title}</strong>
+                      <p>{log.message}</p>
+                      <span>{new Date(log.time).toLocaleTimeString()}</span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="empty-state-simple">No recent events logged.</div>
+              )}
             </div>
           </div>
         </div>
@@ -180,11 +219,5 @@ const Dashboard = () => {
 };
 
 
-
-const User = ({ size }: { size: number }) => (
-  <div style={{ backgroundColor: '#1e293b', padding: '8px', borderRadius: '50%', color: '#57f1db' }}>
-    <Clock size={size} />
-  </div>
-);
 
 export default Dashboard;

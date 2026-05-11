@@ -1,5 +1,6 @@
-import { Search, Bell, User, Sun, Moon, LogOut, Menu, X, Shield, LayoutDashboard, Users, Clock, MapPin, Wallet, Building2, Settings, Calendar } from 'lucide-react';
+import { LogOut, X, Shield, LayoutDashboard, Users, MapPin, Wallet, Building2, Settings, Calendar } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import './Sidebar.css';
 
@@ -9,33 +10,43 @@ interface SidebarProps {
 
 const Sidebar = ({ onClose }: SidebarProps) => {
   const { user, isAdmin, logout } = useAuth();
+  const { t } = useTranslation();
   const isManager = user?.role === 'MANAGER' || isAdmin;
 
   const menuItems = [
-    { icon: <LayoutDashboard size={20} />, label: 'Dashboard', path: '/dashboard' },
+    { icon: <LayoutDashboard size={20} />, label: t('dashboard'), path: '/dashboard' },
     // Admins and Managers can see the employee list
-    ...(isManager ? [{ icon: <Users size={20} />, label: 'Employees', path: '/employees' }] : []),
-    // Admins and Managers see full Attendance
-    { icon: <Calendar size={20} />, label: 'Attendance', path: '/attendance' },
+    ...(isManager ? [{ icon: <Users size={20} />, label: t('employees'), path: '/employees' }] : []),
+    
+    { icon: <Calendar size={20} />, label: t('attendance'), path: '/attendance' },
+    
     // Only Admins see Live Tracking (GPS)
-    ...(isAdmin ? [{ icon: <MapPin size={20} />, label: 'Live Tracking', path: '/tracking' }] : []),
-    // Admins and Managers see Payroll
-    ...(isManager ? [{ icon: <Wallet size={20} />, label: 'Payroll', path: '/payroll' }] : []),
-    // Sites are for management
-    ...(isManager ? [{ icon: <Building2 size={20} />, label: 'Sites', path: '/sites' }] : []),
+    ...(isAdmin ? [{ icon: <MapPin size={20} />, label: t('tracking'), path: '/tracking' }] : []),
+    
+    // Payroll: Full for managers, "My Pay" for employees
+    ...(isManager 
+      ? [{ icon: <Wallet size={20} />, label: t('payroll'), path: '/payroll' }] 
+      : [{ icon: <Wallet size={20} />, label: t('payroll'), path: '/payroll' }]),
+    
+    // Sites: Full for managers, "My Hub" for employees
+    ...(isManager 
+      ? [{ icon: <Building2 size={20} />, label: t('sites'), path: '/sites' }] 
+      : [{ icon: <Building2 size={20} />, label: t('sites'), path: '/sites' }]),
+      
+    { icon: <Settings size={20} />, label: t('settings'), path: '/settings' },
   ];
 
   return (
     <aside className="sidebar">
       <div className="logo-section">
-        <Shield className="logo-icon" size={32} color="var(--primary)" />
-        <span className="logo-text">Track<span>Force</span></span>
+        <div className="logo-brand">
+          <Shield className="logo-icon" size={28} color="var(--primary)" />
+          <span className="logo-text">Track<span>Force</span></span>
+        </div>
         <button className="mobile-close-btn" onClick={onClose}>
           <X size={24} />
         </button>
       </div>
-
-
 
       <nav className="nav-menu">
         {menuItems.map((item) => (
@@ -48,18 +59,12 @@ const Sidebar = ({ onClose }: SidebarProps) => {
             <span>{item.label}</span>
           </NavLink>
         ))}
-      </nav>
-
-      <div className="sidebar-footer">
-        <NavLink to="/settings" className="nav-item">
-          <Settings size={20} />
-          <span>Settings</span>
-        </NavLink>
-        <button onClick={logout} className="nav-item logout-btn-sidebar" style={{ background: 'none', border: 'none', width: '100%', cursor: 'pointer' }}>
+        
+        <button onClick={logout} className="nav-item logout-btn-sidebar" style={{ background: 'none', border: 'none', width: '100%', cursor: 'pointer', padding: '12px 16px' }}>
           <LogOut size={20} />
-          <span>Logout</span>
+          <span>{t('logout')}</span>
         </button>
-      </div>
+      </nav>
     </aside>
   );
 };

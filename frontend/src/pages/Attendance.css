@@ -468,14 +468,33 @@
 .camera-sim {
   width: 100%;
   height: 100%;
-  background: #000;
+  background: radial-gradient(circle at 50% 50%, #1a1a1a 0%, #000 100%);
   border-radius: 50%;
   overflow: hidden;
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: inset 0 0 40px rgba(245, 158, 11, 0.2);
+  box-shadow: inset 0 0 60px rgba(245, 158, 11, 0.1), 0 0 0 10px var(--surface-hover);
+}
+
+.scanner-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(to right, transparent, var(--primary), transparent);
+  box-shadow: 0 0 15px var(--primary);
+  animation: scan-move 3s linear infinite;
+  z-index: 10;
+}
+
+@keyframes scan-move {
+  0% { top: 0; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
 }
 
 .scan-ring {
@@ -546,12 +565,26 @@
 
 .s-card {
   padding: 32px;
+  border-radius: 24px;
+  background: var(--glass);
+  border: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s var(--ease-premium);
+}
+
+.s-card:hover {
+  transform: translateY(-5px);
+  border-color: var(--primary);
+  box-shadow: 0 15px 30px rgba(0,0,0,0.1);
 }
 
 .s-card .label { 
   font-size: 14px; 
   color: var(--text-dim); 
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .s-card .value { 
@@ -559,6 +592,7 @@
   font-weight: 800; 
   margin-top: 12px;
   letter-spacing: -0.02em;
+  color: var(--text-main);
 }
 
 .personal-timeline {
@@ -633,3 +667,138 @@
 }
 
 
+
+.verification-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  min-height: 400px;
+}
+
+.placeholder-icon {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: var(--surface-hover);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary);
+  margin-bottom: 8px;
+}
+
+.verification-placeholder h3 {
+  font-size: 24px;
+  margin: 0;
+}
+
+.verification-placeholder p {
+  color: var(--text-dim);
+  max-width: 300px;
+  line-height: 1.6;
+}
+
+/* Biometric Proof Styles */
+.btn-proof {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  padding: 6px 12px;
+  border-radius: 8px;
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-proof:hover {
+  background: var(--primary);
+  color: #000;
+  border-color: var(--primary);
+}
+
+.no-proof {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  font-style: italic;
+}
+
+.proof-modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(10px);
+  z-index: 5000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.proof-modal-content {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  width: 100%;
+  max-width: 600px;
+  overflow: hidden;
+  box-shadow: 0 30px 60px rgba(0,0,0,0.5);
+}
+
+.modal-header {
+  padding: 20px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.close-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.proof-image-container {
+  width: 100%;
+  aspect-ratio: 4/3;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.proof-image-container img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.modal-footer {
+  padding: 16px 24px;
+  background: var(--surface-hover);
+  border-top: 1px solid var(--border);
+  text-align: center;
+}
+
+.modal-footer p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-dim);
+}

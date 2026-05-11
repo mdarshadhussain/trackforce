@@ -1,17 +1,13 @@
 import { motion } from 'framer-motion';
 import { 
-  MapPin, 
-  Navigation, 
-  Search, 
-  Filter,
-  Activity,
-  AlertTriangle
+  Activity
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { useTranslation } from 'react-i18next';
+import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { fetchLiveTracking } from '../api/api';
+import { fetchLiveTracking, fetchSecurityAlerts } from '../api/api';
 import './Tracking.css';
 
 // Fix for Leaflet marker icons in React
@@ -47,13 +43,28 @@ const empIcon = new L.Icon({
 
 const Tracking = () => {
   const [data, setData] = useState<{sites: any[], activeEmployees: any[]}>({ sites: [], activeEmployees: [] });
+  const [alerts, setAlerts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const { t } = useTranslation();
 
   useEffect(() => {
     loadTrackingData();
-    const interval = setInterval(loadTrackingData, 30000); // Refresh every 30s
+    loadAlerts();
+    const interval = setInterval(() => {
+      loadTrackingData();
+      loadAlerts();
+    }, 30000); // Refresh every 30s
     return () => clearInterval(interval);
   }, []);
+
+  const loadAlerts = async () => {
+    try {
+      const result = await fetchSecurityAlerts();
+      setAlerts(result);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const loadTrackingData = async () => {
     try {
@@ -75,12 +86,12 @@ const Tracking = () => {
     <div className="tracking-page">
       <header className="page-header">
         <div>
-          <h1>Live Workforce Tracking</h1>
-          <p className="subtitle">Real-time GPS monitoring and site presence verification</p>
+          <h1>{t('liveWorkforceTracking')}</h1>
+          <p className="subtitle">{t('gpsMonitoringSubtext')}</p>
         </div>
         <div className="live-status">
           <div className="pulse-dot"></div>
-          <span>LIVE FEED</span>
+          <span>{t('liveFeed')}</span>
         </div>
       </header>
 
@@ -95,14 +106,21 @@ const Tracking = () => {
               
               {/* Render Sites */}
               {data.sites.map(site => (
-                <Marker key={site.id} position={[site.latitude || 0, site.longitude || 0]} icon={siteIcon}>
-                  <Popup>
-                    <div className="map-popup">
-                      <strong>Hub: {site.name}</strong><br/>
-                      {site.location}
-                    </div>
-                  </Popup>
-                </Marker>
+                <div key={site.id}>
+                  <Marker position={[site.latitude || 0, site.longitude || 0]} icon={siteIcon}>
+                    <Popup>
+                      <div className="map-popup">
+                        <strong>{t('hub')}: {site.name}</strong><br/>
+                        {site.location}
+                      </div>
+                    </Popup>
+                  </Marker>
+                  <Circle 
+                    center={[site.latitude || 0, site.longitude || 0]}
+                    radius={300}
+                    pathOptions={{ color: 'var(--primary)', fillColor: 'var(--primary)', fillOpacity: 0.1 }}
+                  />
+                </div>
               ))}
 
               {/* Render Active Employees */}
@@ -112,7 +130,7 @@ const Tracking = () => {
                     <div className="map-popup">
                       <strong>{log.employee.firstName} {log.employee.lastName}</strong><br/>
                       {log.employee.designation}<br/>
-                      Status: Clocked In
+                      {t('status')}: {t('clockedIn')}
                     </div>
                   </Popup>
                 </Marker>
@@ -124,8 +142,8 @@ const Tracking = () => {
         <div className="tracking-sidebar">
           <div className="glass-card active-list">
             <div className="list-header">
-              <h3>Active Employees</h3>
-              <span className="badge badge-active">{data.activeEmployees.length} Online</span>
+              <h3>{t('activeEmployees')}</h3>
+              <span className="badge badge-active">{data.activeEmployees.length} {t('online')}</span>
             </div>
             <div className="employees-scroll">
               {data.activeEmployees.map((log) => (
@@ -136,24 +154,34 @@ const Tracking = () => {
                   </div>
                   <div className="tracking-item-details">
                     <span>{log.employee.designation}</span>
-                    <span>Clock-in: {new Date(log.clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    <span>{t('clockin')}: {new Date(log.clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                   </div>
                 </div>
               ))}
               {data.activeEmployees.length === 0 && (
-                <p className="no-data">No active employees on site.</p>
+                <p className="no-data">{t('noActiveEmployees')}</p>
               )}
             </div>
           </div>
 
           <div className="glass-card alert-panel">
             <div className="list-header">
-              <h3>System Alerts</h3>
-              <Activity size={18} color="var(--primary)" />
+              <h3>{t('securityAlerts')}</h3>
+              <Activity size={18} color="var(--error)" />
             </div>
-            <div className="alert-item">
-              <span className="alert-time">Today</span>
-              <p>All sites operational. Tracking feed active.</p>
+            <div className="alerts-scroll">
+              {alerts.map((alert) => (
+                <div key={alert.id} className={`alert-item ${alert.severity.toLowerCase()}`}>
+                  <div className="alert-badge">{alert.type.replace('_', ' ')}</div>
+                  <p>{alert.message}</p>
+                  <span className="alert-time">{new Date(alert.timestamp).toLocaleTimeString()}</span>
+                </div>
+              ))}
+              {alerts.length === 0 && (
+                <div className="alert-item empty">
+                  <p>{t('allSitesSecure')}</p>
+                </div>
+              )}
             </div>
           </div>
         </div>

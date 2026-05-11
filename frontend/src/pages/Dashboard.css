@@ -40,21 +40,43 @@
 }
 
 .stat-card-premium {
-  border-radius: 24px;
-  background: linear-gradient(135deg, var(--glass) 0%, rgba(255, 255, 255, 0.02) 100%);
+  padding: 32px;
+  border-radius: 28px;
+  position: relative;
+  overflow: hidden;
+  background: var(--glass);
+  transition: all 0.4s var(--ease-premium);
 }
 
 .stat-card-premium:hover {
-  transform: translateY(-8px);
-  box-shadow: var(--shadow-lg), 0 0 30px var(--primary-glow);
-  border-color: rgba(245, 158, 11, 0.3);
+  transform: translateY(-8px) scale(1.01);
+  border-color: var(--accent-color);
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.3);
+}
+
+.stat-card-glow {
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, var(--accent-color) 0%, transparent 60%);
+  opacity: 0.05;
+  pointer-events: none;
 }
 
 .stat-icon-wrapper {
-  background: linear-gradient(135deg, var(--surface-hover) 0%, transparent 100%);
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-hover);
   border: 1px solid var(--border);
-  border-radius: 16px;
-  box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+  border-radius: 18px;
+  margin-bottom: 24px;
+  color: var(--accent-color);
+  box-shadow: 0 8px 24px -8px var(--accent-color);
 }
 
 
@@ -163,5 +185,40 @@
   .chart-h-400 { height: 300px; }
 }
 
+.notifications-list-premium {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
 
+.notification-item-premium {
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  transition: all 0.3s ease;
+}
 
+.notification-item-premium:hover {
+  border-color: var(--primary);
+  transform: translateX(4px);
+}
+
+.n-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.n-icon.approved { background: rgba(34, 197, 94, 0.1); color: #22c55e; }
+.n-icon.alert { background: rgba(245, 158, 11, 0.1); color: var(--primary); }
+
+.n-text strong { display: block; font-size: 14px; margin-bottom: 2px; }
+.n-text p { font-size: 13px; color: var(--text-dim); margin: 0; }
+.n-text span { font-size: 11px; color: var(--text-dim); opacity: 0.6; margin-top: 4px; display: block; }

@@ -1,5 +1,16 @@
 const rawBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-const BASE_URL = (rawBaseUrl.endsWith('/') ? rawBaseUrl.slice(0, -1) : rawBaseUrl) + '/api';
+let sanitizedBaseUrl = rawBaseUrl.trim();
+if (sanitizedBaseUrl.endsWith('/')) sanitizedBaseUrl = sanitizedBaseUrl.slice(0, -1);
+
+// Force HTTPS for all production Render nodes
+if (sanitizedBaseUrl.includes('onrender.com') && !sanitizedBaseUrl.startsWith('http')) {
+  sanitizedBaseUrl = 'https://' + sanitizedBaseUrl;
+} else if (sanitizedBaseUrl.startsWith('http://') && sanitizedBaseUrl.includes('onrender.com')) {
+  sanitizedBaseUrl = sanitizedBaseUrl.replace('http://', 'https://');
+}
+
+const BASE_URL = sanitizedBaseUrl + '/api';
+console.log(`[Executive Connectivity]: Sync Target => ${BASE_URL}`);
 
 // Helper to get token from localStorage
 const getAuthHeaders = () => {

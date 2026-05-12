@@ -111,10 +111,24 @@ app.post('/api/auth/login', async (req: Request, res: Response) => {
       token,
       user: userWithoutPassword
     });
-  } catch (error) {
-    res.status(500).json({ error: 'Internal server error' });
+  } catch (error: any) {
+    console.error('CRITICAL_BACKEND_ERROR [Login]:', {
+      message: error.message,
+      code: error.code,
+      meta: error.meta
+    });
+    res.status(500).json({ 
+      error: 'Internal server error', 
+      details: error.message,
+      prismaCode: error.code 
+    });
   }
 });
+
+// Startup Database Integrity Check
+prisma.$connect()
+  .then(() => console.log('✅ [Executive Infrastructure]: Database Sync Manifested.'))
+  .catch((err) => console.error('❌ [CRITICAL INFRASTRUCTURE FAILURE]: Database Connection Failed!', err.message));
 
 // --- Admin Management Routes ---
 

@@ -85,6 +85,12 @@ const Attendance = () => {
     status: 'PRESENT'
   });
 
+  const [showCorrectionModal, setShowCorrectionModal] = useState(false);
+  const [correctionData, setCorrectionData] = useState({
+    date: new Date().toISOString().split('T')[0],
+    message: ''
+  });
+
   const addToast = (message: string, type: ToastType = 'info') => {
     const id = Math.random().toString(36).substr(2, 9);
     setToasts((prev) => [...prev, { id, message, type }]);
@@ -195,6 +201,13 @@ const Attendance = () => {
 
   useEffect(() => {
     loadData();
+    
+    // Auto-refresh interval (30 seconds)
+    const interval = setInterval(() => {
+      loadData();
+    }, 30000);
+
+    return () => clearInterval(interval);
   }, [user, isManagement]);
 
   useEffect(() => {
@@ -519,6 +532,25 @@ const Attendance = () => {
       loadData();
     } catch (err) {
       addToast('Failed to purge log', 'error');
+    }
+  };
+
+  const handleCorrectionSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    try {
+      await createSecurityAlert({
+        type: 'CORRECTION_REQUEST',
+        message: `Correction Request from ${user.firstName} ${user.lastName} for ${correctionData.date}: ${correctionData.message}`,
+        severity: 'LOW',
+        employeeId: user.id,
+        siteId: user.siteId
+      });
+      addToast("Correction request submitted to management.", 'success');
+      setShowCorrectionModal(false);
+      setCorrectionData({ date: new Date().toISOString().split('T')[0], message: '' });
+    } catch (err) {
+      addToast("Failed to submit correction request", 'error');
     }
   };
 
@@ -893,6 +925,59 @@ const Attendance = () => {
           </motion.div>
         )}
       </AnimatePresence>
+      <AnimatePresence>
+        {showCorrectionModal && (
+          <div className="proof-modal-overlay">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="glass-card scanner-modal-obsidian correction-modal"
+              style={{ maxWidth: '450px' }}
+            >
+              <div className="modal-header-premium">
+                <h3>Request Attendance Correction</h3>
+                <button className="close-btn-premium" onClick={() => setShowCorrectionModal(false)}><X size={20} /></button>
+              </div>
+
+              <form onSubmit={handleCorrectionSubmit} className="manual-log-form" style={{ padding: '20px' }}>
+                <div className="form-group-premium">
+                  <label>Target Date</label>
+                  <input 
+                    type="date" 
+                    className="premium-input" 
+                    value={correctionData.date}
+                    onChange={e => setCorrectionData({...correctionData, date: e.target.value})}
+                    required
+                  />
+                </div>
+
+                <div className="form-group-premium">
+                  <label>Adjustment Details</label>
+                  <textarea 
+                    className="premium-input" 
+                    placeholder="Describe the correction (e.g., 'Forgot to clock out at 17:00')"
+                    value={correctionData.message}
+                    onChange={e => setCorrectionData({...correctionData, message: e.target.value})}
+                    required
+                    rows={4}
+                    style={{ resize: 'none' }}
+                  ></textarea>
+                </div>
+
+                <div className="modal-actions-premium" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <button type="submit" className="btn btn-primary btn-block btn-lg">
+                    Submit Request
+                  </button>
+                  <button type="button" className="btn btn-ghost btn-block" onClick={() => setShowCorrectionModal(false)}>
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </>
   );
 
@@ -1034,7 +1119,12 @@ const Attendance = () => {
             <div className="glass-card personal-timeline">
               <div className="card-header">
                 <h3>{t('history')}</h3>
-                <button className="btn-ghost btn-sm">{t('requestCorrection')}</button>
+                <button 
+                  className="btn-ghost btn-sm"
+                  onClick={() => setShowCorrectionModal(true)}
+                >
+                  {t('requestCorrection')}
+                </button>
               </div>
               <div className="mini-table">
                 {logs.length > 0 ? logs.map((log, i) => (
@@ -1227,7 +1317,6 @@ const Attendance = () => {
                   {allLogs.map((log, idx) => (
                     <tr key={log.id || idx}>
                       <td className="emp-cell">
-                        <div className="tiny-avatar"><User size={12} /></div>
                         <span>{log.employee?.firstName || 'Unknown'} {log.employee?.lastName || ''}</span>
                       </td>
                       <td>{new Date(log.date).toLocaleDateString()}</td>
@@ -1236,18 +1325,18 @@ const Attendance = () => {
                       <td>
                         <div className="proof-stack-mini">
                           {log.biometricProof ? (
-                            <button className="btn-proof-tiny in" title="Check-in Proof" onClick={() => setSelectedProof(log.biometricProof.startsWith('http') ? log.biometricProof : `${API_URL}${log.biometricProof}`)}>
-                              IN
+                            <button className="btn-proof-tiny in" title="View Check-in Identity Proof" onClick={() => setSelectedProof(log.biometricProof.startsWith('http') ? log.biometricProof : `${API_URL}${log.biometricProof}`)}>
+                              <Camera size={12} /> PROOF
                             </button>
                           ) : (
-                            <span className="no-proof-tiny">--</span>
+                            <div className="empty-proof-dot" title="No biometric proof available"></div>
                           )}
                           {log.biometricProofOut ? (
-                            <button className="btn-proof-tiny out" title="Check-out Proof" onClick={() => setSelectedProof(log.biometricProofOut.startsWith('http') ? log.biometricProofOut : `${API_URL}${log.biometricProofOut}`)}>
-                              OUT
+                            <button className="btn-proof-tiny out" title="View Check-out Identity Proof" onClick={() => setSelectedProof(log.biometricProofOut.startsWith('http') ? log.biometricProofOut : `${API_URL}${log.biometricProofOut}`)}>
+                              <Camera size={12} /> PROOF
                             </button>
                           ) : (
-                            <span className="no-proof-tiny">--</span>
+                            <div className="empty-proof-dot" title="No biometric proof available"></div>
                           )}
                         </div>
                       </td>

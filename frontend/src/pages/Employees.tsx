@@ -7,7 +7,6 @@ import {
   Edit3,
   XCircle,
   Eye,
-  User,
 } from 'lucide-react';
 
 import './Employees.css';
@@ -23,7 +22,6 @@ import ConfirmModal from '../components/ConfirmModal';
 import { useNavigate } from 'react-router-dom';
 import PremiumSelect from '../components/PremiumSelect';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const Employees = () => {
   const { isAdmin } = useAuth();
@@ -191,16 +189,6 @@ const Employees = () => {
               <tr key={emp.id}>
                 <td>
                   <div className="emp-identity">
-                    <div className="avatar-small">
-                      {emp.avatar ? (
-                        <img 
-                          src={emp.avatar.startsWith('http') ? emp.avatar : `${API_URL}${emp.avatar}`} 
-                          alt="" 
-                        />
-                      ) : (
-                        <User size={14} />
-                      )}
-                    </div>
                     <div className="name-stack">
                       <span className="full-name">{emp.firstName} {emp.lastName}</span>
                       <span className="designation">{emp.designation || 'Specialist'}</span>

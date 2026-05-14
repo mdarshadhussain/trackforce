@@ -338,9 +338,27 @@ app.get('/api/employees/:id/full-profile', authenticateToken, async (req, res) =
   }
 });
 
-app.put('/api/employees/:id', authenticateToken, requireManagement, employeeUploads, async (req: any, res: Response) => {
+app.put('/api/employees/:id', authenticateToken, employeeUploads, async (req: any, res: Response) => {
   const { id } = req.params;
-  const data = { ...req.body };
+  const isSelf = req.user.id === id;
+  const isManagement = req.user.role === 'ADMIN' || req.user.role === 'MANAGER';
+
+  if (!isSelf && !isManagement) {
+    return res.status(403).json({ error: 'Forbidden. Access denied.' });
+  }
+
+  let data = { ...req.body };
+
+  // If not management, strip sensitive fields to prevent self-elevation or salary modification
+  if (!isManagement) {
+    const allowedFields = ['firstName', 'lastName', 'phone', 'password', 'avatar', 'dob'];
+    const filteredData: any = {};
+    allowedFields.forEach(field => {
+      if (data[field] !== undefined) filteredData[field] = data[field];
+    });
+    data = filteredData;
+  }
+
   try {
     const existing = await prisma.employee.findUnique({ where: { id } });
     if (!existing) return res.status(404).json({ error: 'Employee not found' });

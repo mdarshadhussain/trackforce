@@ -707,22 +707,28 @@
 }
 
 .btn-proof-tiny {
-  padding: 4px 8px;
-  border-radius: 4px;
+  padding: 6px 10px;
+  border-radius: 6px;
   font-size: 10px;
   font-weight: 800;
   cursor: pointer;
-  border: 1px solid var(--border);
-  background: var(--surface-hover);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
   color: var(--text-dim);
-  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.3s var(--ease-premium);
+  letter-spacing: 0.05em;
+  backdrop-filter: blur(4px);
 }
 
 .btn-proof-tiny:hover {
   background: var(--primary);
   color: #000;
   border-color: var(--primary);
-  transform: scale(1.1);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px var(--primary-glow);
 }
 
 .btn-proof-tiny.in {
@@ -733,10 +739,22 @@
   border-left: 3px solid var(--error);
 }
 
-.no-proof-tiny {
-  font-size: 10px;
-  color: var(--text-tertiary);
-  opacity: 0.5;
+.empty-proof-dot {
+  width: 6px;
+  height: 6px;
+  background: var(--surface-hover);
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 0 4px rgba(0,0,0,0.5);
+  position: relative;
+}
+
+.empty-proof-dot::after {
+  content: '';
+  position: absolute;
+  top: -2px; left: -2px; right: -2px; bottom: -2px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.02);
 }
 
 .btn-proof-mini {

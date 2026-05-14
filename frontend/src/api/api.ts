@@ -269,7 +269,7 @@ export const createSite = async (siteData: any) => {
 };
 
 export const fetchAllLogs = async () => {
-  const response = await fetch(`${BASE_URL}/attendance/all`, {
+  const response = await fetch(`${BASE_URL}/attendance`, {
     headers: getAuthHeaders()
   });
   await handleResponse(response);

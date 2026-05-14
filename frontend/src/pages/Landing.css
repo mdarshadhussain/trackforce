@@ -27,7 +27,7 @@
 .landing-page {
   background-color: var(--landing-bg);
   color: var(--landing-text);
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Be Vietnam Pro', sans-serif;
   min-height: 100vh;
   transition: background-color 0.3s ease, color 0.3s ease;
 }

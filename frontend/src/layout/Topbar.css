@@ -12,6 +12,16 @@
   backdrop-filter: blur(10px);
 }
 
+.logo-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.topbar-spacer {
+  flex: 1;
+}
+
 .search-container {
   display: flex;
   align-items: center;

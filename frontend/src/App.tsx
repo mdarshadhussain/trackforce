@@ -39,16 +39,18 @@ const PlatformLayout = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <div className="app-container">
-      <div className={`sidebar-overlay ${sidebarOpen ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}></div>
-      <div className={`sidebar-wrapper ${sidebarOpen ? 'mobile-open' : ''}`}>
-        <Sidebar onClose={() => setSidebarOpen(false)} />
-      </div>
-      <main className="main-stage">
-        <Topbar onMenuClick={() => setSidebarOpen(true)} />
-        <div className="content-area">
-          {children}
+      <Topbar onMenuClick={() => setSidebarOpen(true)} />
+      <div className="layout-body">
+        <div className={`sidebar-overlay ${sidebarOpen ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}></div>
+        <div className={`sidebar-wrapper ${sidebarOpen ? 'mobile-open' : ''}`}>
+          <Sidebar onClose={() => setSidebarOpen(false)} />
         </div>
-      </main>
+        <main className="main-stage">
+          <div className="content-area">
+            {children}
+          </div>
+        </main>
+      </div>
     </div>
   );
 };

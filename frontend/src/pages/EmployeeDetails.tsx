@@ -43,7 +43,7 @@ const EmployeeDetails = () => {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
-  const [showPassword, setShowPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(true);
   const [docModal, setDocModal] = useState({ isOpen: false, url: '', title: '' });
 
   const openDoc = (url: string, title: string) => {
@@ -100,7 +100,7 @@ const EmployeeDetails = () => {
             {employee.avatar ? (
               <img src={employee.avatar.startsWith('http') ? employee.avatar : `${API_URL}${employee.avatar}`} alt="" />
             ) : (
-              employee.firstName.charAt(0)
+              <User size={64} />
             )}
           </div>
           <button 
@@ -134,14 +134,14 @@ const EmployeeDetails = () => {
               <div className="pass-toggle-node">
                 <input 
                   type={showPassword ? "text" : "password"} 
-                  value={employee.password || "********"} 
+                  value={employee.password || (showPassword ? "Encoded" : "••••••••")} 
                   readOnly 
                 />
                 <button 
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="pass-visibility-btn"
-                  title={showPassword ? "Hide Password" : "Show Password"}
+                  title={showPassword ? "Mask Password" : "Reveal Password"}
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
@@ -346,19 +346,30 @@ const EmployeeDetails = () => {
                     </div>
                   </div>
 
-                  <div className="log-proof-cluster">
-                    {log.biometricProof ? (
-                      <div className="proof-img-container" onClick={() => window.open(`${API_URL}${log.biometricProof}`, '_blank')}>
-                        <img src={`${API_URL}${log.biometricProof}`} alt="Proof" title="View Verification Proof" />
-                        <div className="proof-overlay">
-                          <ExternalLink size={14} />
+                  <div className="log-proof-cluster-dual">
+                    <div className="proof-node-premium">
+                      <span className="proof-label">Check-in</span>
+                      {log.biometricProof ? (
+                        <div className="proof-img-container" onClick={() => window.open(log.biometricProof.startsWith('http') ? log.biometricProof : `${API_URL}${log.biometricProof}`, '_blank')}>
+                          <img src={log.biometricProof.startsWith('http') ? log.biometricProof : `${API_URL}${log.biometricProof}`} alt="Check-in Proof" />
+                          <div className="proof-overlay"><ExternalLink size={12} /></div>
                         </div>
-                      </div>
-                    ) : (
-                      <div className="proof-img-container no-proof">
-                        <ImageIcon size={24} color="var(--border)" />
-                      </div>
-                    )}
+                      ) : (
+                        <div className="proof-img-container no-proof"><ImageIcon size={20} color="var(--border)" /></div>
+                      )}
+                    </div>
+
+                    <div className="proof-node-premium">
+                      <span className="proof-label">Check-out</span>
+                      {log.biometricProofOut ? (
+                        <div className="proof-img-container" onClick={() => window.open(log.biometricProofOut.startsWith('http') ? log.biometricProofOut : `${API_URL}${log.biometricProofOut}`, '_blank')}>
+                          <img src={log.biometricProofOut.startsWith('http') ? log.biometricProofOut : `${API_URL}${log.biometricProofOut}`} alt="Check-out Proof" />
+                          <div className="proof-overlay"><ExternalLink size={12} /></div>
+                        </div>
+                      ) : (
+                        <div className="proof-img-container no-proof"><ImageIcon size={20} color="var(--border)" /></div>
+                      )}
+                    </div>
                     <span className={`status-badge-premium ${log.status.toLowerCase()}`}>{log.status}</span>
                   </div>
                 </div>

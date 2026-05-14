@@ -57,39 +57,49 @@
 }
 
 .premium-form {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
 }
 
 .form-section {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+  margin-bottom: 24px !important;
 }
 
-.form-section:nth-child(2) {
-  margin-top: -24px;
+.form-section:first-child {
+  margin-bottom: 0px !important;
 }
 
 .section-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--border);
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding-bottom: 2px !important;
+  border-bottom: 1px solid var(--border) !important;
+  margin-bottom: 0px !important;
+  margin-top: 0px !important;
+}
+
+.form-section:not(:first-child) .section-header {
+  margin-bottom: 4px !important;
 }
 
 .section-header h3 {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--primary);
-  letter-spacing: 0.02em;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  color: var(--primary) !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 .section-header svg {
-  color: var(--primary);
-  opacity: 0.8;
+  color: var(--primary) !important;
+  opacity: 1 !important;
 }
 
 .form-grid-3 {
@@ -432,13 +442,33 @@ select {
   }
 }
 
-.currency-prefix {
-  font-weight: 800;
-  color: var(--primary);
-  font-size: 16px;
-  min-width: 24px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  user-select: none;
+.upload-box-premium {
+  height: 64px !important;
+  border: 2px dashed var(--border) !important;
+  border-radius: 12px !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 12px !important;
+  background: rgba(255, 255, 255, 0.02) !important;
+  position: relative !important;
+  transition: all 0.3s ease !important;
+}
+
+.upload-box-premium:hover {
+  border-color: var(--primary) !important;
+  background: var(--primary-glow) !important;
+}
+
+.upload-box-premium span {
+  font-size: 13px !important;
+  color: var(--text-primary) !important;
+}
+
+.upload-box-premium input[type="file"] {
+  position: absolute !important;
+  inset: 0 !important;
+  opacity: 0 !important;
+  cursor: pointer !important;
 }

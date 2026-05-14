@@ -21,7 +21,7 @@ import {
 import { motion } from 'framer-motion';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { fetchSites, createEmployee, fetchEmployeeById, updateEmployee, fetchEmployees } from '../api/api';
+import { fetchSites, createEmployee, fetchEmployeeById, updateEmployee } from '../api/api';
 import PremiumSelect from '../components/PremiumSelect';
 import './AddEmployee.css';
 
@@ -35,7 +35,7 @@ const AddEmployee = () => {
   const [sites, setSites] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(isEditMode);
-  const [employees, setEmployees] = useState<any[]>([]);
+
 
   const [error, setError] = useState<string | null>(null);
 
@@ -69,9 +69,8 @@ const AddEmployee = () => {
   useEffect(() => {
     const initPage = async () => {
       try {
-        const [sitesData, allEmployees] = await Promise.all([fetchSites(), fetchEmployees()]);
+        const [sitesData] = await Promise.all([fetchSites()]);
         setSites(sitesData);
-        setEmployees(allEmployees);
 
         if (isEditMode) {
           const emp = await fetchEmployeeById(id);
@@ -464,43 +463,23 @@ const AddEmployee = () => {
               <div className="file-upload-node">
                 <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '8px', display: 'block' }}>Resume / Professional CV</label>
 
-                <div className="upload-box-compact" style={{ 
-                  height: '100px', 
-                  border: '2px dashed var(--border)', 
-                  borderRadius: '12px', 
-                  display: 'flex', 
-                  flexDirection: 'column', 
-                  alignItems: 'center', 
-                  justifyContent: 'center',
-                  background: 'rgba(255,255,255,0.02)',
-                  position: 'relative'
-                }}>
-                  <Upload size={20} color="var(--primary)" />
-                  <span style={{ fontSize: '0.75rem', marginTop: '4px', textAlign: 'center', padding: '0 8px' }}>
+                <div className="upload-box-premium">
+                  <Upload size={16} color="var(--primary)" />
+                  <span>
                     {files.cv ? files.cv.name : (formData.cvPath ? 'CV Uploaded' : 'Upload CV')}
                   </span>
-                  <input type="file" onChange={(e) => handleFileChange(e, 'cv')} style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }} />
+                  <input type="file" onChange={(e) => handleFileChange(e, 'cv')} />
                 </div>
               </div>
               <div className="file-upload-node">
                 <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '8px', display: 'block' }}>ID Proof / Passport Copy</label>
 
-                <div className="upload-box-compact" style={{ 
-                  height: '100px', 
-                  border: '2px dashed var(--border)', 
-                  borderRadius: '12px', 
-                  display: 'flex', 
-                  flexDirection: 'column', 
-                  alignItems: 'center', 
-                  justifyContent: 'center',
-                  background: 'rgba(255,255,255,0.02)',
-                  position: 'relative'
-                }}>
-                  <Upload size={20} color="var(--primary)" />
-                  <span style={{ fontSize: '0.75rem', marginTop: '4px', textAlign: 'center', padding: '0 8px' }}>
+                <div className="upload-box-premium">
+                  <Upload size={16} color="var(--primary)" />
+                  <span>
                     {files.idDoc ? files.idDoc.name : (formData.idDocPath ? 'ID Uploaded' : 'Upload ID')}
                   </span>
-                  <input type="file" onChange={(e) => handleFileChange(e, 'idDoc')} style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }} />
+                  <input type="file" onChange={(e) => handleFileChange(e, 'idDoc')} />
                 </div>
               </div>
             </div>

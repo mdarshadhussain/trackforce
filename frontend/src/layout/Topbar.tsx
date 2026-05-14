@@ -4,7 +4,6 @@ import {
   LogOut, 
   Menu, 
   Globe,
-  User
 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -14,7 +13,7 @@ import './Topbar.css';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 
 const Topbar = ({ onMenuClick }: { onMenuClick?: () => void }) => {
 
@@ -45,6 +44,11 @@ const Topbar = ({ onMenuClick }: { onMenuClick?: () => void }) => {
       <button className="mobile-menu-btn" onClick={onMenuClick}>
         <Menu size={24} />
       </button>
+      
+      <div className="logo-brand desktop-only">
+        <div className="logo-text">TRACK<span>FORCE</span></div>
+      </div>
+
       <div className="topbar-spacer"></div>
 
       <div className="topbar-actions">
@@ -88,16 +92,6 @@ const Topbar = ({ onMenuClick }: { onMenuClick?: () => void }) => {
           <div className="user-info">
             <span className="user-name">{user ? `${user.firstName} ${user.lastName}` : 'Guest'}</span>
             <span className="user-role-badge">{user?.role || 'Guest'}</span>
-          </div>
-          <div className="avatar-wrapper-top">
-            {user?.avatar ? (
-              <img 
-                src={user.avatar.startsWith('http') ? user.avatar : `${API_URL}${user.avatar}`} 
-                alt="Avatar" 
-              />
-            ) : (
-              <User size={18} />
-            )}
           </div>
         </div>
 

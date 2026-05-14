@@ -1,5 +1,5 @@
 .dashboard-container-elite {
-  padding: 40px;
+  padding: 0 40px 40px;
   max-width: 1600px;
   margin: 0 auto;
   animation: dashboardFadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1);
@@ -186,19 +186,54 @@
 
 /* --- INTELLIGENCE GRID --- */
 .intelligence-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 24px;
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 16px !important;
   margin-bottom: 40px;
+  width: 100% !important;
 }
 
 .command-card {
+  min-width: 0 !important;
   position: relative;
   overflow: hidden;
-  padding: 32px;
+  padding: 20px;
+  border-radius: 20px;
+  border: 2px solid var(--border) !important;
+  background: var(--glass) !important;
+  backdrop-filter: var(--glass-blur);
+  transition: all 0.4s var(--ease-premium);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.2);
+}
+
+/* Creative Border Differentiation */
+.command-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   border-radius: 24px;
-  border: 1px solid rgba(255, 255, 255, 0.03);
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+  padding: 1px;
+  background: linear-gradient(135deg, var(--card-accent), transparent 60%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0.5;
+  transition: opacity 0.3s;
+}
+
+.command-card:hover {
+  border-color: var(--card-accent);
+  box-shadow: 
+    0 20px 40px -15px rgba(0, 0, 0, 0.2),
+    0 0 20px -5px var(--card-accent);
+}
+
+.command-card:hover::after {
+  opacity: 1;
 }
 
 .card-glow {
@@ -206,21 +241,28 @@
   top: -50%; left: -50%;
   width: 200%; height: 200%;
   background: radial-gradient(circle, var(--card-accent) 0%, transparent 70%);
-  opacity: 0.03;
+  opacity: 0.05;
   pointer-events: none;
+  transition: opacity 0.3s;
+}
+
+.command-card:hover .card-glow {
+  opacity: 0.1;
 }
 
 .card-content-elite {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
+  position: relative;
+  z-index: 2;
 }
 
 .icon-badge-premium {
   width: 44px;
   height: 44px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: color-mix(in srgb, var(--card-accent), transparent 90%);
+  border: 1px solid color-mix(in srgb, var(--card-accent), transparent 80%);
   border-radius: 14px;
   display: flex;
   align-items: center;
@@ -234,25 +276,26 @@
 }
 
 .stat-value-elite {
-  font-size: 36px;
+  font-size: 32px;
   font-weight: 800;
   margin: 0;
   letter-spacing: -0.04em;
+  color: var(--text-primary);
 }
 
 .stat-label-elite {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 700;
   color: var(--text-dim);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.1em;
   margin-top: 4px;
 }
 
 .trend-pill {
   position: absolute;
-  top: 32px;
-  right: 32px;
+  top: 24px;
+  right: 24px;
   padding: 4px 10px;
   border-radius: 99px;
   font-size: 11px;
@@ -260,25 +303,30 @@
   display: flex;
   align-items: center;
   gap: 4px;
+  backdrop-filter: blur(4px);
 }
 
 .trend-pill.positive {
   background: rgba(16, 185, 129, 0.1);
   color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.2);
 }
 
 .trend-pill.negative {
   background: rgba(239, 68, 68, 0.1);
   color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
 .card-description-elite {
-  margin: 20px 0 0;
+  margin: 16px 0 0;
   font-size: 12px;
   color: var(--text-dim);
   line-height: 1.5;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-top: 1px solid var(--border);
   padding-top: 16px;
+  position: relative;
+  z-index: 2;
 }
 
 /* --- MAIN INTELLIGENCE GRID --- */
@@ -388,12 +436,6 @@
 }
 
 /* --- RESPONSIVENESS --- */
-@media (max-width: 1200px) {
-  .intelligence-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
 @media (max-width: 900px) {
   .intelligence-main-grid {
     grid-template-columns: 1fr;
@@ -412,7 +454,7 @@
   }
   
   .intelligence-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr !important;
   }
   
   .hero-insight-banner {

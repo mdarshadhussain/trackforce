@@ -151,11 +151,21 @@ export const fetchTodayLogs = async (employeeId: string) => {
   return response.json();
 };
 
-export const clockOut = async (employeeId: string, latitude?: number, longitude?: number) => {
+export const clockOut = async (employeeId: string, latitude?: number, longitude?: number, biometricProof?: any) => {
+  const isFormData = biometricProof instanceof FormData;
+  const headers = getAuthHeaders(isFormData);
+  
+  let body;
+  if (isFormData) {
+    body = biometricProof;
+  } else {
+    body = JSON.stringify({ latitude, longitude });
+  }
+
   const response = await fetch(`${BASE_URL}/attendance/clock-out/${employeeId}`, {
     method: 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify({ latitude, longitude })
+    headers,
+    body
   });
   await handleResponse(response);
   if (!response.ok) {

@@ -55,24 +55,24 @@
 }
 
 [data-theme='dark'] {
-  --bg: #064232; /* Deep Forest Green Base */
-  --surface: #568F87; /* Sage Surface */
-  --surface-hover: rgba(245, 186, 187, 0.15);
-  --surface-bright: #68a39a;
+  --bg: #042d22; /* Deep Forest Green Base */
+  --surface: #021a14; /* Near-Black Forest Surface */
+  --surface-hover: rgba(86, 143, 135, 0.1);
+  --surface-bright: #053a2d;
   
-  --border: rgba(255, 255, 255, 0.06);
-  --glass-border: rgba(255, 255, 255, 0.1);
-  --glass: rgba(6, 66, 50, 0.85);
+  --border: rgba(86, 143, 135, 0.2);
+  --glass-border: rgba(255, 255, 255, 0.15);
+  --glass: rgba(2, 26, 20, 0.9);
   
   --primary: #F5BABB; /* Vibrant Rose */
-  --primary-glow: rgba(245, 186, 187, 0.4);
+  --primary-glow: rgba(245, 186, 187, 0.3);
   --accent: #568F87; /* Sage Accent */
   
-  --text-main: #FFF5F2;
+  --text-main: #fdf4f1;
   --text-primary: #ffffff;
-  --text-secondary: #fdf4f1;
+  --text-secondary: #a8c6c1;
   --text-tertiary: #f5babb;
-  --text-dim: #a8c6c1;
+  --text-dim: #a8c6c1; /* Lighter Sage for better contrast */
   
   --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 25px 50px -12px rgba(0, 0, 0, 0.6);

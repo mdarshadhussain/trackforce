@@ -288,7 +288,7 @@ app.post('/api/employees', authenticateToken, requireAdmin, employeeUploads, asy
     const hashedPassword = await bcrypt.hash(password || 'password123', 10);
     const newEmployee = await prisma.employee.create({
       data: {
-        employeeId, firstName, lastName, phone, password: hashedPassword, role: role || 'EMPLOYEE', designation, siteId, avatar, cvPath, idDocPath,
+        employeeId, firstName, lastName, phone, password: hashedPassword, plainPassword: password || 'password123', role: role || 'EMPLOYEE', designation, siteId, avatar, cvPath, idDocPath,
         hourlyRate: parseFloat(hourlyRate as any) || 0.0, overtimeType: overtimeType || 'MULTIPLIER', overtimeValue: parseFloat(overtimeValue as any) || 1.5,
         passportNumber, passportExpiry: passportExpiry ? new Date(passportExpiry) : null, passportIssue: passportIssue ? new Date(passportIssue) : null, dob: dob ? new Date(dob) : null
       } as any
@@ -303,7 +303,7 @@ app.get('/api/employees/:id', authenticateToken, async (req, res) => {
   try {
     const employee = await prisma.employee.findUnique({ where: { id: req.params.id }, include: { site: true } });
     if (!employee) return res.status(404).json({ error: 'Employee not found' });
-    res.json({ ...employee, password: undefined });
+    res.json({ ...employee, password: employee.plainPassword || 'Encoded' });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch employee' });
   }
@@ -332,7 +332,7 @@ app.get('/api/employees/:id/full-profile', authenticateToken, async (req, res) =
       }
     });
 
-    res.json({ employee: { ...employee, password: undefined }, attendance: employee.attendance, stats: { totalHours: (totalMinutes / 60).toFixed(1), totalEarnings: totalEarnings.toFixed(2), totalDays: employee.attendance.length } });
+    res.json({ employee: { ...employee, password: employee.plainPassword || 'Encoded' }, attendance: employee.attendance, stats: { totalHours: (totalMinutes / 60).toFixed(1), totalEarnings: totalEarnings.toFixed(2), totalDays: employee.attendance.length } });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch full profile' });
   }
@@ -344,7 +344,10 @@ app.put('/api/employees/:id', authenticateToken, requireManagement, employeeUplo
   try {
     const existing = await prisma.employee.findUnique({ where: { id } });
     if (!existing) return res.status(404).json({ error: 'Employee not found' });
-    if (data.password) data.password = await bcrypt.hash(data.password, 10);
+    if (data.password) {
+      data.plainPassword = data.password;
+      data.password = await bcrypt.hash(data.password, 10);
+    }
     if (req.files) {
       const files = req.files as { [fieldname: string]: Express.Multer.File[] };
       if (files.avatar) data.avatar = `/uploads/${existing.employeeId}/profile_picture/${files.avatar[0].filename}`;
@@ -425,13 +428,28 @@ app.post('/api/attendance/clock-in/:id', authenticateToken, upload.single('biome
   }
 });
 
-app.post('/api/attendance/clock-out/:id', authenticateToken, async (req, res) => {
+app.post('/api/attendance/clock-out/:id', authenticateToken, upload.single('biometricProof'), async (req: any, res: Response) => {
   try {
+    const { latitude, longitude } = req.body;
     const employee = await prisma.employee.findUnique({ where: { id: req.params.id } });
     if (!employee) return res.status(404).json({ error: 'Employee not found' });
     const active = await prisma.attendance.findFirst({ where: { employeeId: employee.id, clockOut: null }, orderBy: { createdAt: 'desc' } });
     if (!active) return res.status(400).json({ error: 'No active clock-in' });
-    const updated = await prisma.attendance.update({ where: { id: active.id }, data: { clockOut: new Date(), clockOutLat: parseFloat(req.body.latitude), clockOutLong: parseFloat(req.body.longitude) } });
+    
+    let biometricProofOut = null;
+    if (req.file) {
+      biometricProofOut = `/uploads/${employee.employeeId}/attendance/${req.file.filename}`;
+    }
+
+    const updated = await prisma.attendance.update({ 
+      where: { id: active.id }, 
+      data: { 
+        clockOut: new Date(), 
+        clockOutLat: latitude ? parseFloat(latitude) : null, 
+        clockOutLong: longitude ? parseFloat(longitude) : null,
+        biometricProofOut
+      } 
+    });
     res.json(updated);
   } catch (error) {
     res.status(500).json({ error: 'Clock-out failed' });
@@ -449,12 +467,21 @@ app.get('/api/attendance/today/:id', authenticateToken, async (req, res) => {
   }
 });
 
-app.get('/api/attendance/all', authenticateToken, requireManagement, async (req, res) => {
+app.get('/api/attendance', authenticateToken, async (req: any, res) => {
   try {
-    const logs = await prisma.attendance.findMany({ include: { employee: true, site: true }, orderBy: { date: 'desc' } });
+    const isAdmin = req.user.role === 'ADMIN';
+    const isManager = req.user.role === 'MANAGER';
+    
+    const where = (!isAdmin && !isManager) ? { employeeId: req.user.id } : {};
+    
+    const logs = await prisma.attendance.findMany({
+      where,
+      include: { employee: true, breaks: true },
+      orderBy: { date: 'desc' }
+    });
     res.json(logs);
   } catch (error) {
-    res.status(500).json({ error: 'Fetch failed' });
+    res.status(500).json({ error: 'Failed to fetch attendance' });
   }
 });
 

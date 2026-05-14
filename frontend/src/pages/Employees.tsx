@@ -7,6 +7,7 @@ import {
   Edit3,
   XCircle,
   Eye,
+  User,
 } from 'lucide-react';
 
 import './Employees.css';
@@ -197,7 +198,7 @@ const Employees = () => {
                           alt="" 
                         />
                       ) : (
-                        emp.firstName.charAt(0)
+                        <User size={14} />
                       )}
                     </div>
                     <div className="name-stack">

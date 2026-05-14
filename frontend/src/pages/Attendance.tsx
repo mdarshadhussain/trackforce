@@ -15,7 +15,8 @@ import {
   MapPin,
   Shield,
   Trash2,
-  UserPlus
+  UserPlus,
+  User
 } from 'lucide-react';
 
 
@@ -54,12 +55,15 @@ const Attendance = () => {
   const [scanStatus, setScanStatus] = useState<'idle' | 'scanning' | 'success'>('idle');
   const [showScanner, setShowScanner] = useState(false);
   const [isEnrolling, setIsEnrolling] = useState(false);
+  const [isClockingOut, setIsClockingOut] = useState(false);
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
   const [logs, setLogs] = useState<any[]>([]);
   const [allLogs, setAllLogs] = useState<any[]>([]);
+  const [activeView, setActiveView] = useState<'timecard' | 'timeline'>('timecard');
+
   const [isOnBreak, setIsOnBreak] = useState(false);
   const [toasts, setToasts] = useState<any[]>([]);
   const [showPurgeConfirm, setShowPurgeConfirm] = useState(false);
@@ -69,6 +73,9 @@ const Attendance = () => {
   const [employees, setEmployees] = useState<any[]>([]);
   const [sites, setSites] = useState<any[]>([]);
   const [showManualLog, setShowManualLog] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [showInTimePicker, setShowInTimePicker] = useState(false);
+  const [showOutTimePicker, setShowOutTimePicker] = useState(false);
   const [manualData, setManualData] = useState({
     employeeId: '',
     siteId: '',
@@ -177,10 +184,10 @@ const Attendance = () => {
     try {
       const [today, all] = await Promise.all([
         fetchTodayLogs(user.id),
-        isAdmin || isManager ? fetchAllLogs() : Promise.resolve([])
+        fetchAllLogs()
       ]);
       setLogs(today);
-      if (isAdmin || isManager) setAllLogs(all);
+      setAllLogs(all);
     } catch (err) {
       console.error("Data load error:", err);
     }
@@ -211,33 +218,6 @@ const Attendance = () => {
     exportToCSV(allLogs, 'Attendance_Report');
   };
 
-  const handleClockOut = async () => {
-    if (!user) return;
-    
-    if (!navigator.geolocation) {
-      addToast("Geolocation is not supported by your browser", 'error');
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords;
-        try {
-          await clockOut(user.id, latitude, longitude);
-          addToast("Clocked out successfully! Final location logged.", 'success');
-          loadData();
-          setShowScanner(false);
-        } catch (err: any) {
-          addToast(err.message, 'error');
-        }
-      },
-      () => {
-        addToast("Please enable location access to clock out.", 'warning');
-      },
-      { enableHighAccuracy: true }
-    );
-  };
-
   const handleToggleBreak = async () => {
     if (!user) return;
     try {
@@ -250,6 +230,36 @@ const Attendance = () => {
       }
       const updatedLogs = await fetchTodayLogs(user.id);
       setLogs(updatedLogs);
+    } catch (err: any) {
+      addToast(err.message, 'error');
+    }
+  };
+
+  const handleClockOut = async () => {
+    if (!user) return;
+    if (isManagement) {
+      handleDirectClockOut();
+      return;
+    }
+    setIsClockingOut(true);
+    setIsEnrolling(false);
+    setShowScanner(true);
+  };
+
+  const handleDirectClockOut = async () => {
+    if (!user) return;
+    if (!navigator.geolocation) {
+      addToast("Geolocation is required for tracking", 'error');
+      return;
+    }
+    try {
+      navigator.geolocation.getCurrentPosition(async (position) => {
+        const { latitude, longitude } = position.coords;
+        await clockOut(user.id, latitude, longitude);
+        addToast("Management Override: Clock-out Successful.", 'success');
+        const updatedLogs = await fetchTodayLogs(user.id);
+        setLogs(updatedLogs);
+      });
     } catch (err: any) {
       addToast(err.message, 'error');
     }
@@ -411,15 +421,21 @@ const Attendance = () => {
             formData.append('biometricProof', proofBlob, `proof-${user.id}-${Date.now()}.jpg`);
           }
 
-          await clockIn(user.id, latitude, longitude, formData);
+          if (isClockingOut) {
+            await clockOut(user.id, latitude, longitude, formData);
+            addToast("Clock-out Successful. Goodbye!", 'success');
+          } else {
+            await clockIn(user.id, latitude, longitude, formData);
+            addToast("Clock-in Successful. Welcome back!", 'success');
+          }
           setScanStatus('success');
-          addToast("Clock-in Successful. Welcome back!", 'success');
           const updatedLogs = await fetchTodayLogs(user.id);
           setLogs(updatedLogs);
           setTimeout(() => {
             setIsScanning(false);
             setScanStatus('idle');
             setShowScanner(false);
+            setIsClockingOut(false);
           }, 1500);
         } catch (err: any) {
           addToast(err.message, 'error');
@@ -547,7 +563,7 @@ const Attendance = () => {
                   onClick={isEnrolling ? handleEnrollment : handleClockAction}
                   disabled={isScanning || !modelsLoaded}
                 >
-                  {!modelsLoaded ? "Initializing AI..." : (isScanning ? t('verifying') : (isEnrolling ? t('beginEnrollment') : t('clockIn')))}
+                  {!modelsLoaded ? "Initializing AI..." : (isScanning ? t('verifying') : (isEnrolling ? t('beginEnrollment') : (isClockingOut ? t('clockOut') : t('clockIn'))))}
                 </button>
                 <button className="btn btn-ghost btn-block" onClick={() => setShowScanner(false)}>
                   {t('cancel')}
@@ -574,80 +590,221 @@ const Attendance = () => {
               </div>
 
               <form onSubmit={handleManualSubmit} className="manual-log-form" style={{ padding: '20px' }}>
-                <div className="form-group-premium" style={{ marginBottom: '1.2rem' }}>
-                  <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>Select Employee</label>
+                <div className="form-group-premium">
+                  <label>Select Employee</label>
                   <select 
                     value={manualData.employeeId} 
                     onChange={e => setManualData({...manualData, employeeId: e.target.value})}
                     required
-                    style={{ width: '100%', padding: '12px', background: 'var(--surface-hover)', border: '1px solid var(--border)', borderRadius: '10px', color: 'var(--text-main)' }}
+                    className="premium-input"
                   >
-                    <option value="" style={{ background: 'var(--surface)' }}>Choose Employee...</option>
+                    <option value="">Choose Employee...</option>
                     {employees.map(emp => (
-                      <option key={emp.id} value={emp.id} style={{ background: 'var(--surface)' }}>{emp.firstName} {emp.lastName} ({emp.email})</option>
+                      <option key={emp.id} value={emp.id}>{emp.firstName} {emp.lastName} ({emp.email})</option>
                     ))}
                   </select>
                 </div>
 
-                <div className="form-group-premium" style={{ marginBottom: '1.2rem' }}>
-                  <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>Operational Site</label>
+                <div className="form-group-premium">
+                  <label>Operational Site</label>
                   <select 
                     value={manualData.siteId} 
                     onChange={e => setManualData({...manualData, siteId: e.target.value})}
                     required
-                    style={{ width: '100%', padding: '12px', background: 'var(--surface-hover)', border: '1px solid var(--border)', borderRadius: '10px', color: 'var(--text-main)' }}
+                    className="premium-input"
                   >
-                    <option value="" style={{ background: 'var(--surface)' }}>Choose Site...</option>
+                    <option value="">Choose Site...</option>
                     {sites.map(s => (
-                      <option key={s.id} value={s.id} style={{ background: 'var(--surface)' }}>{s.name}</option>
+                      <option key={s.id} value={s.id}>{s.name}</option>
                     ))}
                   </select>
                 </div>
 
-                <div className="form-row-premium" style={{ display: 'flex', gap: '15px', marginBottom: '1.2rem' }}>
-                  <div className="form-group-premium" style={{ flex: 1 }}>
-                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>Record Date</label>
-                    <input 
-                      type="date" 
-                      value={manualData.date} 
-                      onChange={e => setManualData({...manualData, date: e.target.value})}
-                      required
-                      style={{ width: '100%', padding: '12px', background: 'var(--surface-hover)', border: '1px solid var(--border)', borderRadius: '10px', color: 'var(--text-main)' }}
-                    />
+                <div className="form-row-premium">
+                  <div className="form-group-premium" style={{ position: 'relative' }}>
+                    <label>Record Date</label>
+                    <div 
+                      className="premium-input custom-date-trigger" 
+                      onClick={() => setShowCalendar(!showCalendar)}
+                    >
+                      <Calendar size={16} />
+                      <span>{new Date(manualData.date).toLocaleDateString()}</span>
+                    </div>
+
+                    <AnimatePresence>
+                      {showCalendar && (
+                        <motion.div 
+                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                          className="custom-calendar-popup glass-card"
+                        >
+                          <div className="calendar-grid-premium">
+                            {/* Simplified Calendar - Current Month Only for MVP */}
+                            <div className="cal-header">
+                              {new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}
+                            </div>
+                            <div className="cal-days">
+                              {['S','M','T','W','T','F','S'].map(d => <div key={d} className="cal-day-label">{d}</div>)}
+                              {Array.from({length: 31}, (_, i) => {
+                                const d = i + 1;
+                                const isSelected = new Date(manualData.date).getDate() === d;
+                                return (
+                                  <div 
+                                    key={d} 
+                                    className={`cal-date ${isSelected ? 'selected' : ''}`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const newDate = new Date();
+                                      newDate.setDate(d);
+                                      setManualData({...manualData, date: newDate.toISOString().split('T')[0]});
+                                      setShowCalendar(false);
+                                    }}
+                                  >
+                                    {d}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
-                  <div className="form-group-premium" style={{ flex: 1 }}>
-                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>Attendance Status</label>
+                  <div className="form-group-premium">
+                    <label>Attendance Status</label>
                     <select 
                       value={manualData.status} 
                       onChange={e => setManualData({...manualData, status: e.target.value})}
-                      style={{ width: '100%', padding: '12px', background: 'var(--surface-hover)', border: '1px solid var(--border)', borderRadius: '10px', color: 'var(--text-main)' }}
+                      className="premium-input"
                     >
-                      <option value="PRESENT" style={{ background: 'var(--surface)' }}>PRESENT</option>
-                      <option value="LATE" style={{ background: 'var(--surface)' }}>LATE</option>
-                      <option value="ABSENT" style={{ background: 'var(--surface)' }}>ABSENT</option>
+                      <option value="PRESENT">PRESENT</option>
+                      <option value="LATE">LATE</option>
+                      <option value="ABSENT">ABSENT</option>
                     </select>
                   </div>
                 </div>
 
-                <div className="form-row-premium" style={{ display: 'flex', gap: '15px', marginBottom: '1.5rem' }}>
-                  <div className="form-group-premium" style={{ flex: 1 }}>
-                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>Clock-In (T1)</label>
-                    <input 
-                      type="time" 
-                      value={manualData.clockIn} 
-                      onChange={e => setManualData({...manualData, clockIn: e.target.value})}
-                      required
-                      style={{ width: '100%', padding: '12px', background: 'var(--surface-hover)', border: '1px solid var(--border)', borderRadius: '10px', color: 'var(--text-main)' }}
-                    />
+                <div className="form-row-premium bottom-row">
+                  <div className="form-group-premium" style={{ position: 'relative' }}>
+                    <label>Clock-In (T1)</label>
+                    <div 
+                      className="premium-input custom-date-trigger" 
+                      onClick={() => {
+                        setShowInTimePicker(!showInTimePicker);
+                        setShowOutTimePicker(false);
+                        setShowCalendar(false);
+                      }}
+                    >
+                      <Clock size={16} />
+                      <span>{manualData.clockIn}</span>
+                    </div>
+                    <AnimatePresence>
+                      {showInTimePicker && (
+                        <motion.div 
+                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                          className="custom-time-popup glass-card"
+                        >
+                          <div className="time-picker-precision">
+                            <div className="time-column">
+                              <div className="col-label">Hrs</div>
+                              {[...Array(24)].map((_, h) => {
+                                const val = h.toString().padStart(2, '0');
+                                const isSel = manualData.clockIn.startsWith(val);
+                                return (
+                                  <div 
+                                    key={h} 
+                                    className={`time-unit ${isSel ? 'selected' : ''}`}
+                                    onClick={() => setManualData({...manualData, clockIn: `${val}:${manualData.clockIn.split(':')[1]}`})}
+                                  >
+                                    {val}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            <div className="time-column">
+                              <div className="col-label">Min</div>
+                              {[...Array(60)].map((_, m) => {
+                                const val = m.toString().padStart(2, '0');
+                                const isSel = manualData.clockIn.endsWith(val);
+                                return (
+                                  <div 
+                                    key={m} 
+                                    className={`time-unit ${isSel ? 'selected' : ''}`}
+                                    onClick={() => setManualData({...manualData, clockIn: `${manualData.clockIn.split(':')[0]}:${val}`})}
+                                  >
+                                    {val}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                          <button className="btn-tiny-done" onClick={() => setShowInTimePicker(false)}>Done</button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
-                  <div className="form-group-premium" style={{ flex: 1 }}>
-                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>Clock-Out (T2)</label>
-                    <input 
-                      type="time" 
-                      value={manualData.clockOut} 
-                      onChange={e => setManualData({...manualData, clockOut: e.target.value})}
-                      style={{ width: '100%', padding: '12px', background: 'var(--surface-hover)', border: '1px solid var(--border)', borderRadius: '10px', color: 'var(--text-main)' }}
-                    />
+                  <div className="form-group-premium" style={{ position: 'relative' }}>
+                    <label>Clock-Out (T2)</label>
+                    <div 
+                      className="premium-input custom-date-trigger" 
+                      onClick={() => {
+                        setShowOutTimePicker(!showOutTimePicker);
+                        setShowInTimePicker(false);
+                        setShowCalendar(false);
+                      }}
+                    >
+                      <Clock size={16} />
+                      <span>{manualData.clockOut}</span>
+                    </div>
+                    <AnimatePresence>
+                      {showOutTimePicker && (
+                        <motion.div 
+                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                          className="custom-time-popup glass-card"
+                        >
+                          <div className="time-picker-precision">
+                            <div className="time-column">
+                              <div className="col-label">Hrs</div>
+                              {[...Array(24)].map((_, h) => {
+                                const val = h.toString().padStart(2, '0');
+                                const isSel = manualData.clockOut.startsWith(val);
+                                return (
+                                  <div 
+                                    key={h} 
+                                    className={`time-unit ${isSel ? 'selected' : ''}`}
+                                    onClick={() => setManualData({...manualData, clockOut: `${val}:${manualData.clockOut.split(':')[1]}`})}
+                                  >
+                                    {val}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            <div className="time-column">
+                              <div className="col-label">Min</div>
+                              {[...Array(60)].map((_, m) => {
+                                const val = m.toString().padStart(2, '0');
+                                const isSel = manualData.clockOut.endsWith(val);
+                                return (
+                                  <div 
+                                    key={m} 
+                                    className={`time-unit ${isSel ? 'selected' : ''}`}
+                                    onClick={() => setManualData({...manualData, clockOut: `${manualData.clockOut.split(':')[0]}:${val}`})}
+                                  >
+                                    {val}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                          <button className="btn-tiny-done" onClick={() => setShowOutTimePicker(false)}>Done</button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                 </div>
 
@@ -739,6 +896,46 @@ const Attendance = () => {
     </>
   );
 
+  const statsData = (() => {
+    const calcHours = (logs: any[]) => logs.reduce((acc, log) => {
+      if (log.duration) return acc + (log.duration / 60);
+      if (log.clockIn && log.clockOut) {
+        return acc + (new Date(log.clockOut).getTime() - new Date(log.clockIn).getTime()) / (1000 * 60 * 60);
+      }
+      return acc;
+    }, 0);
+
+    const approvedHours = calcHours(allLogs.filter(l => l.status === 'APPROVED' || l.status === 'PRESENT'));
+    const rejectedHours = calcHours(allLogs.filter(l => l.status === 'REJECTED'));
+    const pendingHours = calcHours(allLogs.filter(l => l.status === 'PENDING'));
+    const totalHours = approvedHours + rejectedHours + pendingHours;
+    const efficiency = totalHours > 0 ? (approvedHours / totalHours) * 100 : 0;
+
+    // Current User Specific Stats
+    const todayLog = logs.length > 0 ? logs[0] : null;
+    let todayHours = "00:00:00";
+    if (todayLog && todayLog.clockIn) {
+      const start = new Date(todayLog.clockIn).getTime();
+      const end = todayLog.clockOut ? new Date(todayLog.clockOut).getTime() : Date.now();
+      const diff = Math.max(0, end - start);
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      todayHours = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    }
+
+    const weeklyLogs = allLogs.filter(l => {
+      if (l.employeeId !== user?.id && l.employee?.id !== user?.id) return false;
+      const logDate = new Date(l.date);
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      return logDate >= weekAgo;
+    });
+    const weeklyHours = calcHours(weeklyLogs);
+
+    return { approvedHours, rejectedHours, pendingHours, totalHours, efficiency, todayHours, weeklyHours };
+  })();
+
   if (!isManagement) {
     return (
       <div className="enterprise-page user-view">
@@ -793,6 +990,7 @@ const Attendance = () => {
                           handleDirectClockIn();
                         } else {
                           setIsEnrolling(false);
+                          setIsClockingOut(false);
                           setShowScanner(true);
                         }
                       }}
@@ -825,11 +1023,11 @@ const Attendance = () => {
             <div className="stats-row">
               <div className="glass-card s-card">
                 <span className="label">{t('todayHours')}</span>
-                <h2 className="value">{logs.length > 0 ? "00:00:00" : "00:00:00"}</h2>
+                <h2 className="value">{statsData.todayHours}</h2>
               </div>
               <div className="glass-card s-card">
                 <span className="label">{t('weeklyProgress')}</span>
-                <h2 className="value">0.0h / 40h</h2>
+                <h2 className="value">{statsData.weeklyHours.toFixed(1)}h / 40h</h2>
               </div>
             </div>
 
@@ -915,9 +1113,20 @@ const Attendance = () => {
             
             <button 
               className={`btn ${isClockedIn ? 'btn-danger' : 'btn-primary'} btn-block`}
-              onClick={isClockedIn ? handleClockOut : (isManagement ? handleDirectClockIn : () => setShowScanner(true))}
+              onClick={() => {
+                if (isClockedIn) {
+                  handleClockOut();
+                } else {
+                  if (isManagement) {
+                    handleDirectClockIn();
+                  } else {
+                    setIsEnrolling(false);
+                    setIsClockingOut(false);
+                    setShowScanner(true);
+                  }
+                }
+              }}
               style={isClockedIn ? { backgroundColor: 'var(--error)', color: 'white', border: 'none' } : {}}
-
             >
               {isClockedIn ? <X size={16} /> : <Clock size={16} />}
               {isClockedIn ? t('clockOut') : t('clockIn')}
@@ -928,7 +1137,7 @@ const Attendance = () => {
             <div className="total-hours-main">
               <Clock size={18} />
               <div className="v-stack">
-                <span className="value">264.00</span>
+                <span className="value">{statsData.totalHours.toFixed(2)}</span>
                 <span className="label">Total hours</span>
               </div>
             </div>
@@ -951,55 +1160,46 @@ const Attendance = () => {
           </header>
 
           <section className="breakdown-banner glass-card">
-            {(() => {
-              const calcHours = (logs: any[]) => logs.reduce((acc, log) => {
-                if (log.clockIn && log.clockOut) {
-                  return acc + (new Date(log.clockOut).getTime() - new Date(log.clockIn).getTime()) / (1000 * 60 * 60);
-                }
-                return acc;
-              }, 0);
-
-              const approvedHours = calcHours(allLogs.filter(l => l.status === 'APPROVED' || l.status === 'PRESENT'));
-              const rejectedHours = calcHours(allLogs.filter(l => l.status === 'REJECTED'));
-              const pendingHours = calcHours(allLogs.filter(l => l.status === 'PENDING'));
-              const totalHours = approvedHours + rejectedHours + pendingHours;
-              const efficiency = totalHours > 0 ? (approvedHours / totalHours) * 100 : 0;
-
-              return (
-                <>
-                  <div className="breakdown-info">
-                    <div className="b-text">
-                      <span className="label">Global Efficiency</span>
-                      <h2 className="value">{efficiency.toFixed(1)}%</h2>
-                    </div>
-                    <div className="progress-track">
-                      <div className="progress-fill" style={{ width: `${efficiency}%` }}></div>
-                    </div>
-                  </div>
-                  <div className="breakdown-stats">
-                    <div className="s-item">
-                      <span className="dot approved"></span> 
-                      {t('approved')}: {Math.round(approvedHours)} hrs
-                    </div>
-                    <div className="s-item">
-                      <span className="dot rejected"></span> 
-                      {t('rejected')}: {Math.round(rejectedHours)} hrs
-                    </div>
-                    <div className="s-item">
-                      <span className="dot pending"></span> 
-                      {t('pending')}: {Math.round(pendingHours)} hrs
-                    </div>
-                  </div>
-                </>
-              );
-            })()}
+            <div className="breakdown-info">
+              <div className="b-text">
+                <span className="label">Global Efficiency</span>
+                <h2 className="value">{statsData.efficiency.toFixed(1)}%</h2>
+              </div>
+              <div className="progress-track">
+                <div className="progress-fill" style={{ width: `${statsData.efficiency}%` }}></div>
+              </div>
+            </div>
+            <div className="breakdown-stats">
+              <div className="s-item">
+                <span className="dot approved"></span> 
+                {t('approved')}: {Math.round(statsData.approvedHours)} hrs
+              </div>
+              <div className="s-item">
+                <span className="dot rejected"></span> 
+                {t('rejected')}: {Math.round(statsData.rejectedHours)} hrs
+              </div>
+              <div className="s-item">
+                <span className="dot pending"></span> 
+                {t('pending')}: {Math.round(statsData.pendingHours)} hrs
+              </div>
+            </div>
           </section>
 
 
           <div className="action-bar">
             <div className="toggle-group">
-              <button className="toggle-btn active"><FileText size={14} /> {t('timecard')}</button>
-              <button className="toggle-btn"><Clock size={14} /> {t('timeline')}</button>
+              <button 
+                className={`toggle-btn ${activeView === 'timecard' ? 'active' : ''}`}
+                onClick={() => setActiveView('timecard')}
+              >
+                <FileText size={14} /> {t('timecard')}
+              </button>
+              <button 
+                className={`toggle-btn ${activeView === 'timeline' ? 'active' : ''}`}
+                onClick={() => setActiveView('timeline')}
+              >
+                <Clock size={14} /> {t('timeline')}
+              </button>
             </div>
             <div className="btn-row">
               <button className="btn-outline" onClick={handleExport}>{t('exportReport')}</button>
@@ -1009,58 +1209,120 @@ const Attendance = () => {
             </div>
           </div>
 
-          <div className="table-container glass-card">
-            <table className="enterprise-table">
-              <thead>
-                <tr>
-                  <th>{t('employee')}</th>
-                  <th>{t('date')}</th>
-                  <th>{t('checkin')}</th>
-                  <th>{t('checkout')}</th>
-                  <th>{t('verification')}</th>
-                  <th>{t('status')}</th>
-                  <th>{t('action')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {allLogs.map((log, idx) => (
-                  <tr key={log.id || idx}>
-                    <td className="emp-cell">
-                      <div className="tiny-avatar">{log.employee?.firstName?.charAt(0) || 'E'}</div>
-                      <span>{log.employee?.firstName} {log.employee?.lastName}</span>
-                    </td>
-                    <td>{new Date(log.date).toLocaleDateString()}</td>
-                    <td>{log.clockIn ? new Date(log.clockIn).toLocaleTimeString() : '---'}</td>
-                    <td>{log.clockOut ? new Date(log.clockOut).toLocaleTimeString() : '---'}</td>
-                    <td>
-                      {log.biometricProof ? (
-                        <button className="btn-proof" onClick={() => setSelectedProof(log.biometricProof.startsWith('http') ? log.biometricProof : `${API_URL}${log.biometricProof}`)}>
-                          <Camera size={14} /> {t('viewProof')}
-                        </button>
-                      ) : (
-                        <span className="no-proof">{t('noImage')}</span>
-                      )}
-                    </td>
-                    <td><span className={`badge badge-${log.status?.toLowerCase()}`}>{t(log.status?.toLowerCase())}</span></td>
-                    <td>
-                      <div className="approval-actions">
-                        {log.status === 'PENDING' && (
-                          <>
-                            <button className="status-btn approve" onClick={() => handleStatusUpdate(log.id, 'APPROVED')} title="Approve"><Check size={14} /></button>
-                            <button className="status-btn reject" onClick={() => handleStatusUpdate(log.id, 'REJECTED')} title="Reject"><X size={14} /></button>
-                          </>
-                        )}
-                        <button className="status-btn delete" onClick={() => handleDeleteLog(log.id)} title="Purge Log" style={{ color: 'var(--error)' }}>
-
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </td>
+          {activeView === 'timecard' ? (
+            <div className="table-container glass-card">
+              <table className="enterprise-table">
+                <thead>
+                  <tr>
+                    <th>{t('employee')}</th>
+                    <th>{t('date')}</th>
+                    <th>{t('checkin')}</th>
+                    <th>{t('checkout')}</th>
+                    <th>{t('verification')}</th>
+                    <th>{t('status')}</th>
+                    <th>{t('action')}</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {allLogs.map((log, idx) => (
+                    <tr key={log.id || idx}>
+                      <td className="emp-cell">
+                        <div className="tiny-avatar"><User size={12} /></div>
+                        <span>{log.employee?.firstName || 'Unknown'} {log.employee?.lastName || ''}</span>
+                      </td>
+                      <td>{new Date(log.date).toLocaleDateString()}</td>
+                      <td>{log.clockIn ? new Date(log.clockIn).toLocaleTimeString() : '---'}</td>
+                      <td>{log.clockOut ? new Date(log.clockOut).toLocaleTimeString() : '---'}</td>
+                      <td>
+                        <div className="proof-stack-mini">
+                          {log.biometricProof ? (
+                            <button className="btn-proof-tiny in" title="Check-in Proof" onClick={() => setSelectedProof(log.biometricProof.startsWith('http') ? log.biometricProof : `${API_URL}${log.biometricProof}`)}>
+                              IN
+                            </button>
+                          ) : (
+                            <span className="no-proof-tiny">--</span>
+                          )}
+                          {log.biometricProofOut ? (
+                            <button className="btn-proof-tiny out" title="Check-out Proof" onClick={() => setSelectedProof(log.biometricProofOut.startsWith('http') ? log.biometricProofOut : `${API_URL}${log.biometricProofOut}`)}>
+                              OUT
+                            </button>
+                          ) : (
+                            <span className="no-proof-tiny">--</span>
+                          )}
+                        </div>
+                      </td>
+                      <td><span className={`badge badge-${(log.status || 'PENDING').toLowerCase()}`}>{t((log.status || 'PENDING').toLowerCase())}</span></td>
+                      <td>
+                        <div className="approval-actions">
+                          {log.status === 'PENDING' && (
+                            <>
+                              <button className="status-btn approve" onClick={() => handleStatusUpdate(log.id, 'APPROVED')} title="Approve"><Check size={14} /></button>
+                              <button className="status-btn reject" onClick={() => handleStatusUpdate(log.id, 'REJECTED')} title="Reject"><X size={14} /></button>
+                            </>
+                          )}
+                          <button className="status-btn delete" onClick={() => handleDeleteLog(log.id)} title="Purge Log" style={{ color: 'var(--error)' }}>
+
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="timeline-container glass-card">
+              <div className="timeline-grid">
+                <div className="timeline-header">
+                  <div className="employee-col">Employee</div>
+                  <div className="time-axis">
+                    {[...Array(12)].map((_, i) => (
+                      <div key={i} className="time-label">{(i * 2).toString().padStart(2, '0')}:00</div>
+                    ))}
+                  </div>
+                </div>
+                
+                <div className="timeline-body">
+                  {/* Group logs by employee for the selected day */}
+                  {Array.from(new Set(allLogs.map(l => l.employeeId))).map(empId => {
+                    const empLogs = allLogs.filter(l => l.employeeId === empId);
+                    const emp = empLogs[0]?.employee;
+                    
+                    return (
+                      <div key={empId} className="timeline-row">
+                        <div className="employee-col">
+                          <div className="tiny-avatar"><User size={12} /></div>
+                          <span className="emp-name">{emp?.firstName}</span>
+                        </div>
+                        <div className="shift-track">
+                          {empLogs.map(log => {
+                            if (!log.clockIn) return null;
+                            const start = new Date(log.clockIn);
+                            const end = log.clockOut ? new Date(log.clockOut) : new Date();
+                            
+                            const startPct = ((start.getHours() * 60 + start.getMinutes()) / 1440) * 100;
+                            const durationPct = (((end.getTime() - start.getTime()) / 60000) / 1440) * 100;
+                            
+                            return (
+                              <div 
+                                key={log.id} 
+                                className={`shift-bar ${log.status?.toLowerCase()}`}
+                                style={{ left: `${startPct}%`, width: `${durationPct}%` }}
+                                title={`${emp?.firstName}: ${start.toLocaleTimeString()} - ${end.toLocaleTimeString()}`}
+                              >
+                                {durationPct > 5 && <span className="bar-label">{Math.round((end.getTime() - start.getTime()) / 3600000)}h</span>}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
         </main>
       </div>
       {renderModals()}

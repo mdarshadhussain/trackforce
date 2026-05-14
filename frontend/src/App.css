@@ -1,8 +1,17 @@
 .app-container {
   display: flex;
+  flex-direction: column;
   height: 100vh;
   width: 100%;
   background-color: var(--bg);
+  overflow: hidden;
+  position: relative;
+}
+
+.layout-body {
+  display: flex;
+  flex: 1;
+  width: 100%;
   overflow: hidden;
   position: relative;
 }
@@ -24,27 +33,44 @@
 .sidebar-wrapper {
   width: 280px;
   flex-shrink: 0;
-  height: 100vh;
+  height: calc(100vh - 150px);
   position: fixed;
-  left: 0;
-  top: 0;
+  left: 12px;
+  top: 94px; /* 70px topbar + 24px gap */
   z-index: 1100;
   background: var(--surface);
-  border-right: 1px solid var(--border);
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  padding: 10px 0;
-  /* Vertical breathing room */
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.3s ease;
+  padding: 0;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06),
+              0 2px 8px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+}
+
+[data-theme='dark'] .sidebar-wrapper {
+  background: rgba(15, 23, 42, 0.92);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3),
+              0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 @media (max-width: 1024px) {
   .sidebar-wrapper {
     position: fixed;
-    transform: translateX(-100%);
+    left: 8px;
+    top: 78px; /* 70px Topbar + 8px gap */
+    height: calc(100vh - 94px);
+    transform: translateX(calc(-100% - 16px));
+    border-radius: 20px;
   }
 
   .sidebar-wrapper.mobile-open {
     transform: translateX(0);
-    box-shadow: 20px 0 60px rgba(0, 0, 0, 0.5);
+    box-shadow: 20px 0 60px rgba(0, 0, 0, 0.4);
   }
 }
 
@@ -53,11 +79,10 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  height: 100vh;
   min-width: 0;
   overflow: hidden;
-  margin-left: 280px;
-  /* Synchronized with widened sidebar */
+  margin-left: 304px;
+  /* 280px sidebar + 12px left offset + 12px gap */
   background: var(--bg);
 }
 
@@ -69,7 +94,7 @@
 
 .content-area {
   flex: 1;
-  padding: 40px 48px;
+  padding: 24px 48px;
   /* High-fidelity horizontal and vertical breathing room */
   overflow-y: auto;
   max-width: 1600px;

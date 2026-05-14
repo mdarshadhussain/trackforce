@@ -39,10 +39,8 @@ const Sidebar = ({ onClose }: SidebarProps) => {
 
   return (
     <aside className="sidebar">
-      <div className="logo-section">
-        <div className="logo-text">TRACK<span>FORCE</span></div>
+      <div className="logo-section mobile-only">
         <button className="mobile-close-btn" onClick={onClose}>
-
           <X size={24} />
         </button>
       </div>
@@ -59,7 +57,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
           </NavLink>
         ))}
         
-        <button onClick={logout} className="nav-item logout-btn-sidebar" style={{ background: 'none', border: 'none', width: '100%', cursor: 'pointer', padding: '12px 16px' }}>
+        <button onClick={logout} className="nav-item logout-btn-sidebar" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
           <LogOut size={20} />
           <span>{t('logout')}</span>
         </button>

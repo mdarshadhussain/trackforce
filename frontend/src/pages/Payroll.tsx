@@ -10,7 +10,8 @@ import {
   ArrowUpRight,
   Search,
   CheckCircle2,
-  RefreshCw
+  RefreshCw,
+  User
 } from 'lucide-react';
 import { fetchPayroll, processPayroll, fetchPayrollStats } from '../api/api';
 import { exportToCSV } from '../utils/export';
@@ -193,7 +194,7 @@ const Payroll = () => {
               <tr key={item.id}>
                 <td className="emp-cell">
                   <div className="tiny-avatar">
-                    {item.employee?.firstName?.charAt(0) || 'E'}
+                    <User size={12} />
                   </div>
                   <span>{item.employee?.firstName || 'Unknown'} {item.employee?.lastName || ''}</span>
                 </td>

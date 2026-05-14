@@ -148,30 +148,8 @@ const Sites = () => {
         </AnimatePresence>
       </div>
 
-      <header className="page-header-premium">
-        <div className="header-text">
-          <motion.h1
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-          >
-            Operational Sites
-          </motion.h1>
-          <p>Configure geo-fencing and manage site-specific workforce assignments.</p>
-        </div>
-        {isManager && (
-          <motion.button 
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="btn btn-primary" 
-            onClick={() => {
-              setEditingSite(null);
-              setIsModalOpen(true);
-            }}
-          >
-            <Plus size={18} /> Add New Site
-          </motion.button>
-        )}
-      </header>
+      {/* Header removed to shift content upwards as requested */}
+
 
       <div className="sites-layout">
         <div className="sites-list-section">
@@ -184,6 +162,20 @@ const Sites = () => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
+              {isManager && (
+                <motion.button 
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="btn btn-primary btn-sm" 
+                  onClick={() => {
+                    setEditingSite(null);
+                    setIsModalOpen(true);
+                  }}
+                  style={{ whiteSpace: 'nowrap', padding: '8px 16px', fontSize: '12px' }}
+                >
+                  <Plus size={16} /> Add Site
+                </motion.button>
+              )}
             </div>
           </div>
 

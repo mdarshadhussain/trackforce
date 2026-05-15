@@ -82,12 +82,16 @@
   padding: 32px 40px;
   overflow-y: auto;
   overflow-x: hidden;
+  max-width: 1600px;
   width: 100%;
 }
 
 @media (max-width: 768px) {
   .content-area {
-    padding: 20px;
+    padding: 20px 12px;
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
   }
 }
 

@@ -9,12 +9,16 @@ import {
   Settings, 
   Calendar,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  HelpCircle,
+  Sun,
+  Moon
 } from 'lucide-react';
 
 import { NavLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import './Sidebar.css';
 
 interface SidebarProps {
@@ -25,6 +29,7 @@ interface SidebarProps {
 
 const Sidebar = ({ onClose, collapsed, onToggleCollapse }: SidebarProps) => {
   const { user, isAdmin, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const { t } = useTranslation();
   const isManager = user?.role === 'MANAGER' || isAdmin;
 
@@ -63,6 +68,7 @@ const Sidebar = ({ onClose, collapsed, onToggleCollapse }: SidebarProps) => {
           {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
         </button>
       </div>
+
       <nav className="nav-menu">
         {!collapsed && <div className="nav-section-label">Main Menu</div>}
         {menuItems.map((item) => (
@@ -83,25 +89,32 @@ const Sidebar = ({ onClose, collapsed, onToggleCollapse }: SidebarProps) => {
 
       <div className="sidebar-footer">
         {!collapsed && (
-          <div className="pulse-card">
-            <div className="pulse-header">
-              <span className="pulse-label">Daily Pulse</span>
-              <div className="pulse-dot"></div>
-            </div>
-            <div className="pulse-stats">
-              <div className="pulse-stat">
-                <span className="pulse-value">24</span>
-                <span className="pulse-desc">Present</span>
+          <>
+            <div className="pulse-card">
+              <div className="pulse-header">
+                <span className="pulse-label">Daily Pulse</span>
+                <div className="pulse-dot"></div>
               </div>
-              <div className="pulse-stat">
-                <span className="pulse-value accent">2</span>
-                <span className="pulse-desc">Absent</span>
+              <div className="pulse-stats">
+                <div className="pulse-stat">
+                  <span className="pulse-value">24</span>
+                  <span className="pulse-desc">Present</span>
+                </div>
+                <div className="pulse-stat">
+                  <span className="pulse-value accent">2</span>
+                  <span className="pulse-desc">Absent</span>
+                </div>
+              </div>
+              <div className="pulse-progress-bg">
+                <div className="pulse-progress-fill" style={{ width: '92%' }}></div>
               </div>
             </div>
-            <div className="pulse-progress-bg">
-              <div className="pulse-progress-fill" style={{ width: '92%' }}></div>
-            </div>
-          </div>
+
+            <button className="btn-sidebar-primary">
+              <HelpCircle size={18} />
+              <span>Contact Support</span>
+            </button>
+          </>
         )}
         
         <button onClick={logout} className="logout-btn-sidebar">

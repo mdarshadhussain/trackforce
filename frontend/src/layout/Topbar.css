@@ -174,3 +174,36 @@
     display: none;
   }
 }
+@media (max-width: 768px) {
+  .topbar {
+    padding: 0 12px;
+  }
+  
+  .user-profile-mini { display: none; }
+  
+  .topbar-actions {
+    gap: 8px;
+  }
+
+  .icon-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .topbar {
+    padding: 0 10px;
+  }
+
+  .topbar-actions {
+    gap: 4px;
+  }
+
+  .mobile-menu-btn {
+    margin-right: 8px;
+    width: 36px;
+    height: 36px;
+  }
+}

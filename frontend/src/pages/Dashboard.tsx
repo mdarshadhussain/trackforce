@@ -1,7 +1,6 @@
 import { motion } from 'framer-motion';
 import {
   Users,
-  MapPin,
   Clock,
   TrendingUp,
   Activity,
@@ -58,6 +57,8 @@ const StatCard = ({ icon, label, value, trend, color, description, trendLabel }:
   </motion.div>
 );
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<any>(null);
@@ -75,6 +76,10 @@ const Dashboard = () => {
 
   const isManagement = user?.role === 'ADMIN' || user?.role === 'MANAGER';
   const chartData = stats?.weeklyTrend || [];
+
+  const avatarSrc = user?.avatar 
+    ? (user.avatar.startsWith('http') ? user.avatar : `${API_URL}${user.avatar}`) 
+    : `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.firstName || 'User'}`;
 
   const formatTime = (timeStr: string) => {
     try {
@@ -116,7 +121,23 @@ const Dashboard = () => {
     <div className="dashboard-watt">
       <header className="dashboard-header">
         <div className="header-titles">
-          <h1 className="page-title">System Overview</h1>
+          <div className="identity-section-watt">
+            <motion.div 
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="user-avatar-watt"
+            >
+              <img src={avatarSrc} alt="" />
+              <div className="status-ring-watt"></div>
+            </motion.div>
+            <div className="welcome-group-watt">
+              <h1 className="page-title">{t('welcomeBack')}, {user?.firstName}</h1>
+              <div className="role-chip-watt">
+                <Activity size={12} />
+                <span>{user?.role} STATUS: OPTIMIZED</span>
+              </div>
+            </div>
+          </div>
           <p className="page-subtitle">Real-time intelligence from your workforce grid.</p>
         </div>
         <div className="header-actions">
@@ -169,9 +190,9 @@ const Dashboard = () => {
       <div className="main-charts-grid">
         <div className="watt-card chart-main">
           <div className="card-header-watt">
-            <h3 className="card-title">Workforce Activity Over Time</h3>
+            <h3 className="card-title">{isManagement ? "Workforce Activity Over Time" : "Personal Performance Trend"}</h3>
             <div className="chart-legend-watt">
-              <span className="legend-item"><span className="dot active"></span> Active Load</span>
+              <span className="legend-item"><span className="dot active"></span> {isManagement ? "Active Load" : "Efficiency"}</span>
               <span className="legend-item"><span className="dot baseline"></span> Baseload</span>
             </div>
           </div>
@@ -181,8 +202,8 @@ const Dashboard = () => {
                 <AreaChart data={chartData}>
                   <defs>
                     <linearGradient id="wattBlue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.1} />
-                      <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
+                      <stop offset="5%" stopColor={isManagement ? "#3B82F6" : "#10B981"} stopOpacity={0.1} />
+                      <stop offset="95%" stopColor={isManagement ? "#3B82F6" : "#10B981"} stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
@@ -209,7 +230,7 @@ const Dashboard = () => {
                   <Area 
                     type="monotone" 
                     dataKey="attendance" 
-                    stroke="#3B82F6" 
+                    stroke={isManagement ? "#3B82F6" : "#10B981"} 
                     strokeWidth={3}
                     fillOpacity={1} 
                     fill="url(#wattBlue)" 
@@ -224,26 +245,47 @@ const Dashboard = () => {
 
         <div className="watt-card asset-distribution">
           <div className="card-header-watt">
-            <h3 className="card-title">Activity by Site</h3>
+            <h3 className="card-title">{isManagement ? "Activity by Site" : "Recent Activity Feed"}</h3>
           </div>
           <div className="asset-list">
-            {(stats?.sitePerformance || []).length > 0 ? (stats?.sitePerformance || []).map((site: any, idx: number) => (
-              <div key={idx} className="asset-item">
-                <div className="asset-info">
-                  <span className="asset-name">{site.name}</span>
-                  <span className="asset-value">{site.count} ACTIVE</span>
+            {isManagement ? (
+              (stats?.sitePerformance || []).length > 0 ? (stats?.sitePerformance || []).map((site: any, idx: number) => (
+                <div key={idx} className="asset-item">
+                  <div className="asset-info">
+                    <span className="asset-name">{site.name}</span>
+                    <span className="asset-value">{site.count} ACTIVE</span>
+                  </div>
+                  <div className="asset-progress-bg">
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${Math.min(site.count * 10, 100)}%` }}
+                      className="asset-progress-fill"
+                      transition={{ duration: 1, ease: "easeOut" }}
+                    />
+                  </div>
                 </div>
-                <div className="asset-progress-bg">
-                  <motion.div 
-                    initial={{ width: 0 }}
-                    animate={{ width: `${Math.min(site.count * 10, 100)}%` }}
-                    className="asset-progress-fill"
-                    transition={{ duration: 1, ease: "easeOut" }}
-                  />
-                </div>
+              )) : (
+                <div className="empty-asset-state">No active site sessions detected.</div>
+              )
+            ) : (
+              <div className="notifications-list-watt">
+                {(stats?.recentLogs || []).length > 0 ? (
+                  stats.recentLogs.slice(0, 5).map((log: any, idx: number) => (
+                    <div key={idx} className="notification-item-watt">
+                      <div className={`n-icon-watt ${log.type === 'ALERT' ? 'alert' : 'approved'}`}>
+                        {log.type === 'ALERT' ? <Clock size={14} /> : <CheckCircle2 size={14} />}
+                      </div>
+                      <div className="n-text-watt">
+                        <strong>{log.title}</strong>
+                        <p>{log.message}</p>
+                        <span>{formatTime(log.time)}</span>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="empty-state-watt">No recent activity detected</div>
+                )}
               </div>
-            )) : (
-              <div className="empty-asset-state">No active site sessions detected.</div>
             )}
           </div>
         </div>
@@ -281,7 +323,7 @@ const Dashboard = () => {
                     </span>
                   </td>
                   <td>
-                    <button className="table-action-btn">View Details</button>
+                    <button className="table-action-btn" onClick={() => navigate(`/employees/${log.entityId || ''}`)}>View Details</button>
                   </td>
                 </tr>
               ))}

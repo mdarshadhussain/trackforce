@@ -35,16 +35,16 @@ async function main() {
 
   // 3. Create Employees
   const employeesData = [
-    { employeeId: 'TF001', firstName: 'Admin', lastName: 'User', email: 'admin@trackforce.com', role: 'ADMIN', designation: 'General Manager', siteId: sites[0].id, rate: 150000 },
-    { employeeId: 'TF002', firstName: 'Sarah', lastName: 'Jenkins', email: 'sarah.j@trackforce.com', role: 'MANAGER', designation: 'Site Manager', siteId: sites[1].id, rate: 85000 },
-    { employeeId: 'TF003', firstName: 'Michael', lastName: 'Chen', email: 'm.chen@trackforce.com', role: 'EMPLOYEE', designation: 'Field Supervisor', siteId: sites[1].id, rate: 55000 },
-    { employeeId: 'TF004', firstName: 'Aarav', lastName: 'Sharma', email: 'aarav.s@trackforce.com', role: 'EMPLOYEE', designation: 'Logistics Lead', siteId: sites[2].id, rate: 45000 },
-    { employeeId: 'TF005', firstName: 'Elena', lastName: 'Rodriguez', email: 'elena.r@trackforce.com', role: 'EMPLOYEE', designation: 'Quality Analyst', siteId: sites[3].id, rate: 48000 },
-    { employeeId: 'TF006', firstName: 'David', lastName: 'Smith', email: 'd.smith@trackforce.com', role: 'EMPLOYEE', designation: 'Safety Officer', siteId: sites[4].id, rate: 52000 },
-    { employeeId: 'TF007', firstName: 'Priya', lastName: 'Verma', email: 'p.verma@trackforce.com', role: 'MANAGER', designation: 'Research Head', siteId: sites[4].id, rate: 95000 },
-    { employeeId: 'TF008', firstName: 'Liam', lastName: 'Nguyen', email: 'l.nguyen@trackforce.com', role: 'EMPLOYEE', designation: 'Technician', siteId: sites[0].id, rate: 40000 },
-    { employeeId: 'TF009', firstName: 'Fatima', lastName: 'Zahra', email: 'f.zahra@trackforce.com', role: 'EMPLOYEE', designation: 'Assembler', siteId: sites[3].id, rate: 35000 },
-    { employeeId: 'TF010', firstName: 'Oscar', lastName: 'Isaac', email: 'o.isaac@trackforce.com', role: 'EMPLOYEE', designation: 'Warehouse Staff', siteId: sites[2].id, rate: 38000 },
+    { employeeId: 'TF001', firstName: 'Admin', lastName: 'User', email: 'admin@trackforce.com', role: 'ADMIN', designation: 'General Manager', siteId: sites[0].id, rate: 150000, phone: '+91 98765 43210' },
+    { employeeId: 'TF002', firstName: 'Sarah', lastName: 'Jenkins', email: 'sarah.j@trackforce.com', role: 'MANAGER', designation: 'Site Manager', siteId: sites[1].id, rate: 85000, phone: '+91 87654 32109' },
+    { employeeId: 'TF003', firstName: 'Michael', lastName: 'Chen', email: 'm.chen@trackforce.com', role: 'EMPLOYEE', designation: 'Field Supervisor', siteId: sites[1].id, rate: 55000, phone: '+91 76543 21098' },
+    { employeeId: 'TF004', firstName: 'Aarav', lastName: 'Sharma', email: 'aarav.s@trackforce.com', role: 'EMPLOYEE', designation: 'Logistics Lead', siteId: sites[2].id, rate: 45000, phone: '+91 65432 10987' },
+    { employeeId: 'TF005', firstName: 'Elena', lastName: 'Rodriguez', email: 'elena.r@trackforce.com', role: 'EMPLOYEE', designation: 'Quality Analyst', siteId: sites[3].id, rate: 48000, phone: '+91 54321 09876' },
+    { employeeId: 'TF006', firstName: 'David', lastName: 'Smith', email: 'd.smith@trackforce.com', role: 'EMPLOYEE', designation: 'Safety Officer', siteId: sites[4].id, rate: 52000, phone: '+91 43210 98765' },
+    { employeeId: 'TF007', firstName: 'Priya', lastName: 'Verma', email: 'p.verma@trackforce.com', role: 'MANAGER', designation: 'Research Head', siteId: sites[4].id, rate: 95000, phone: '+91 32109 87654' },
+    { employeeId: 'TF008', firstName: Liam', lastName: 'Nguyen', email: 'l.nguyen@trackforce.com', role: 'EMPLOYEE', designation: 'Technician', siteId: sites[0].id, rate: 40000, phone: '+91 21098 76543' },
+    { employeeId: 'TF009', firstName: 'Fatima', lastName: 'Zahra', email: 'f.zahra@trackforce.com', role: 'EMPLOYEE', designation: 'Assembler', siteId: sites[3].id, rate: 35000, phone: '+91 10987 65432' },
+    { employeeId: 'TF010', firstName: 'Oscar', lastName: 'Isaac', email: 'o.isaac@trackforce.com', role: 'EMPLOYEE', designation: 'Warehouse Staff', siteId: sites[2].id, rate: 38000, phone: '+91 99887 76655' },
   ];
 
   const employees: any[] = [];

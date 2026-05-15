@@ -1,47 +1,56 @@
 .sites-page {
+  height: calc(100vh - 80px);
+  margin: -32px -40px; /* Offset content-area padding */
   display: flex;
   flex-direction: column;
-  gap: 12px;
-}
-
-.page-header-premium {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.header-text h1 {
-  font-size: 32px;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  margin-bottom: 8px;
-}
-
-.header-text p {
-  color: var(--text-dim);
-}
-
-.loading-state-site {
-  grid-column: 1 / -1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 80px;
-  color: var(--text-secondary);
-  gap: 16px;
-}
-
-.loading-state-site p {
-  font-weight: 600;
-  letter-spacing: 0.05em;
+  overflow: hidden;
+  background: var(--bg);
+  padding-bottom: 32px;
 }
 
 .sites-layout {
+  flex: 1;
   display: grid;
-  grid-template-columns: 1fr 400px;
-  gap: 32px;
-  align-items: flex-start;
+  grid-template-columns: 1fr 480px;
+  overflow: hidden;
+  height: 100%;
+  padding-right: 32px; /* Space from right edge */
+  gap: 20px;
+}
+
+.sites-list-section {
+  padding: 32px 40px;
+  overflow-y: auto;
+  height: 100%;
+  scrollbar-gutter: stable; /* Keeps scrollbar in place */
+}
+
+/* Custom Scrollbar for the list section */
+.sites-list-section::-webkit-scrollbar {
+  width: 10px;
+}
+
+.sites-list-section::-webkit-scrollbar-track {
+  background: var(--bg);
+  border-left: 1px solid var(--border);
+}
+
+.sites-list-section::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 5px;
+  border: 2px solid var(--bg);
+}
+
+.sites-list-section::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+
+.map-preview-section {
+  height: 100%;
+  background: transparent;
+  z-index: 10;
+  padding-top: 32px;
+  padding-bottom: 32px;
 }
 
 .search-filter-card {
@@ -65,8 +74,14 @@
 
 .sites-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 24px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 20px;
+}
+
+@media (min-width: 1400px) {
+  .sites-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
 }
 
 .sites-container {
@@ -77,10 +92,36 @@
 }
 
 .site-card {
-  padding: 24px;
+  padding: 18px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
+  height: 300px; /* Fixed height for perfect alignment */
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.site-card.managed-site {
+  border: 2px solid var(--primary);
+  background: linear-gradient(145deg, var(--surface), rgba(59, 130, 246, 0.08));
+  box-shadow: 0 10px 40px rgba(59, 130, 246, 0.12);
+  transform: translateY(-4px);
+}
+
+.managed-site .site-icon-wrapper {
+  background: var(--primary);
+  color: white;
+}
+
+.managed-site h3 {
+  color: var(--primary);
+}
+
+.managed-site .site-status {
+  color: var(--primary);
+  font-weight: 900;
 }
 
 .site-card-header {
@@ -91,14 +132,14 @@
 
 .site-actions-premium {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   margin-left: auto;
-  margin-right: 8px;
+  margin-right: 4px;
 }
 
 .icon-btn-small {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   border-radius: 8px;
   border: 1px solid transparent;
   display: flex;
@@ -131,10 +172,10 @@
 }
 
 .site-icon-wrapper {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   background: rgba(245, 158, 11, 0.1);
-  border-radius: 12px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -142,7 +183,7 @@
 }
 
 .site-status {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 800;
   text-transform: uppercase;
   display: flex;
@@ -158,11 +199,12 @@
 }
 
 .status-dot.active { background: #10b981; box-shadow: 0 0 10px #10b981; }
+.status-dot.primary { background: var(--primary); box-shadow: 0 0 10px var(--primary); }
 .status-dot.maintenance { background: #f59e0b; }
 
 .site-card-body h3 {
-  margin: 0 0 8px;
-  font-size: 18px;
+  margin: 0 0 4px;
+  font-size: 16px;
   font-weight: 700;
 }
 
@@ -189,8 +231,24 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-top: 20px;
+  padding-top: 16px;
   border-top: 1px solid var(--border);
+  margin-top: auto; /* Pins to bottom */
+}
+
+.coord-badge {
+  font-size: 10px;
+  color: var(--text-dim);
+  opacity: 0.7;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.coord-badge.warning {
+  color: #f59e0b;
+  opacity: 1;
 }
 
 .btn-text {
@@ -220,6 +278,11 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  height: 100%;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
 }
 
 .map-header {
@@ -227,6 +290,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
 }
 
 .map-legend {
@@ -246,17 +311,24 @@
 .legend-item.fence::before { content: ''; width: 6px; height: 6px; border-radius: 50%; border: 1px dashed var(--primary); }
 
 .map-visual-real {
-  height: 400px;
+  flex: 1;
   background: var(--surface-hover);
   position: relative;
   overflow: hidden;
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
   z-index: 1;
 }
 
+.leaflet-tile {
+  filter: none;
+  transition: filter 0.3s ease;
+}
+
+[data-theme='dark'] .leaflet-tile {
+  filter: invert(100%) hue-rotate(180deg) saturate(2.5) brightness(0.9) contrast(1.1) !important;
+}
+
 .leaflet-container {
-  background: var(--bg) !important;
+  background: #111 !important; /* Solid dark background for the map area */
 }
 
 .leaflet-tile-pane {
@@ -273,7 +345,7 @@
 }
 
 .leaflet-container {
-  background: #f8f9fa !important;
+  background: var(--bg) !important;
 }
 
 /* Remove Leaflet attribution for cleaner UI */
@@ -289,6 +361,8 @@
   gap: 12px;
   font-size: 12px;
   color: var(--text-dim);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
 }
 
 @media (max-width: 1200px) {

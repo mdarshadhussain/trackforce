@@ -11,6 +11,10 @@
   align-items: flex-start;
 }
 
+.attendance-layout.no-sidebar {
+  grid-template-columns: 1fr;
+}
+
 /* Sidebar Styling */
 .profile-sidebar {
   padding: 32px 24px;
@@ -177,6 +181,36 @@
   gap: 12px;
   font-size: 14px;
   color: var(--text-dim);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.date-picker-button:hover {
+  border-color: var(--primary);
+  background: var(--surface-hover);
+}
+
+.daily-filter {
+  position: relative;
+}
+
+.silent-date-input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.silent-date-input::-webkit-calendar-picker-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   cursor: pointer;
 }
 
@@ -454,7 +488,7 @@
   grid-template-columns: 400px 1fr;
   gap: 40px;
   padding: 40px;
-  max-width: 1400px;
+  max-width: 1600px;
   margin: 0 auto;
 }
 
@@ -1921,5 +1955,203 @@
 [data-theme='dark'] .timeline-row {
   background: var(--surface);
   border-color: var(--border);
+}
+
+/* Status Badges */
+.badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.badge-pending { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
+.badge-approved, .badge-present { background: rgba(16, 185, 129, 0.1); color: #10b981; }
+.badge-rejected, .badge-absent { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
+.badge-paid { background: rgba(8, 145, 178, 0.1); color: #0891b2; }
+
+/* Monthly Grid Styling - Premium Legibility */
+.daily-grid-container {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgba(255, 215, 0, 0.1);
+}
+
+.grid-scroll-wrapper {
+  overflow-x: auto;
+  border-radius: 20px;
+}
+
+.daily-attendance-grid {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.daily-attendance-grid th, 
+.daily-attendance-grid td {
+  padding: 10px 4px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  text-align: center;
+}
+
+.daily-attendance-grid th {
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--primary);
+  text-transform: uppercase;
+  border-bottom: 2px solid var(--primary);
+}
+
+.daily-attendance-grid .sticky-col {
+  position: sticky;
+  left: 0;
+  background: #0d0d0d;
+  z-index: 10;
+  text-align: left;
+  width: 180px;
+  min-width: 180px;
+  padding: 10px 15px;
+  border-right: 2px solid var(--primary);
+  box-shadow: 5px 0 15px rgba(0,0,0,0.5);
+}
+
+.daily-attendance-grid tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.daily-attendance-grid tbody tr:hover {
+  background: rgba(255, 215, 0, 0.05);
+}
+
+.emp-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  color: var(--text-main);
+  font-size: 13px;
+}
+
+.day-col {
+  width: 35px;
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin: 0 auto;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.status-dot.empty {
+  width: 4px;
+  height: 4px;
+  background: rgba(255,255,255,0.1);
+}
+
+.day-cell.approved .status-dot { 
+  background: #10b981; 
+  box-shadow: 0 0 10px #10b981;
+  border-color: #34d399;
+}
+.day-cell.pending .status-dot { 
+  background: var(--primary); 
+  box-shadow: 0 0 10px var(--primary);
+  border-color: var(--primary);
+}
+.day-cell.rejected .status-dot { 
+  background: #ef4444; 
+  box-shadow: 0 0 10px #ef4444;
+  border-color: #f87171;
+}
+
+.grid-legend {
+  padding: 15px 25px;
+  display: flex;
+  gap: 25px;
+  background: rgba(0, 0, 0, 0.3);
+  border-top: 1px solid rgba(255, 215, 0, 0.1);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+/* Custom Day Picker Styling */
+.custom-day-picker {
+  width: 350px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  z-index: 1000;
+}
+
+.weekday-labels {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.weekday {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+
+.days-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.day-cell {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: var(--surface-hover);
+  border: 1px solid transparent;
+  color: var(--text-main);
+}
+
+.day-cell.muted {
+  color: var(--text-tertiary);
+  opacity: 0.3;
+  cursor: default;
+}
+
+.day-cell:not(.muted):hover {
+  background: var(--surface-bright);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.day-cell.selected {
+  background: var(--primary);
+  color: #000;
+  border-color: var(--primary);
+  box-shadow: 0 0 15px var(--primary-glow);
 }
 

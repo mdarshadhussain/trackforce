@@ -43,10 +43,37 @@
   transition: all 0.2s;
 }
 
-.collapse-toggle-btn:hover {
+.mobile-close-btn {
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.collapse-toggle-btn:hover, .mobile-close-btn:hover {
   background: var(--primary);
   color: white;
   border-color: var(--primary);
+}
+
+.mobile-close-btn {
+  margin-left: 12px;
+}
+
+@media (max-width: 1024px) {
+  .collapse-toggle-btn.desktop-only {
+    display: none;
+  }
+  
+  .sidebar-header {
+    padding: 16px 20px;
+  }
 }
 
 .sidebar.is-collapsed .logo-section {
@@ -54,6 +81,7 @@
 }
 
 .logo-icon-box {
+  flex-shrink: 0;
   width: 40px;
   height: 40px;
   background: var(--primary);
@@ -67,6 +95,8 @@
 .logo-text-group {
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .logo-main {
@@ -75,6 +105,9 @@
   color: var(--text-primary);
   letter-spacing: -0.5px;
   line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .logo-sub {
@@ -83,6 +116,9 @@
   color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .nav-menu {
@@ -253,6 +289,7 @@
   cursor: pointer;
   transition: all 0.2s;
   margin-bottom: 8px;
+  text-decoration: none;
 }
 
 .btn-sidebar-primary:hover {

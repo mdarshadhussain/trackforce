@@ -33,6 +33,7 @@ async function main() {
       role: 'ADMIN',
       designation: 'Project Lead',
       siteId: mainSite.id,
+      phone: '+91 98765 43210',
     },
     {
       employeeId: 'TF002',
@@ -43,6 +44,7 @@ async function main() {
       role: 'EMPLOYEE',
       designation: 'Field Agent',
       siteId: mainSite.id,
+      phone: '+91 87654 32109',
     },
     {
       employeeId: 'TF003',
@@ -53,17 +55,21 @@ async function main() {
       role: 'MANAGER',
       designation: 'Operations Manager',
       siteId: mainSite.id,
+      phone: '+91 76543 21098',
     },
   ];
 
 
   for (const emp of employees) {
     const user = await prisma.employee.upsert({
-      where: { email: emp.email },
-      update: { password: hashedPassword },
+      where: { employeeId: emp.employeeId },
+      update: { 
+        password: hashedPassword,
+        phone: emp.phone
+      },
       create: emp,
     });
-    console.log(`Created employee: ${user.firstName} ${user.lastName}`);
+    console.log(`Created/Updated employee: ${user.firstName} ${user.lastName}`);
   }
 
   console.log('Seed finished successfully!');

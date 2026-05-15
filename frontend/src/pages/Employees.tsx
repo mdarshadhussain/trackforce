@@ -7,6 +7,7 @@ import {
   Edit3,
   XCircle,
   Eye,
+  Phone,
 } from 'lucide-react';
 
 import './Employees.css';
@@ -24,7 +25,7 @@ import PremiumSelect from '../components/PremiumSelect';
 
 
 const Employees = () => {
-  const { isAdmin } = useAuth();
+  const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
   
   const [employees, setEmployees] = useState<any[]>([]);
@@ -146,30 +147,32 @@ const Employees = () => {
           />
         </div>
         
-        <div className="filter-site-premium">
-          <PremiumSelect 
-            placeholder="Filter Role"
-            value={roleFilter}
-            onChange={(val: string) => setRoleFilter(val)}
-            options={[
-              { label: 'All Roles', value: 'ALL' },
-              { label: 'Admin', value: 'ADMIN' },
-              { label: 'Manager', value: 'MANAGER' },
-              { label: 'Employee', value: 'EMPLOYEE' }
-            ]}
-            className="filter-dropdown"
-          />
-          <PremiumSelect 
-            placeholder="Filter Site"
-            value={siteFilter}
-            onChange={(val: string) => setSiteFilter(val)}
-            options={[
-              { label: 'All Sites', value: 'ALL' },
-              ...sites.map(site => ({ label: site.name, value: site.id }))
-            ]}
-            className="filter-dropdown"
-          />
-        </div>
+        {isAdmin && (
+          <div className="filter-site-premium">
+            <PremiumSelect 
+              placeholder="Filter Role"
+              value={roleFilter}
+              onChange={(val: string) => setRoleFilter(val)}
+              options={[
+                { label: 'All Roles', value: 'ALL' },
+                { label: 'Admin', value: 'ADMIN' },
+                { label: 'Manager', value: 'MANAGER' },
+                { label: 'Employee', value: 'EMPLOYEE' }
+              ]}
+              className="filter-dropdown"
+            />
+            <PremiumSelect 
+              placeholder="Filter Site"
+              value={siteFilter}
+              onChange={(val: string) => setSiteFilter(val)}
+              options={[
+                { label: 'All Sites', value: 'ALL' },
+                ...sites.map(site => ({ label: site.name, value: site.id }))
+              ]}
+              className="filter-dropdown"
+            />
+          </div>
+        )}
       </div>
 
       <div className="glass-card table-container-premium">
@@ -205,21 +208,28 @@ const Employees = () => {
                 </td>
                 <td data-label="Site">{emp.site?.name || 'Unassigned'}</td>
                 <td data-label="Actions">
-                  <div className="action-row">
-                    <button className="action-icon-btn" onClick={() => navigate(`/employees/${emp.id}`)} title="View Node Details">
-                      <Eye size={18} />
-                    </button>
-                    {isAdmin && (
-                      <button className="action-icon-btn" onClick={() => navigate(`/employees/edit/${emp.id}`)} title="Edit Configuration">
-                        <Edit3 size={18} />
-                      </button>
-                    )}
-                    {isAdmin && (
-                      <button className="action-icon-btn danger" onClick={() => handleDeleteEmployee(emp.id)} title="Decommission Node">
-                        <XCircle size={18} />
-                      </button>
-                    )}
-                  </div>
+                    <div className="action-row">
+                      {isAdmin && (
+                        <button className="action-icon-btn" onClick={() => navigate(`/employees/${emp.id}`)} title="View Node Details">
+                          <Eye size={18} />
+                        </button>
+                      )}
+                      {(isAdmin || user?.role === 'MANAGER') && emp.phone && (
+                        <a href={`tel:${emp.phone}`} className="action-icon-btn call-btn" title="Initiate Secure Voice Link">
+                          <Phone size={18} />
+                        </a>
+                      )}
+                      {isAdmin && (
+                        <button className="action-icon-btn" onClick={() => navigate(`/employees/edit/${emp.id}`)} title="Edit Configuration">
+                          <Edit3 size={18} />
+                        </button>
+                      )}
+                      {isAdmin && (
+                        <button className="action-icon-btn danger" onClick={() => handleDeleteEmployee(emp.id)} title="Decommission Node">
+                          <XCircle size={18} />
+                        </button>
+                      )}
+                    </div>
                 </td>
               </tr>
             ))}

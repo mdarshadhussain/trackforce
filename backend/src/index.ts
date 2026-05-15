@@ -329,20 +329,17 @@ app.get('/api/employees', authenticateToken, async (req: any, res) => {
       currentSiteId = me?.siteId;
     }
 
-    // Managers only see employees in their site. Employees only see themselves.
+    // Logic: Admins see everyone. Managers see their site. Employees see themselves.
     let where: any = {};
-    if (isManager) {
-      // Managers must have a siteId to see anyone, and they can NEVER see Admins
+    if (isAdmin) {
+      where = {}; // Total visibility
+    } else if (isManager) {
       where = { 
         siteId: currentSiteId,
         role: { not: 'ADMIN' }
       };
-      
-      // If siteId is still null/undefined, ensure they don't see "Unassigned" employees by mistake
-      if (!currentSiteId) {
-        where.id = req.user.id; // Only see themselves
-      }
-    } else if (!isAdmin) {
+      if (!currentSiteId) where.id = req.user.id;
+    } else {
       where = { id: req.user.id };
     }
 
@@ -595,7 +592,12 @@ app.get('/api/attendance', authenticateToken, async (req: any, res) => {
     }
     
     const logs = await prisma.attendance.findMany({
-      where,
+      where: {
+        ...where,
+        employee: {
+          role: { not: 'ADMIN' }
+        }
+      },
       include: { employee: true, breaks: true },
       orderBy: { date: 'desc' }
     });

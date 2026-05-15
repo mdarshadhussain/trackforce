@@ -323,7 +323,9 @@ const Dashboard = () => {
                     </span>
                   </td>
                   <td>
-                    <button className="table-action-btn" onClick={() => navigate(`/employees/${log.entityId || ''}`)}>View Details</button>
+                    {user?.role === 'ADMIN' && (
+                      <button className="table-action-btn" onClick={() => navigate(`/employees/${log.entityId || ''}`)}>View Details</button>
+                    )}
                   </td>
                 </tr>
               ))}

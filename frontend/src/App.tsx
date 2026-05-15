@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard';
 import Employees from './pages/Employees';
 import AddEmployee from './pages/AddEmployee';
 import Attendance from './pages/Attendance';
+import AttendanceGrid from './pages/AttendanceGrid';
 import Tracking from './pages/Tracking';
 import Payroll from './pages/Payroll';
 import Sites from './pages/Sites';
@@ -83,8 +84,9 @@ function App() {
             <Route path="/employees/complete/:id" element={<ProtectedRoute><PlatformLayout><CompleteProfile /></PlatformLayout></ProtectedRoute>} />
             <Route path="/employees/:id" element={<ProtectedRoute><PlatformLayout><EmployeeDetails /></PlatformLayout></ProtectedRoute>} />
             <Route path="/attendance" element={<ProtectedRoute><PlatformLayout><Attendance /></PlatformLayout></ProtectedRoute>} />
+            <Route path="/attendance/grid" element={<ProtectedRoute><PlatformLayout><AttendanceGrid /></PlatformLayout></ProtectedRoute>} />
             <Route path="/tracking" element={<ProtectedRoute><PlatformLayout><Tracking /></PlatformLayout></ProtectedRoute>} />
-            <Route path="/payroll" element={<ProtectedRoute><PlatformLayout><Payroll /></PlatformLayout></ProtectedRoute>} />
+            <Route path="/payroll" element={<ProtectedRoute adminOnly><PlatformLayout><Payroll /></PlatformLayout></ProtectedRoute>} />
             <Route path="/sites" element={<ProtectedRoute><PlatformLayout><Sites /></PlatformLayout></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><PlatformLayout><Settings /></PlatformLayout></ProtectedRoute>} />
 

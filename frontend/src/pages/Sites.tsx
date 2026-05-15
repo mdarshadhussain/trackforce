@@ -20,6 +20,7 @@ import 'leaflet/dist/leaflet.css';
 
 import { fetchSites, createSite, deleteSite, updateSite } from '../api/api';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import AddSiteModal from '../components/AddSiteModal';
 import Toast from '../components/Toast';
 import type { ToastType } from '../components/Toast';
@@ -47,15 +48,16 @@ const siteIcon = new L.Icon({
 });
 
 // Helper component to recenter map
-const ChangeView = ({ center }: { center: [number, number] }) => {
+const ChangeView = ({ center, zoom }: { center: [number, number], zoom: number }) => {
   const map = useMap();
-  map.setView(center);
+  map.setView(center, zoom);
   return null;
 };
 
 
 const Sites = () => {
   const { user } = useAuth();
+  const { theme } = useTheme();
   const isAdmin = user?.role === 'ADMIN';
   const isManager = user?.role === 'MANAGER' || isAdmin;
 
@@ -68,7 +70,7 @@ const Sites = () => {
   const [editingSite, setEditingSite] = useState<any>(null);
   const [toasts, setToasts] = useState<any[]>([]);
   const [mapCenter, setMapCenter] = useState<[number, number]>([20.5937, 78.9629]);
-
+  const [mapZoom, setMapZoom] = useState(13);
 
   const addToast = (message: string, type: ToastType = 'info') => {
     const id = Math.random().toString(36).substr(2, 9);
@@ -90,6 +92,14 @@ const Sites = () => {
       if (!isManager) {
         filteredSites = data.filter((s: any) => s.id === user?.siteId);
       }
+
+      // Sort: Managed site first
+      filteredSites.sort((a: any, b: any) => {
+        if (a.id === user?.siteId) return -1;
+        if (b.id === user?.siteId) return 1;
+        return 0;
+      });
+
       setSites(filteredSites);
       
       if (filteredSites.length > 0) {
@@ -191,15 +201,15 @@ const Sites = () => {
                   key={site.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="glass-card site-card"
+                  className={`glass-card site-card ${user?.siteId === site.id ? 'managed-site' : ''}`}
                 >
                   <div className="site-card-header">
                     <div className="site-icon-wrapper">
                       <MapPin size={20} />
                     </div>
                     <div className="site-status">
-                      <span className="status-dot active"></span>
-                      ACTIVE
+                      <span className={`status-dot ${user?.siteId === site.id ? 'primary' : 'active'}`}></span>
+                      {user?.siteId === site.id ? 'PRIMARY SITE' : 'ACTIVE'}
                     </div>
                     {isAdmin && (
                       <div className="site-actions-premium">
@@ -252,7 +262,10 @@ const Sites = () => {
 
                   <div className="site-card-footer">
                     {isManager && (
-                      <button className="btn-text" onClick={() => setMapCenter([site.latitude, site.longitude])}>
+                      <button className="btn-text" onClick={() => {
+                        setMapCenter([site.latitude, site.longitude]);
+                        setMapZoom(16);
+                      }}>
                         <Navigation size={14} /> Center on Map
                       </button>
                     )}
@@ -274,11 +287,11 @@ const Sites = () => {
               </div>
             </div>
             <div className="map-visual-real">
-              <MapContainer center={mapCenter} zoom={13} style={{ height: '100%', width: '100%' }}>
-                <ChangeView center={mapCenter} />
+              <MapContainer center={mapCenter} zoom={mapZoom} style={{ height: '100%', width: '100%' }}>
+                <ChangeView center={mapCenter} zoom={mapZoom} />
                 <TileLayer
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  attribution='&copy; OpenStreetMap'
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 />
                 {sites.map(site => (
                   site.latitude && (

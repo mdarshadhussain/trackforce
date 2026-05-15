@@ -1,6 +1,5 @@
 import { 
   LogOut, 
-  X, 
   LayoutDashboard, 
   Users, 
   MapPin, 
@@ -38,7 +37,7 @@ const Sidebar = ({ onClose, collapsed, onToggleCollapse }: SidebarProps) => {
     ...(isManager ? [{ icon: <Users size={20} />, label: t('employees'), path: '/employees' }] : []),
     { icon: <Calendar size={20} />, label: t('attendance'), path: '/attendance' },
     ...(isAdmin ? [{ icon: <MapPin size={20} />, label: t('tracking'), path: '/tracking' }] : []),
-    { icon: <Wallet size={20} />, label: t('payroll'), path: '/payroll' },
+    ...(isAdmin ? [{ icon: <Wallet size={20} />, label: t('payroll'), path: '/payroll' }] : []),
     { icon: <Building2 size={20} />, label: t('sites'), path: '/sites' },
     { icon: <Settings size={20} />, label: t('settings'), path: '/settings' },
   ];
@@ -57,12 +56,6 @@ const Sidebar = ({ onClose, collapsed, onToggleCollapse }: SidebarProps) => {
             </div>
           )}
         </div>
-        
-        {!collapsed && (
-          <button className="mobile-close-btn mobile-only" onClick={onClose}>
-            <X size={24} />
-          </button>
-        )}
 
         <button className="collapse-toggle-btn desktop-only" onClick={onToggleCollapse}>
           {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
@@ -110,10 +103,15 @@ const Sidebar = ({ onClose, collapsed, onToggleCollapse }: SidebarProps) => {
               </div>
             </div>
 
-            <button className="btn-sidebar-primary">
+            <a 
+              href="https://zalo.me/0911907082" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="btn-sidebar-primary"
+            >
               <HelpCircle size={18} />
               <span>Contact Support</span>
-            </button>
+            </a>
           </>
         )}
         

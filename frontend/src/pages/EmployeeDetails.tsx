@@ -33,6 +33,7 @@ import { motion } from 'framer-motion';
 
 import { fetchEmployeeFullProfile } from '../api/api';
 import DocumentModal from '../components/DocumentModal';
+import { useAuth } from '../context/AuthContext';
 import './EmployeeDetails.css';
 
 
@@ -41,6 +42,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const EmployeeDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user, isAdmin } = useAuth();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
@@ -53,6 +55,11 @@ const EmployeeDetails = () => {
 
 
   useEffect(() => {
+    if (!isAdmin) {
+      navigate('/dashboard');
+      return;
+    }
+
     const loadProfile = async () => {
       try {
         const fullProfile = await fetchEmployeeFullProfile(id!);
@@ -64,7 +71,7 @@ const EmployeeDetails = () => {
       }
     };
     loadProfile();
-  }, [id]);
+  }, [id, isAdmin, user, navigate]);
 
   if (loading) {
     return (

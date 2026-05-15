@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 
 
 import * as faceapi from 'face-api.js';
@@ -16,7 +17,12 @@ import {
   Shield,
   Trash2,
   UserPlus,
-  User
+  User,
+  CheckCircle,
+  XCircle,
+  LayoutGrid,
+  Search,
+  ChevronRight,
 } from 'lucide-react';
 
 
@@ -45,6 +51,7 @@ const base64ToBlob = (base64: string) => {
 };
 
 const Attendance = () => {
+  const navigate = useNavigate();
   const { user, updateUser } = useAuth();
   const { t } = useTranslation();
   const isAdmin = user?.role === 'ADMIN';
@@ -63,7 +70,7 @@ const Attendance = () => {
 
   const [logs, setLogs] = useState<any[]>([]);
   const [allLogs, setAllLogs] = useState<any[]>([]);
-  const [activeView, setActiveView] = useState<'timecard' | 'timeline'>('timecard');
+  const [activeView, setActiveView] = useState<'timecard' | 'timeline' | 'grid'>('timecard');
 
   const [isOnBreak, setIsOnBreak] = useState(false);
   const [toasts, setToasts] = useState<any[]>([]);
@@ -75,7 +82,9 @@ const Attendance = () => {
   const [sites, setSites] = useState<any[]>([]);
   const [showManualLog, setShowManualLog] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]); // YYYY-MM-DD
   const [showCalendar, setShowCalendar] = useState(false);
+  const [showDayPicker, setShowDayPicker] = useState(false);
   const [showInTimePicker, setShowInTimePicker] = useState(false);
   const [showOutTimePicker, setShowOutTimePicker] = useState(false);
   const [manualData, setManualData] = useState({
@@ -212,7 +221,7 @@ const Attendance = () => {
     }
   }, [logs, isClockedIn]);
 
-  const handleStatusUpdate = async (id: string, status: 'APPROVED' | 'REJECTED') => {
+  const handleStatusUpdate = async (id: string, status: 'APPROVED' | 'REJECTED' | 'PRESENT' | 'ABSENT') => {
     try {
       await updateAttendanceStatus(id, status);
       setAllLogs(allLogs.map(l => l.id === id ? { ...l, status } : l));
@@ -976,7 +985,12 @@ const Attendance = () => {
     </>
   );
 
-  const filteredAllLogs = allLogs.filter(log => log.date.startsWith(selectedMonth));
+  const filteredAllLogs = allLogs.filter(log => {
+    if (activeView === 'grid') {
+      return log.date.startsWith(selectedMonth);
+    }
+    return log.date.startsWith(selectedDate);
+  });
 
   const statsData = (() => {
     const calcHours = (logs: any[]) => logs.reduce((acc, log) => {
@@ -1165,71 +1179,73 @@ const Attendance = () => {
           ))}
         </AnimatePresence>
       </div>
-      <div className="attendance-layout">
-        <aside className="profile-sidebar glass-card">
-          <div className="profile-card-mini">
-            <div className="avatar-wrapper">
-              <img 
-                src={user?.avatar ? (user.avatar.startsWith('http') ? user.avatar : `${API_URL}${user.avatar}`) : "https://api.dicebear.com/7.x/avataaars/svg?seed=Admin"} 
-                alt="Profile" 
-                className="large-avatar" 
-              />
-              <span className="status-badge">{user?.role || 'Staff'}</span>
+      <div className={`attendance-layout ${isAdmin ? 'no-sidebar' : ''}`}>
+        {!isAdmin && (
+          <aside className="profile-sidebar glass-card">
+            <div className="profile-card-mini">
+              <div className="avatar-wrapper">
+                <img 
+                  src={user?.avatar ? (user.avatar.startsWith('http') ? user.avatar : `${API_URL}${user.avatar}`) : "https://api.dicebear.com/7.x/avataaars/svg?seed=Admin"} 
+                  alt="Profile" 
+                  className="large-avatar" 
+                />
+                <span className="status-badge">{user?.role || 'Staff'}</span>
+              </div>
+              <h3>{user?.firstName} {user?.lastName}</h3>
+              <p className="role-text">{user?.jobTitle || 'System Administrator'}</p>
+              {user?.isBiometricEnrolled && (
+                <div className="biometric-verified-badge">
+                  <Shield size={14} className="verified-icon" />
+                  <span>BIOMETRIC SECURED</span>
+                </div>
+              )}
             </div>
-            <h3>{user?.firstName} {user?.lastName}</h3>
-            <p className="role-text">{user?.jobTitle || 'System Administrator'}</p>
-            {user?.isBiometricEnrolled && (
-              <div className="biometric-verified-badge">
-                <Shield size={14} className="verified-icon" />
-                <span>BIOMETRIC SECURED</span>
-              </div>
-            )}
-          </div>
 
-          <div className="personal-actions-sidebar">
-            {isClockedIn ? (
-              <div className="status-indicator active">
-                <div className="pulse-dot"></div>
-                <span>ON DUTY</span>
-              </div>
-            ) : (
-              <div className="status-indicator inactive">
-                <span>OFF DUTY</span>
-              </div>
-            )}
-            
-            <button 
-              className={`btn ${isClockedIn ? 'btn-danger' : 'btn-primary'} btn-block`}
-              onClick={() => {
-                if (isClockedIn) {
-                  handleClockOut();
-                } else {
-                  if (isManagement) {
-                    handleDirectClockIn();
+            <div className="personal-actions-sidebar">
+              {isClockedIn ? (
+                <div className="status-indicator active">
+                  <div className="pulse-dot"></div>
+                  <span>ON DUTY</span>
+                </div>
+              ) : (
+                <div className="status-indicator inactive">
+                  <span>OFF DUTY</span>
+                </div>
+              )}
+              
+              <button 
+                className={`btn ${isClockedIn ? 'btn-danger' : 'btn-primary'} btn-block`}
+                onClick={() => {
+                  if (isClockedIn) {
+                    handleClockOut();
                   } else {
-                    setIsEnrolling(false);
-                    setIsClockingOut(false);
-                    setShowScanner(true);
+                    if (isManagement) {
+                      handleDirectClockIn();
+                    } else {
+                      setIsEnrolling(false);
+                      setIsClockingOut(false);
+                      setShowScanner(true);
+                    }
                   }
-                }
-              }}
-              style={isClockedIn ? { backgroundColor: 'var(--error)', color: 'white', border: 'none' } : {}}
-            >
-              {isClockedIn ? <X size={16} /> : <Clock size={16} />}
-              {isClockedIn ? t('clockOut') : t('clockIn')}
-            </button>
-          </div>
+                }}
+                style={isClockedIn ? { backgroundColor: 'var(--error)', color: 'white', border: 'none' } : {}}
+              >
+                {isClockedIn ? <X size={16} /> : <Clock size={16} />}
+                {isClockedIn ? t('clockOut') : t('clockIn')}
+              </button>
+            </div>
 
-          <div className="hours-summary">
-            <div className="total-hours-main">
-              <Clock size={18} />
-              <div className="v-stack">
-                <span className="value">{statsData.totalHours.toFixed(2)}</span>
-                <span className="label">Total hours</span>
+            <div className="hours-summary">
+              <div className="total-hours-main">
+                <Clock size={18} />
+                <div className="v-stack">
+                  <span className="value">{statsData.totalHours.toFixed(2)}</span>
+                  <span className="label">Total hours</span>
+                </div>
               </div>
             </div>
-          </div>
-        </aside>
+          </aside>
+        )}
 
         <main className="attendance-main">
           <header className="main-header-row">
@@ -1237,17 +1253,29 @@ const Attendance = () => {
               <button className="btn-back"><ChevronLeft size={20} /></button>
               <h1>{t('workforceAttendance')}</h1>
             </div>
-            <div 
-              className="date-picker-button" 
-              title="Filter by Month/Year"
-              onClick={() => setShowCalendar(true)}
-            >
-              <Calendar size={16} />
-              <span>
-                {new Date(selectedMonth + '-01').toLocaleString('default', { month: 'long', year: 'numeric' })}
-              </span>
+            
+            <div className="filter-controls">
+              {activeView === 'grid' ? (
+                <div 
+                  className="date-picker-button" 
+                  title="Filter by Month/Year"
+                  onClick={() => setShowCalendar(true)}
+                >
+                  <Calendar size={16} />
+                  <span>
+                    {new Date(selectedMonth + '-01').toLocaleString('default', { month: 'long', year: 'numeric' })}
+                  </span>
+                </div>
+              ) : (
+                <div 
+                  className="date-picker-button daily-filter"
+                  onClick={() => setShowDayPicker(true)}
+                >
+                  <Calendar size={16} />
+                  <span>{new Date(selectedDate).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                </div>
+              )}
             </div>
-
           </header>
 
           <section className="breakdown-banner glass-card">
@@ -1293,6 +1321,9 @@ const Attendance = () => {
               </button>
             </div>
             <div className="btn-row">
+              <button className="btn-outline" onClick={() => navigate('/attendance/grid')}>
+                <LayoutGrid size={16} /> Monthly Grid
+              </button>
               <button className="btn-outline" onClick={handleExport}>{t('exportReport')}</button>
               <button className="btn btn-primary" onClick={() => setShowManualLog(true)}>
                 <UserPlus size={16} /> Log Manual Entry
@@ -1348,6 +1379,12 @@ const Attendance = () => {
                       </td>
                       <td data-label={t('action')}>
                         <div className="approval-actions">
+                          <button className="status-btn approve" onClick={() => handleStatusUpdate(log.id, 'PRESENT')} title="Mark Present" style={{ color: '#10b981' }}>
+                            <CheckCircle size={14} />
+                          </button>
+                          <button className="status-btn reject" onClick={() => handleStatusUpdate(log.id, 'ABSENT')} title="Mark Absent" style={{ color: '#ef4444' }}>
+                            <XCircle size={14} />
+                          </button>
                           {log.status === 'PENDING' && (
                             <>
                               <button className="status-btn approve" onClick={() => handleStatusUpdate(log.id, 'APPROVED')} title="Approve"><Check size={14} /></button>
@@ -1365,7 +1402,7 @@ const Attendance = () => {
                 </tbody>
               </table>
             </div>
-          ) : (
+          ) : activeView === 'timeline' ? (
             <div className="timeline-container glass-card">
               <div className="timeline-grid">
                 <div className="timeline-header">
@@ -1416,7 +1453,7 @@ const Attendance = () => {
                 </div>
               </div>
             </div>
-          )}
+          ) : null}
         </main>
       </div>
       {renderModals()}
@@ -1440,7 +1477,7 @@ const Attendance = () => {
                 <button className="year-btn" onClick={() => {
                   const currentYear = parseInt(selectedMonth.split('-')[0]);
                   setSelectedMonth(`${currentYear + 1}-${selectedMonth.split('-')[1]}`);
-                }}><ChevronLeft size={18} style={{ transform: 'rotate(180deg)' }} /></button>
+                }}><ChevronRight size={18} /></button>
               </div>
               
               <div className="months-grid">
@@ -1468,6 +1505,95 @@ const Attendance = () => {
                   setShowCalendar(false);
                 }}>Current Month</button>
                 <button className="btn-primary btn-sm" onClick={() => setShowCalendar(false)}>Done</button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {showDayPicker && (
+          <div className="proof-modal-overlay month-picker-overlay" onClick={() => setShowDayPicker(false)}>
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="glass-card custom-day-picker"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="picker-header">
+                <button className="year-btn" onClick={() => {
+                  const d = new Date(selectedDate);
+                  d.setMonth(d.getMonth() - 1);
+                  const y = d.getFullYear();
+                  const m = (d.getMonth() + 1).toString().padStart(2, '0');
+                  const day = d.getDate().toString().padStart(2, '0');
+                  setSelectedDate(`${y}-${m}-${day}`);
+                }}><ChevronLeft size={18} /></button>
+                <span className="year-display">
+                  {new Date(selectedDate).toLocaleString('default', { month: 'long', year: 'numeric' })}
+                </span>
+                <button className="year-btn" onClick={() => {
+                  const d = new Date(selectedDate);
+                  d.setMonth(d.getMonth() + 1);
+                  const y = d.getFullYear();
+                  const m = (d.getMonth() + 1).toString().padStart(2, '0');
+                  const day = d.getDate().toString().padStart(2, '0');
+                  setSelectedDate(`${y}-${m}-${day}`);
+                }}><ChevronRight size={18} /></button>
+              </div>
+
+              <div className="weekday-labels">
+                {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (
+                  <div key={d} className="weekday">{d}</div>
+                ))}
+              </div>
+              
+              <div className="days-grid">
+                {(() => {
+                  const d = new Date(selectedDate);
+                  const year = d.getFullYear();
+                  const month = d.getMonth();
+                  const firstDay = new Date(year, month, 1).getDay();
+                  const daysInMonth = new Date(year, month + 1, 0).getDate();
+                  const prevMonthDays = new Date(year, month, 0).getDate();
+                  
+                  const cells = [];
+                  // Prev month padding
+                  for (let i = firstDay - 1; i >= 0; i--) {
+                    cells.push(<div key={`prev-${i}`} className="day-cell muted">{prevMonthDays - i}</div>);
+                  }
+                  // Current month
+                  for (let i = 1; i <= daysInMonth; i++) {
+                    const isSelected = new Date(selectedDate).getDate() === i && new Date(selectedDate).getMonth() === month;
+                    cells.push(
+                      <button 
+                        key={i} 
+                        className={`day-cell ${isSelected ? 'selected' : ''}`}
+                        onClick={() => {
+                          const y = year;
+                          const m = (month + 1).toString().padStart(2, '0');
+                          const d = i.toString().padStart(2, '0');
+                          setSelectedDate(`${y}-${m}-${d}`);
+                          setShowDayPicker(false);
+                        }}
+                      >
+                        {i}
+                      </button>
+                    );
+                  }
+                  return cells;
+                })()}
+              </div>
+              
+              <div className="picker-footer">
+                <button className="btn-ghost btn-sm" onClick={() => {
+                  const d = new Date();
+                  const y = d.getFullYear();
+                  const m = (d.getMonth() + 1).toString().padStart(2, '0');
+                  const day = d.getDate().toString().padStart(2, '0');
+                  setSelectedDate(`${y}-${m}-${day}`);
+                  setShowDayPicker(false);
+                }}>Today</button>
+                <button className="btn-primary btn-sm" onClick={() => setShowDayPicker(false)}>Close</button>
               </div>
             </motion.div>
           </div>

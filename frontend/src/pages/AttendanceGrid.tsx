@@ -12,11 +12,14 @@ import {
   X
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { fetchEmployees, fetchAllLogs, fetchSites } from '../api/api';
 import './Attendance.css';
 
 const AttendanceGrid: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
   const [employees, setEmployees] = useState<any[]>([]);
   const [allLogs, setAllLogs] = useState<any[]>([]);
   const [sites, setSites] = useState<any[]>([]);
@@ -206,19 +209,21 @@ const AttendanceGrid: React.FC = () => {
             />
           </div>
 
-          <div className="filter-hub">
-            <Filter size={18} />
-            <select 
-              value={selectedSite} 
-              onChange={(e) => setSelectedSite(e.target.value)}
-              className="site-select"
-            >
-              <option value="all">All Sites ({sites?.length || 0})</option>
-              {Array.isArray(sites) && sites.map(site => (
-                <option key={site.id} value={site.id}>{site.name}</option>
-              ))}
-            </select>
-          </div>
+          {isAdmin && (
+            <div className="filter-hub">
+              <Filter size={18} />
+              <select 
+                value={selectedSite} 
+                onChange={(e) => setSelectedSite(e.target.value)}
+                className="site-select"
+              >
+                <option value="all">All Sites ({sites?.length || 0})</option>
+                {Array.isArray(sites) && sites.map(site => (
+                  <option key={site.id} value={site.id}>{site.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
           
           {searchTerm && (
               <button className="clear-search" onClick={() => setSearchTerm('')}>

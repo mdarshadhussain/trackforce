@@ -60,6 +60,7 @@ model Site {
   id              String       @id @default(uuid())
   name            String
   location        String
+  displayAddress  String?      // Custom address to show on the card
   latitude        Float?       @default(0.0)
   longitude       Float?       @default(0.0)
   geofenceRadius  Float        @default(500) // Configurable radius in meters

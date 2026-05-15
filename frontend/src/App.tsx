@@ -11,6 +11,7 @@ import Tracking from './pages/Tracking';
 import Payroll from './pages/Payroll';
 import Sites from './pages/Sites';
 import Settings from './pages/Settings';
+import ManagerAttendance from './pages/ManagerAttendance';
 import EmployeeDetails from './pages/EmployeeDetails';
 import CompleteProfile from './pages/CompleteProfile';
 import Sidebar from './layout/Sidebar';
@@ -85,6 +86,7 @@ function App() {
             <Route path="/employees/:id" element={<ProtectedRoute><PlatformLayout><EmployeeDetails /></PlatformLayout></ProtectedRoute>} />
             <Route path="/attendance" element={<ProtectedRoute><PlatformLayout><Attendance /></PlatformLayout></ProtectedRoute>} />
             <Route path="/attendance/grid" element={<ProtectedRoute><PlatformLayout><AttendanceGrid /></PlatformLayout></ProtectedRoute>} />
+            <Route path="/attendance/manager" element={<ProtectedRoute><PlatformLayout><ManagerAttendance /></PlatformLayout></ProtectedRoute>} />
             <Route path="/tracking" element={<ProtectedRoute><PlatformLayout><Tracking /></PlatformLayout></ProtectedRoute>} />
             <Route path="/payroll" element={<ProtectedRoute adminOnly><PlatformLayout><Payroll /></PlatformLayout></ProtectedRoute>} />
             <Route path="/sites" element={<ProtectedRoute><PlatformLayout><Sites /></PlatformLayout></ProtectedRoute>} />

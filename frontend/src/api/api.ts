@@ -363,3 +363,26 @@ export const deleteAttendance = async (id: string) => {
   if (!response.ok) throw new Error('Failed to purge log');
   return response.json();
 };
+
+export const submitManagerLog = async (formData: FormData) => {
+  const response = await fetch(`${BASE_URL}/attendance/manager-log`, {
+    method: 'POST',
+    headers: getAuthHeaders(true),
+    body: formData
+  });
+  await handleResponse(response);
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Manager log submission failed');
+  }
+  return response.json();
+};
+export const updateAttendanceTimes = async (id: string, clockIn: string, clockOut: string | null) => {
+  const response = await fetch(`${BASE_URL}/attendance/${id}`, {
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ clockIn, clockOut })
+  });
+  await handleResponse(response);
+  return response.json();
+};

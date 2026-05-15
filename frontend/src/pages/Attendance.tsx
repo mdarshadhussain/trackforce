@@ -22,11 +22,13 @@ import {
   XCircle,
   LayoutGrid,
   Search,
+  Filter,
   ChevronRight,
+  Pencil,
 } from 'lucide-react';
 
 
-import { clockIn, deleteAttendance, fetchTodayLogs, fetchAllLogs, updateAttendanceStatus, clockOut, startBreak, endBreak, enrollBiometric, createSecurityAlert, fetchEmployees, fetchSites, logManualAttendance } from '../api/api';
+import { clockIn, deleteAttendance, fetchTodayLogs, fetchAllLogs, updateAttendanceStatus, clockOut, startBreak, endBreak, enrollBiometric, createSecurityAlert, fetchEmployees, fetchSites, logManualAttendance, updateAttendanceTimes } from '../api/api';
 import { exportToCSV } from '../utils/export';
 import { useAuth } from '../context/AuthContext';
 import Toast from '../components/Toast';
@@ -81,6 +83,12 @@ const Attendance = () => {
   const [employees, setEmployees] = useState<any[]>([]);
   const [sites, setSites] = useState<any[]>([]);
   const [showManualLog, setShowManualLog] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingLog, setEditingLog] = useState<any>(null);
+  const [editForm, setEditForm] = useState({
+    clockIn: '',
+    clockOut: ''
+  });
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]); // YYYY-MM-DD
   const [showCalendar, setShowCalendar] = useState(false);
@@ -101,6 +109,9 @@ const Attendance = () => {
     date: new Date().toISOString().split('T')[0],
     message: ''
   });
+
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedSite, setSelectedSite] = useState('all');
 
   const addToast = (message: string, type: ToastType = 'info') => {
     const id = Math.random().toString(36).substr(2, 9);
@@ -162,8 +173,8 @@ const Attendance = () => {
         fetchEmployees(),
         fetchSites()
       ]);
-      setEmployees(empList);
-      setSites(siteList);
+      setEmployees(Array.isArray(empList) ? empList.filter((e: any) => e.role !== 'ADMIN') : []);
+      setSites(Array.isArray(siteList) ? siteList : []);
     } catch (err) {
       addToast("Failed to load workforce intelligence", 'error');
     }
@@ -233,6 +244,23 @@ const Attendance = () => {
 
   const handleExport = () => {
     exportToCSV(allLogs, 'Attendance_Report');
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingLog) return;
+    try {
+      const dateStr = new Date(editingLog.date).toISOString().split('T')[0];
+      const fullIn = `${dateStr}T${editForm.clockIn}:00`;
+      const fullOut = editForm.clockOut ? `${dateStr}T${editForm.clockOut}:00` : null;
+
+      await updateAttendanceTimes(editingLog.id, fullIn, fullOut);
+      addToast("Log updated successfully", 'success');
+      setShowEditModal(false);
+      loadData();
+    } catch (err: any) {
+      addToast(err.message || "Failed to update log", 'error');
+    }
   };
 
   const handleToggleBreak = async () => {
@@ -981,15 +1009,91 @@ const Attendance = () => {
             </motion.div>
           </div>
         )}
+        {showEditModal && (
+          <div className="proof-modal-overlay">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="glass-card scanner-modal-obsidian"
+            >
+              <div className="modal-header-premium">
+                <div className="m-title">
+                  <Pencil size={20} />
+                  <div>
+                    <h3>Edit Attendance Record</h3>
+                    <p>Adjusting logs for {editingLog?.employee?.firstName} {editingLog?.employee?.lastName}</p>
+                  </div>
+                </div>
+                <button className="btn-close-premium" onClick={() => setShowEditModal(false)}>
+                  <X size={20} />
+                </button>
+              </div>
+
+              <form onSubmit={handleEditSubmit} className="modal-body-premium">
+                <div className="form-row-premium">
+                   <div className="form-group-premium">
+                     <label>Check-in Time</label>
+                     <input 
+                       type="time" 
+                       className="premium-input" 
+                       value={editForm.clockIn}
+                       onChange={(e) => setEditForm({...editForm, clockIn: e.target.value})}
+                       required
+                     />
+                   </div>
+                   <div className="form-group-premium">
+                     <label>Check-out Time</label>
+                     <input 
+                       type="time" 
+                       className="premium-input" 
+                       value={editForm.clockOut}
+                       onChange={(e) => setEditForm({...editForm, clockOut: e.target.value})}
+                     />
+                     <p className="field-hint">Leave blank if still on-site</p>
+                   </div>
+                </div>
+
+                <div className="modal-actions-premium" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <button type="submit" className="btn btn-primary btn-block btn-lg">
+                    Save Changes
+                  </button>
+                  <button type="button" className="btn btn-ghost btn-block" onClick={() => setShowEditModal(false)}>
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
       </AnimatePresence>
     </>
   );
 
   const filteredAllLogs = allLogs.filter(log => {
-    if (activeView === 'grid') {
-      return log.date.startsWith(selectedMonth);
+    // 1. Date filter
+    const matchesDate = activeView === 'grid' 
+      ? log.date.startsWith(selectedMonth)
+      : log.date.startsWith(selectedDate);
+    
+    if (!matchesDate) return false;
+
+    // 2. Site filter
+    if (selectedSite !== 'all' && log.siteId !== selectedSite) {
+      return false;
     }
-    return log.date.startsWith(selectedDate);
+
+    // 3. Search filter
+    if (searchTerm) {
+      const s = searchTerm.toLowerCase();
+      const empName = `${log.employee?.firstName} ${log.employee?.lastName}`.toLowerCase();
+      const empId = log.employeeId?.toString().toLowerCase() || '';
+      if (!empName.includes(s) && !empId.includes(s)) {
+        return false;
+      }
+    }
+
+    return true;
   });
 
   const statsData = (() => {
@@ -1179,8 +1283,8 @@ const Attendance = () => {
           ))}
         </AnimatePresence>
       </div>
-      <div className={`attendance-layout ${isAdmin ? 'no-sidebar' : ''}`}>
-        {!isAdmin && (
+      <div className={`attendance-layout ${isManagement ? 'no-sidebar' : ''}`}>
+        {!isManagement && (
           <aside className="profile-sidebar glass-card">
             <div className="profile-card-mini">
               <div className="avatar-wrapper">
@@ -1255,6 +1359,31 @@ const Attendance = () => {
             </div>
             
             <div className="filter-controls">
+              <div className="search-hub-premium">
+                <Search size={18} />
+                <input 
+                  type="text" 
+                  placeholder="Search personnel..." 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="matrix-search-input"
+                />
+              </div>
+
+              <div className="filter-hub-premium">
+                <Filter size={18} />
+                <select 
+                  value={selectedSite} 
+                  onChange={(e) => setSelectedSite(e.target.value)}
+                  className="site-select-premium"
+                >
+                  <option value="all">All Sites ({sites?.length || 0})</option>
+                  {Array.isArray(sites) && sites.map(site => (
+                    <option key={site.id} value={site.id}>{site.name}</option>
+                  ))}
+                </select>
+              </div>
+
               {activeView === 'grid' ? (
                 <div 
                   className="date-picker-button" 
@@ -1379,6 +1508,20 @@ const Attendance = () => {
                       </td>
                       <td data-label={t('action')}>
                         <div className="approval-actions">
+                          <button 
+                            className="status-btn edit" 
+                            onClick={() => {
+                              setEditingLog(log);
+                              setEditForm({
+                                clockIn: log.clockIn ? new Date(log.clockIn).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit' }) : '',
+                                clockOut: log.clockOut ? new Date(log.clockOut).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit' }) : ''
+                              });
+                              setShowEditModal(true);
+                            }}
+                            title="Edit Times"
+                          >
+                            <Pencil size={14} />
+                          </button>
                           <button className="status-btn approve" onClick={() => handleStatusUpdate(log.id, 'PRESENT')} title="Mark Present" style={{ color: '#10b981' }}>
                             <CheckCircle size={14} />
                           </button>

@@ -9,7 +9,8 @@ import {
   Trash2,
   Users,
   Loader2,
-  Navigation
+  Navigation,
+  ShieldCheck
 } from 'lucide-react';
 import './Sites.css';
 
@@ -196,83 +197,90 @@ const Sites = () => {
                 <p>Synchronizing Site Data...</p>
               </div>
             ) : (
-              sites.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase())).map((site) => (
-                <motion.div 
-                  key={site.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className={`glass-card site-card ${user?.siteId === site.id ? 'managed-site' : ''}`}
-                >
-                  <div className="site-card-header">
-                    <div className="site-icon-wrapper">
-                      <MapPin size={20} />
-                    </div>
-                    <div className="site-status">
-                      <span className={`status-dot ${user?.siteId === site.id ? 'primary' : 'active'}`}></span>
-                      {user?.siteId === site.id ? 'PRIMARY SITE' : 'ACTIVE'}
-                    </div>
-                    {isAdmin && (
-                      <div className="site-actions-premium">
-                        <button 
-                          className="icon-btn-small edit" 
-                          title="Edit Site"
-                          onClick={() => {
-                            setEditingSite(site);
-                            setIsModalOpen(true);
-                          }}
-                        >
-                          <Edit2 size={16} />
-                        </button>
-                        <button 
-                          className="icon-btn-small delete" 
-                          title="Remove Site"
-                          onClick={() => handleDeleteSite(site.id)}
-                        >
-                          <Trash2 size={16} />
-                        </button>
+              sites.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase())).map((site) => {
+                const isPrimarySite = !isAdmin && user?.siteId === site.id;
+                return (
+                  <motion.div 
+                    key={site.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={`glass-card site-card ${isPrimarySite ? 'managed-site' : ''}`}
+                  >
+                    <div className="site-card-header-premium">
+                      <div className="site-identity">
+                        <div className="site-icon-premium">
+                          <MapPin size={22} />
+                        </div>
+                        <div className="site-title-group">
+                          <h3>{site.name}</h3>
+                          <p className="address-premium">
+                            {site.displayAddress ? site.displayAddress : (
+                              site.location.split(',').length >= 3 
+                                ? site.location.split(',').slice(-3, -1).join(', ') 
+                                : site.location
+                            )}
+                          </p>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                  
-                  <div className="site-card-body">
-                    <h3>{site.name}</h3>
-                    <p className="address">{site.location}</p>
-                    
-                    <div className="site-stats-row">
-                      <div className="site-stat">
-                        <Users size={14} />
-                        <span>{site._count?.employees || 0} Employees</span>
-                      </div>
-                      <div className="site-stat">
-                        <Shield size={14} />
-                        <span>{site.geofenceRadius || 500}m Fence</span>
-                      </div>
-                    </div>
-                    
-                    {site.latitude && site.latitude !== 0 ? (
-                      <div className="coord-badge">
-                        📍 {site.latitude.toFixed(4)}, {site.longitude.toFixed(4)}
-                      </div>
-                    ) : (
-                      <div className="coord-badge warning">
-                        ⚠️ No Geofence Set
-                      </div>
-                    )}
-                  </div>
+                      
+                      {isPrimarySite && (
+                        <div className="assigned-badge-on-border">
+                          ASSIGNED
+                        </div>
+                      )}
 
-                  <div className="site-card-footer">
-                    {isManager && (
-                      <button className="btn-text" onClick={() => {
+                      {isAdmin && (
+                        <div className="site-actions-premium">
+                          <button 
+                            className="icon-btn-premium edit" 
+                            onClick={() => {
+                              setEditingSite(site);
+                              setIsModalOpen(true);
+                            }}
+                          >
+                            <Edit2 size={16} />
+                          </button>
+                          <button 
+                            className="icon-btn-premium delete" 
+                            onClick={() => handleDeleteSite(site.id)}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  
+                    <div className="site-card-content-premium">
+                      <div className="intel-row-premium">
+                        <div className="intel-item-premium">
+                          <Users size={16} />
+                          <div className="intel-text">
+                            <span className="intel-value">{site._count?.employees || 0}</span>
+                            <span className="intel-label">Employees</span>
+                          </div>
+                        </div>
+                        <div className="intel-item-premium">
+                          <Shield size={16} />
+                          <div className="intel-text">
+                            <span className="intel-value">{site.geofenceRadius || 500}m</span>
+                            <span className="intel-label">Geofence</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="site-card-footer-premium">
+                      <button className="btn-center-map" onClick={() => {
                         setMapCenter([site.latitude, site.longitude]);
                         setMapZoom(16);
                       }}>
-                        <Navigation size={14} /> Center on Map
+                        <Navigation size={14} /> 
+                        Center on Map
                       </button>
-                    )}
-                  </div>
-
-                </motion.div>
-              ))
+                    </div>
+                  </motion.div>
+                );
+              })
             )}
           </div>
         </div>

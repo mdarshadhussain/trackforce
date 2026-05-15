@@ -270,11 +270,11 @@ app.get('/api/sites', authenticateToken, async (req, res) => {
 });
 
 app.post('/api/sites', authenticateToken, requireAdmin, async (req, res) => {
-  const { name, location, managerName, latitude, longitude, geofenceRadius } = req.body;
+  const { name, location, displayAddress, managerName, latitude, longitude, geofenceRadius } = req.body;
   try {
     const site = await prisma.site.create({
       data: {
-        name, location, managerName,
+        name, location, displayAddress, managerName,
         latitude: parseFloat(latitude) || 0,
         longitude: parseFloat(longitude) || 0,
         geofenceRadius: parseFloat(geofenceRadius) || 500
@@ -287,12 +287,12 @@ app.post('/api/sites', authenticateToken, requireAdmin, async (req, res) => {
 });
 
 app.put('/api/sites/:id', authenticateToken, requireAdmin, async (req, res) => {
-  const { name, location, managerName, geofenceRadius, latitude, longitude } = req.body;
+  const { name, location, displayAddress, managerName, geofenceRadius, latitude, longitude } = req.body;
   try {
     const site = await prisma.site.update({
       where: { id: req.params.id },
       data: {
-        name, location, managerName,
+        name, location, displayAddress, managerName,
         geofenceRadius: geofenceRadius ? parseFloat(geofenceRadius) : undefined,
 
         latitude: latitude ? parseFloat(latitude) : undefined,
@@ -616,6 +616,22 @@ app.patch('/api/attendance/:id', authenticateToken, requireManagement, async (re
   }
 });
 
+app.put('/api/attendance/:id', authenticateToken, requireManagement, async (req, res) => {
+  const { clockIn, clockOut } = req.body;
+  try {
+    const updated = await prisma.attendance.update({
+      where: { id: req.params.id },
+      data: { 
+        clockIn: clockIn ? new Date(clockIn) : undefined,
+        clockOut: clockOut ? new Date(clockOut) : null,
+      }
+    });
+    res.json(updated);
+  } catch (error) {
+    res.status(400).json({ error: 'Manual update failed' });
+  }
+});
+
 app.delete('/api/attendance/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
     await prisma.break.deleteMany({ where: { attendanceId: req.params.id } });
@@ -623,6 +639,56 @@ app.delete('/api/attendance/:id', authenticateToken, requireAdmin, async (req, r
     res.json({ message: 'Deleted' });
   } catch (error) {
     res.status(400).json({ error: 'Delete failed' });
+  }
+});
+
+app.post('/api/attendance/manager-log', authenticateToken, requireManagement, upload.single('biometricProof'), async (req: any, res: Response) => {
+  const { employeeId, type, latitude, longitude } = req.body;
+  try {
+    const employee = await prisma.employee.findUnique({ where: { id: employeeId }, include: { site: true } });
+    if (!employee) return res.status(404).json({ error: 'Employee not found' });
+    
+    // Security check: Manager can only log for their site
+    if (req.user.role === 'MANAGER' && employee.siteId !== req.user.siteId) {
+      return res.status(403).json({ error: 'Forbidden. This employee is not in your assigned site.' });
+    }
+
+    let proofPath = null;
+    if (req.file) {
+      proofPath = `/uploads/${employee.employeeId}/attendance/${req.file.filename}`;
+    }
+
+    if (type === 'CLOCK_IN') {
+      const att = await prisma.attendance.create({
+        data: {
+          employeeId: employee.id,
+          siteId: employee.siteId,
+          clockInLat: latitude ? parseFloat(latitude) : null,
+          clockInLong: longitude ? parseFloat(longitude) : null,
+          biometricProof: proofPath || 'MANAGER_LOG',
+          status: 'PRESENT'
+        }
+      });
+      return res.status(201).json(att);
+    } else {
+      const active = await prisma.attendance.findFirst({ where: { employeeId: employee.id, clockOut: null }, orderBy: { createdAt: 'desc' } });
+      if (!active) return res.status(400).json({ error: 'No active session found for this employee.' });
+      
+      const updated = await prisma.attendance.update({
+        where: { id: active.id },
+        data: {
+          clockOut: new Date(),
+          clockOutLat: latitude ? parseFloat(latitude) : null,
+          clockOutLong: longitude ? parseFloat(longitude) : null,
+          biometricProofOut: proofPath || 'MANAGER_LOG',
+          status: 'PRESENT'
+        }
+      });
+      return res.json(updated);
+    }
+  } catch (error) {
+    console.error('Manager Log Error:', error);
+    res.status(500).json({ error: 'Internal system error during manager logging.' });
   }
 });
 

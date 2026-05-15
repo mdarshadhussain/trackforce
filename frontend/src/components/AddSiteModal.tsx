@@ -50,6 +50,7 @@ const AddSiteModal = ({ isOpen, onClose, onSave, addToast, initialData }: AddSit
   const [formData, setFormData] = useState({
     name: '',
     location: '',
+    displayAddress: '',
     latitude: 0,
     longitude: 0,
     managerName: 'Admin',
@@ -68,6 +69,7 @@ const AddSiteModal = ({ isOpen, onClose, onSave, addToast, initialData }: AddSit
       setFormData({
         name: initialData.name || '',
         location: initialData.location || '',
+        displayAddress: initialData.displayAddress || '',
         latitude: initialData.latitude || 0,
         longitude: initialData.longitude || 0,
         managerName: initialData.managerName || 'Admin',
@@ -78,6 +80,7 @@ const AddSiteModal = ({ isOpen, onClose, onSave, addToast, initialData }: AddSit
       setFormData({
         name: '',
         location: '',
+        displayAddress: '',
         latitude: 0,
         longitude: 0,
         managerName: 'Admin',
@@ -262,13 +265,7 @@ const AddSiteModal = ({ isOpen, onClose, onSave, addToast, initialData }: AddSit
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             className="glass-card modal-content-large"
           >
-            <div className="modal-header">
-              <div className="title-with-sparkle">
-                <Sparkles className="sparkle-icon" size={20} />
-                <h3>{initialData ? 'Modify Site Configuration' : 'Initialize Operational Site'}</h3>
-              </div>
-              <button type="button" onClick={onClose} className="icon-btn"><X size={20} /></button>
-            </div>
+            {/* Header removed as requested */}
 
             <form onSubmit={handleSubmit} className="site-form-premium">
               <div className="modal-body-scrollable">
@@ -287,6 +284,22 @@ const AddSiteModal = ({ isOpen, onClose, onSave, addToast, initialData }: AddSit
                           onChange={(e) => setFormData({...formData, name: e.target.value})}
                         />
                       </div>
+                    </div>
+
+                    <div className="form-group">
+                      <label>Display Address (Optional Override)</label>
+                      <div className="input-with-icon">
+                        <MapPin size={18} />
+                        <input
+                          type="text"
+                          placeholder="e.g. London, Greater London"
+                          value={formData.displayAddress}
+                          onChange={(e) => setFormData({...formData, displayAddress: e.target.value})}
+                        />
+                      </div>
+                      <p className="hint-text" style={{ fontSize: '10px', color: 'var(--text-dim)', marginTop: '4px' }}>
+                        If left blank, the system will show City & Province from the address.
+                      </p>
                     </div>
 
                     <div className="form-group" ref={searchRef}>
@@ -348,6 +361,32 @@ const AddSiteModal = ({ isOpen, onClose, onSave, addToast, initialData }: AddSit
                       </div>
                     </div>
 
+
+                  </div>
+
+                  {/* Right Column: Map Selection */}
+                  <div className="modal-column map-column">
+                    <div className="map-selection-section-compact">
+                      <div className="map-section-header">
+                        <div className="title">
+                          <MousePointer2 size={16} />
+                          <span>Pin Placement</span>
+                        </div>
+                        <span className="hint">Drag or click map</span>
+                      </div>
+                      <div className="modal-map-container-large">
+                        <MapContainer 
+                          center={[formData.latitude || 20.5937, formData.longitude || 78.9629]} 
+                          zoom={formData.latitude ? 15 : 4} 
+                          style={{ height: '360px', width: '100%', borderRadius: '16px' }}
+                        >
+                          <MapRefresher center={[formData.latitude || 20.5937, formData.longitude || 78.9629]} />
+                          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                          <LocationMarker />
+                        </MapContainer>
+                      </div>
+                    </div>
+
                     <div className="geofence-control-center">
                       <div className="geofence-header-premium">
                         <div className="title">
@@ -387,31 +426,6 @@ const AddSiteModal = ({ isOpen, onClose, onSave, addToast, initialData }: AddSit
                         <span className="unit">MANUAL ENTRY (M)</span>
                       </div>
                       <p className="geofence-hint">Geofencing protocol will be strictly enforced within this radius.</p>
-                    </div>
-
-                  </div>
-
-                  {/* Right Column: Map Selection */}
-                  <div className="modal-column map-column">
-                    <div className="map-selection-section-compact">
-                      <div className="map-section-header">
-                        <div className="title">
-                          <MousePointer2 size={16} />
-                          <span>Pin Placement</span>
-                        </div>
-                        <span className="hint">Drag or click map</span>
-                      </div>
-                      <div className="modal-map-container-large">
-                        <MapContainer 
-                          center={[formData.latitude || 20.5937, formData.longitude || 78.9629]} 
-                          zoom={formData.latitude ? 15 : 4} 
-                          style={{ height: '360px', width: '100%', borderRadius: '16px' }}
-                        >
-                          <MapRefresher center={[formData.latitude || 20.5937, formData.longitude || 78.9629]} />
-                          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                          <LocationMarker />
-                        </MapContainer>
-                      </div>
                     </div>
                   </div>
                 </div>

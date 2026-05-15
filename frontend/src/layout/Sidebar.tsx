@@ -11,7 +11,8 @@ import {
   ChevronRight,
   HelpCircle,
   Sun,
-  Moon
+  Moon,
+  UserCheck
 } from 'lucide-react';
 
 import { NavLink } from 'react-router-dom';
@@ -36,6 +37,7 @@ const Sidebar = ({ onClose, collapsed, onToggleCollapse }: SidebarProps) => {
     { icon: <LayoutDashboard size={20} />, label: t('dashboard'), path: '/dashboard' },
     ...(isManager ? [{ icon: <Users size={20} />, label: t('employees'), path: '/employees' }] : []),
     { icon: <Calendar size={20} />, label: t('attendance'), path: '/attendance' },
+    ...(isManager ? [{ icon: <UserCheck size={20} />, label: 'Site Attendance', path: '/attendance/manager' }] : []),
     ...(isAdmin ? [{ icon: <MapPin size={20} />, label: t('tracking'), path: '/tracking' }] : []),
     ...(isAdmin ? [{ icon: <Wallet size={20} />, label: t('payroll'), path: '/payroll' }] : []),
     { icon: <Building2 size={20} />, label: t('sites'), path: '/sites' },
@@ -68,6 +70,7 @@ const Sidebar = ({ onClose, collapsed, onToggleCollapse }: SidebarProps) => {
           <NavLink 
             key={item.path} 
             to={item.path}
+            end={item.path === '/attendance'}
             className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
             onClick={() => window.innerWidth < 1024 && onClose?.()}
             title={collapsed ? item.label : ''}

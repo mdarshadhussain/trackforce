@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, MapPin, Search, Navigation, CheckCircle2, Loader2, Sparkles, Shield, MousePointer2 } from 'lucide-react';
+import { MapPin, Search, Navigation, CheckCircle2, Loader2, Shield, MousePointer2 } from 'lucide-react';
 
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap, Circle } from 'react-leaflet';
 import L from 'leaflet';

@@ -229,7 +229,7 @@ export const fetchPayroll = async () => {
   return response.json();
 };
 
-export const updateAttendanceStatus = async (id: string, status: 'APPROVED' | 'REJECTED') => {
+export const updateAttendanceStatus = async (id: string, status: 'APPROVED' | 'REJECTED' | 'PRESENT' | 'ABSENT') => {
   const response = await fetch(`${BASE_URL}/attendance/${id}`, {
     method: 'PATCH',
     headers: getAuthHeaders(),

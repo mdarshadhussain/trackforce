@@ -397,7 +397,7 @@ app.get('/api/employees/:id', authenticateToken, async (req: any, res) => {
       return res.status(403).json({ error: 'Forbidden. This employee is not in your assigned site.' });
     }
 
-    res.json({ ...employee, password: employee.plainPassword || 'Encoded' });
+    res.json({ ...employee, password: 'Encoded' });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch employee' });
   }
@@ -426,7 +426,7 @@ app.get('/api/employees/:id/full-profile', authenticateToken, async (req: any, r
       }
     });
 
-    res.json({ employee: { ...employee, password: employee.plainPassword || 'Encoded' }, attendance: employee.attendance, stats: { totalHours: (totalMinutes / 60).toFixed(1), totalEarnings: totalEarnings.toFixed(2), totalDays: employee.attendance.length } });
+    res.json({ employee: { ...employee, password: 'Encoded' }, attendance: employee.attendance, stats: { totalHours: (totalMinutes / 60).toFixed(1), totalEarnings: totalEarnings.toFixed(2), totalDays: employee.attendance.length } });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch full profile' });
   }

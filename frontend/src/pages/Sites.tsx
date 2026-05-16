@@ -9,8 +9,7 @@ import {
   Trash2,
   Users,
   Loader2,
-  Navigation,
-  ShieldCheck
+  Navigation
 } from 'lucide-react';
 import './Sites.css';
 
@@ -21,7 +20,6 @@ import 'leaflet/dist/leaflet.css';
 
 import { fetchSites, createSite, deleteSite, updateSite } from '../api/api';
 import { useAuth } from '../context/AuthContext';
-import { useTheme } from '../context/ThemeContext';
 import AddSiteModal from '../components/AddSiteModal';
 import Toast from '../components/Toast';
 import type { ToastType } from '../components/Toast';
@@ -58,7 +56,7 @@ const ChangeView = ({ center, zoom }: { center: [number, number], zoom: number }
 
 const Sites = () => {
   const { user } = useAuth();
-  const { theme } = useTheme();
+
   const isAdmin = user?.role === 'ADMIN';
   const isManager = user?.role === 'MANAGER' || isAdmin;
 

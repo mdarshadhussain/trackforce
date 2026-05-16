@@ -9,11 +9,9 @@ import {
   ArrowLeft,
   Upload,
   UserCheck,
-  MapPin,
   AlertCircle,
   Shield,
-  X,
-  Check
+  X
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { fetchEmployees, fetchAllLogs, submitManagerLog, fetchTodayLogs, clockIn, clockOut } from '../api/api';
@@ -181,13 +179,7 @@ const ManagerAttendance: React.FC = () => {
 
   if (loading) return <div className="manager-att-loader">Initializing Biometric Node...</div>;
 
-  const statsData = {
-    efficiency: 100,
-    approvedHours: 9,
-    rejectedHours: 0,
-    pendingHours: 0,
-    totalHours: 9.36
-  };
+
 
   return (
     <div className="enterprise-page manager-att-page">

@@ -10,15 +10,12 @@ import {
   ChevronLeft,
   ChevronRight,
   HelpCircle,
-  Sun,
-  Moon,
   UserCheck
 } from 'lucide-react';
 
 import { NavLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
-import { useTheme } from '../context/ThemeContext';
 import './Sidebar.css';
 
 interface SidebarProps {
@@ -29,7 +26,7 @@ interface SidebarProps {
 
 const Sidebar = ({ onClose, collapsed, onToggleCollapse }: SidebarProps) => {
   const { user, isAdmin, logout } = useAuth();
-  const { theme, toggleTheme } = useTheme();
+
   const { t } = useTranslation();
   const isManager = user?.role === 'MANAGER' || isAdmin;
 

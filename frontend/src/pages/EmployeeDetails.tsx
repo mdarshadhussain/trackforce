@@ -17,7 +17,6 @@ import {
   Key,
   Landmark,
   Lock,
-  Mail,
   MapPin,
   Smartphone,
   TrendingUp,
@@ -214,7 +213,7 @@ const EmployeeDetails = () => {
             className="creative-overview-deck"
           >
             <div className="deck-col-main">
-              <div className="glass-tile-premium identity-site-tile">
+              <div className="glass-tile-premium identity-site-tile personal-details-tile">
                 <div className="tile-header">
                   <User size={20} />
                   <h4>Personal Details</h4>
@@ -227,7 +226,7 @@ const EmployeeDetails = () => {
               </div>
 
               <div className="deck-row-sub">
-                <div className="glass-tile-premium finance-tile">
+                <div className="glass-tile-premium finance-tile salary-details-tile">
                   <div className="tile-header">
                     <Coins size={20} />
                     <h4>Salary Details</h4>
@@ -242,7 +241,7 @@ const EmployeeDetails = () => {
                   </div>
                 </div>
 
-                <div className="glass-tile-premium performance-tile">
+                <div className="glass-tile-premium performance-tile attendance-stats-tile">
                   <div className="tile-header">
                     <TrendingUp size={20} />
                     <h4>Attendance Stats</h4>
@@ -259,10 +258,21 @@ const EmployeeDetails = () => {
                   </div>
                 </div>
               </div>
+              <div className="glass-tile-premium identity-site-tile passport-intelligence-tile">
+                <div className="tile-header">
+                  <CreditCard size={20} />
+                  <h4>Passport Intelligence</h4>
+                </div>
+                <div className="tile-content-stack">
+                  <InfoItem icon={<Smartphone size={14} />} label="Passport No." value={employee.passportNumber || 'Not provided'} />
+                  <InfoItem icon={<Calendar size={14} />} label="Issue Date" value={employee.passportIssue ? new Date(employee.passportIssue).toLocaleDateString() : '--'} />
+                  <InfoItem icon={<Calendar size={14} />} label="Expiry Date" value={employee.passportExpiry ? new Date(employee.passportExpiry).toLocaleDateString() : '--'} />
+                </div>
+              </div>
             </div>
 
             <div className="deck-col-side">
-              <div className="glass-tile-premium identity-site-tile" style={{ marginTop: '1.5rem' }}>
+              <div className="glass-tile-premium identity-site-tile sidebar-tile financial-node-tile">
                 <div className="tile-header">
                   <Landmark size={20} />
                   <h4>Financial Node</h4>
@@ -274,19 +284,7 @@ const EmployeeDetails = () => {
                 </div>
               </div>
 
-              <div className="glass-tile-premium identity-site-tile" style={{ marginTop: '1.5rem' }}>
-                <div className="tile-header">
-                  <CreditCard size={20} />
-                  <h4>Passport Intelligence</h4>
-                </div>
-                <div className="tile-content-stack">
-                  <InfoItem icon={<Smartphone size={14} />} label="Passport No." value={employee.passportNumber || 'Not provided'} />
-                  <InfoItem icon={<Calendar size={14} />} label="Issue Date" value={employee.passportIssue ? new Date(employee.passportIssue).toLocaleDateString() : '--'} />
-                  <InfoItem icon={<Calendar size={14} />} label="Expiry Date" value={employee.passportExpiry ? new Date(employee.passportExpiry).toLocaleDateString() : '--'} />
-                </div>
-              </div>
-
-              <div className="glass-tile-premium documents-tile" style={{ marginTop: '1.5rem' }}>
+              <div className="glass-tile-premium documents-tile sidebar-tile documentation-tile" style={{ marginTop: '1.5rem' }}>
                 <div className="tile-header">
                   <FileText size={20} />
                   <h4>Documentation</h4>
@@ -299,7 +297,7 @@ const EmployeeDetails = () => {
                         <Eye size={14} /> View
                       </button>
                     ) : (
-                      <span className="not-uploaded">Pending</span>
+                      <span className="not-uploaded pending-badge">Pending</span>
                     )}
                   </div>
                   <div className="doc-link-node">
@@ -309,7 +307,7 @@ const EmployeeDetails = () => {
                         <Eye size={14} /> View
                       </button>
                     ) : (
-                      <span className="not-uploaded">Pending</span>
+                      <span className="not-uploaded pending-badge">Pending</span>
                     )}
                   </div>
 
@@ -418,13 +416,23 @@ const StatCard = ({ icon, label, value, color }: any) => (
   </div>
 );
 
-const InfoItem = ({ icon, label, value }: any) => (
-  <div className="info-item-stack">
-    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '4px' }}>
-      {icon} {label}
-    </label>
-    <span style={{ fontWeight: 600, fontSize: '1.05rem' }}>{value}</span>
-  </div>
-);
+const InfoItem = ({ icon, label, value }: any) => {
+  const isNotProvided = value === 'Not provided' || value === '--';
+  return (
+    <div className="info-item-stack">
+      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '4px' }}>
+        {icon} {label}
+      </label>
+      <span style={{ 
+        fontWeight: isNotProvided ? 400 : 600, 
+        fontSize: '1rem', 
+        color: isNotProvided ? 'var(--text-tertiary)' : 'var(--text-primary)',
+        fontStyle: isNotProvided ? 'italic' : 'normal'
+      }}>
+        {value}
+      </span>
+    </div>
+  );
+};
 
 export default EmployeeDetails;

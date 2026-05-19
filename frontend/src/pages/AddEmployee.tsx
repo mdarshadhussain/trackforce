@@ -2,18 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { 
   User, 
   Camera, 
-  Lock, 
   ChevronLeft,
   CheckCircle2,
   AlertCircle,
   Save,
   UserPlus,
-  Smartphone,
   Eye,
   EyeOff,
   TrendingUp,
-  Upload, 
-  CreditCard
+  Upload
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useNavigate, useParams } from 'react-router-dom';

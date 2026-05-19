@@ -7,18 +7,32 @@ import {
   CheckCircle, 
   Clock, 
   ArrowLeft,
-  Upload,
   UserCheck,
   AlertCircle,
   Shield,
-  X
+  X,
+  RefreshCw,
+  Loader2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { fetchEmployees, fetchAllLogs, submitManagerLog, fetchTodayLogs, clockIn, clockOut } from '../api/api';
+import * as faceapi from 'face-api.js';
+import { loadFaceApiModels, areModelsLoaded } from '../utils/aiModels';
+import { fetchEmployees, fetchAllLogs, submitManagerLog, fetchTodayLogs, clockIn, clockOut, createSecurityAlert } from '../api/api';
 import { useAuth } from '../context/AuthContext';
 import './ManagerAttendance.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+const base64ToBlob = (base64: string) => {
+  const byteString = atob(base64.split(',')[1]);
+  const mimeString = base64.split(',')[0].split(':')[1].split(';')[0];
+  const ab = new ArrayBuffer(byteString.length);
+  const ia = new Uint8Array(ab);
+  for (let i = 0; i < byteString.length; i++) {
+    ia[i] = byteString.charCodeAt(i);
+  }
+  return new Blob([ab], { type: mimeString });
+};
 
 const ManagerAttendance: React.FC = () => {
   const navigate = useNavigate();
@@ -29,9 +43,15 @@ const ManagerAttendance: React.FC = () => {
   const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [modelsLoaded, setModelsLoaded] = useState(areModelsLoaded());
+
+  // Camera & Face Verification States
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
+  const [verificationStatus, setVerificationStatus] = useState<'idle' | 'verifying' | 'success' | 'failed'>('idle');
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   // Personal Status State
   const [myTodayLogs, setMyTodayLogs] = useState<any[]>([]);
@@ -44,6 +64,163 @@ const ManagerAttendance: React.FC = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Load AI Models
+  useEffect(() => {
+    if (!modelsLoaded) {
+      loadFaceApiModels()
+        .then(() => setModelsLoaded(true))
+        .catch(err => {
+          console.error("AI load error:", err);
+        });
+    }
+  }, [modelsLoaded]);
+
+  // Start/Stop Camera on Employee Selection
+  useEffect(() => {
+    setPhotoPreview(null);
+    setVerificationStatus('idle');
+    setIsCameraActive(false);
+    return () => stopCamera();
+  }, [selectedEmployee]);
+
+  const startCamera = async (mode: 'user' | 'environment') => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: mode }
+      });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+      streamRef.current = stream;
+      setIsCameraActive(true);
+    } catch (err) {
+      console.error("Camera access failed:", err);
+      setIsCameraActive(false);
+    }
+  };
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    setIsCameraActive(false);
+  };
+
+  const handleFlipCamera = () => {
+    const nextMode = facingMode === 'user' ? 'environment' : 'user';
+    setFacingMode(nextMode);
+    if (selectedEmployee) {
+      startCamera(nextMode);
+    }
+  };
+
+  const captureFrame = () => {
+    if (!videoRef.current) return null;
+    const canvas = document.createElement('canvas');
+    canvas.width = videoRef.current.videoWidth || 640;
+    canvas.height = videoRef.current.videoHeight || 480;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/jpeg', 0.6);
+  };
+
+  const handleCaptureAndVerify = async () => {
+    if (!selectedEmployee) return;
+
+    const capturedFrame = captureFrame();
+    if (!capturedFrame) {
+      alert("Failed to capture photo from video feed.");
+      return;
+    }
+
+    setPhotoPreview(capturedFrame);
+    stopCamera();
+    setVerificationStatus('verifying');
+    setSubmitting(true);
+
+    try {
+      // Get location
+      let latitude = null, longitude = null;
+      try {
+        const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject);
+        });
+        latitude = pos.coords.latitude;
+        longitude = pos.coords.longitude;
+      } catch (e) {
+        console.warn('Location access denied');
+      }
+
+      const proofBlob = base64ToBlob(capturedFrame);
+
+      // Verify selected employee
+      let isMatch = true; // Default to true if employee does not have an avatar to compare
+      if (selectedEmployee.avatar && modelsLoaded) {
+        try {
+          const avatarUrl = selectedEmployee.avatar.startsWith('http') ? selectedEmployee.avatar : `${API_URL}${selectedEmployee.avatar}`;
+          const referenceImg = await faceapi.fetchImage(avatarUrl);
+          const capturedImg = await faceapi.fetchImage(capturedFrame);
+
+          const refDetection = await faceapi.detectSingleFace(referenceImg).withFaceLandmarks().withFaceDescriptor();
+          const capDetection = await faceapi.detectSingleFace(capturedImg).withFaceLandmarks().withFaceDescriptor();
+
+          if (refDetection?.descriptor && capDetection?.descriptor) {
+            const distance = faceapi.euclideanDistance(refDetection.descriptor, capDetection.descriptor);
+            isMatch = distance < 0.6;
+          } else {
+            throw new Error("Could not detect face in reference or captured image.");
+          }
+        } catch (err: any) {
+          console.error("AI Face Verification error:", err);
+          throw new Error("AI Face Verification failed: " + (err.message || "Face not detected"));
+        }
+      }
+
+      if (!isMatch) {
+        // Log biometric mismatch to security alerts
+        await createSecurityAlert({
+          type: 'BIOMETRIC_MISMATCH',
+          message: `Proxy Log Failed: Biometric mismatch for ${selectedEmployee.firstName} ${selectedEmployee.lastName}.`,
+          severity: 'HIGH',
+          employeeId: selectedEmployee.id,
+          siteId: selectedEmployee.siteId
+        });
+        throw new Error("Biometric Mismatch: Identity could not be verified.");
+      }
+
+      // Submit attendance
+      const type = getActiveSession(selectedEmployee.id) ? 'CLOCK_OUT' : 'CLOCK_IN';
+      const formData = new FormData();
+      formData.append('employeeId', selectedEmployee.id);
+      formData.append('type', type);
+      if (latitude) formData.append('latitude', latitude.toString());
+      if (longitude) formData.append('longitude', longitude.toString());
+      if (proofBlob) {
+        formData.append('biometricProof', proofBlob, `manager-verification-${selectedEmployee.id}-${Date.now()}.jpg`);
+      }
+
+      await submitManagerLog(formData);
+      
+      setVerificationStatus('success');
+      
+      // Reset state and reload
+      setSelectedEmployee(null);
+      await loadData();
+    } catch (err: any) {
+      setVerificationStatus('failed');
+      alert(err.message || 'Verification and log submission failed.');
+      // Restart camera for retry
+      startCamera(facingMode);
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -126,55 +303,10 @@ const ManagerAttendance: React.FC = () => {
     return attendance.find(a => a.employeeId === empId && !a.clockOut);
   };
 
-  const handlePhotoCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setPhoto(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhotoPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleSubmit = async (type: 'CLOCK_IN' | 'CLOCK_OUT') => {
-    if (!selectedEmployee) return;
-    
-    try {
-      setSubmitting(true);
-      
-      // Get location if possible
-      let latitude = null, longitude = null;
-      try {
-        const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject);
-        });
-        latitude = pos.coords.latitude;
-        longitude = pos.coords.longitude;
-      } catch (e) {
-        console.warn('Location access denied');
-      }
-
-      const formData = new FormData();
-      formData.append('employeeId', selectedEmployee.id);
-      formData.append('type', type);
-      if (latitude) formData.append('latitude', latitude.toString());
-      if (longitude) formData.append('longitude', longitude.toString());
-      if (photo) formData.append('biometricProof', photo);
-
-      await submitManagerLog(formData);
-      
-      // Reset state and reload
-      setPhoto(null);
-      setPhotoPreview(null);
-      setSelectedEmployee(null);
-      await loadData();
-    } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to submit log');
-    } finally {
-      setSubmitting(false);
-    }
+  const handleRetake = () => {
+    setPhotoPreview(null);
+    setVerificationStatus('idle');
+    startCamera(facingMode);
   };
 
   if (loading) return <div className="manager-att-loader">Initializing Biometric Node...</div>;
@@ -262,8 +394,40 @@ const ManagerAttendance: React.FC = () => {
 
                 <div className="photo-capture-section">
                   <div className="photo-preview-box">
-                    {photoPreview ? (
-                      <img src={photoPreview} alt="Preview" />
+                    {isCameraActive ? (
+                      <div className="camera-viewport">
+                        <video 
+                          ref={videoRef} 
+                          autoPlay 
+                          playsInline 
+                          muted 
+                          className="camera-video"
+                          style={{ transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }}
+                        />
+                        <div className="scanner-line"></div>
+                      </div>
+                    ) : photoPreview ? (
+                      <div className="captured-preview">
+                        <img src={photoPreview} alt="Preview" />
+                        {verificationStatus === 'verifying' && (
+                          <div className="verification-overlay">
+                            <Loader2 size={36} className="spinner" />
+                            <span>Verifying Identity...</span>
+                          </div>
+                        )}
+                        {verificationStatus === 'success' && (
+                          <div className="verification-overlay success">
+                            <CheckCircle size={36} />
+                            <span>Verified!</span>
+                          </div>
+                        )}
+                        {verificationStatus === 'failed' && (
+                          <div className="verification-overlay failed">
+                            <AlertCircle size={36} />
+                            <span>Verification Failed</span>
+                          </div>
+                        )}
+                      </div>
                     ) : (
                       <div className="empty-photo">
                         <Camera size={40} />
@@ -271,45 +435,66 @@ const ManagerAttendance: React.FC = () => {
                       </div>
                     )}
                   </div>
-                  <button className="btn-capture" onClick={() => fileInputRef.current?.click()}>
-                    <Upload size={18} /> {photo ? 'Replace Image' : 'Capture / Upload Photo'}
-                  </button>
-                  <input 
-                    type="file" 
-                    ref={fileInputRef} 
-                    style={{ display: 'none' }} 
-                    accept="image/*" 
-                    capture="environment"
-                    onChange={handlePhotoCapture} 
-                  />
+
+                  <div className="camera-controls-row">
+                    {!isCameraActive && !photoPreview && (
+                      <button 
+                        className="btn-start-camera" 
+                        onClick={() => startCamera(facingMode)}
+                        disabled={submitting}
+                      >
+                        <Camera size={18} />
+                        <span>Start Camera & Verify</span>
+                      </button>
+                    )}
+
+                    {isCameraActive && (
+                      <>
+                        <button 
+                          className="btn-capture-verify" 
+                          onClick={handleCaptureAndVerify}
+                          disabled={submitting}
+                        >
+                          {submitting ? (
+                            <>
+                              <Loader2 size={18} className="spinner" />
+                              <span>Processing...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Camera size={18} />
+                              <span>Capture & Verify {getActiveSession(selectedEmployee.id) ? 'Clock-Out' : 'Clock-In'}</span>
+                            </>
+                          )}
+                        </button>
+                        <button 
+                          className="btn-flip" 
+                          onClick={handleFlipCamera}
+                          title="Flip Camera"
+                          disabled={submitting}
+                        >
+                          <RefreshCw size={18} />
+                        </button>
+                      </>
+                    )}
+
+                    {photoPreview && verificationStatus !== 'verifying' && (
+                      <button 
+                        className="btn-retake" 
+                        onClick={handleRetake}
+                        disabled={submitting}
+                      >
+                        <RefreshCw size={18} />
+                        <span>Retake Photo</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
 
-                <div className="control-actions">
-                  {!getActiveSession(selectedEmployee.id) ? (
-                    <button 
-                      className="btn-log-action check-in" 
-                      disabled={submitting || !photo}
-                      onClick={() => handleSubmit('CLOCK_IN')}
-                    >
-                      <CheckCircle size={20} />
-                      <span>{submitting ? 'Processing...' : 'Record Check-In'}</span>
-                    </button>
-                  ) : (
-                    <button 
-                      className="btn-log-action check-out" 
-                      disabled={submitting}
-                      onClick={() => handleSubmit('CLOCK_OUT')}
-                    >
-                      <Clock size={20} />
-                      <span>{submitting ? 'Processing...' : 'Record Check-Out'}</span>
-                    </button>
-                  )}
-                </div>
-
-                {!photo && !getActiveSession(selectedEmployee.id) && (
+                {!selectedEmployee.avatar && (
                   <p className="warning-text">
                     <AlertCircle size={14} />
-                    Photo verification is mandatory for new check-ins.
+                    No reference photo enrolled for this employee. Clocking will bypass facial verification.
                   </p>
                 )}
               </motion.div>

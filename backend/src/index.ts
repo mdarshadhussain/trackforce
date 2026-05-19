@@ -55,17 +55,34 @@ app.use('/uploads', express.static(UPLOADS_DIR));
 // Advanced Hierarchical Multer Configuration
 const storage = multer.diskStorage({
   destination: async (req: any, file, cb) => {
-    let folderId = req.body.employeeId || req.params.employeeId || 'unknown';
+    let folderId = 'unknown';
 
-    if (req.params.id && folderId === 'unknown') {
+    // Gather all potential identifiers to find the employee
+    const identifiers = [
+      req.body.employeeId,
+      req.params.employeeId,
+      req.params.id,
+      req.user?.id
+    ].filter(Boolean);
+
+    if (identifiers.length > 0) {
       try {
-        const emp = await prisma.employee.findUnique({ where: { id: req.params.id } });
-        if (emp) folderId = emp.employeeId;
+        // Query the database to find the employee using either UUID (id) or human-readable employeeId
+        const emp = await prisma.employee.findFirst({
+          where: {
+            OR: identifiers.flatMap(val => [
+              { id: val },
+              { employeeId: val }
+            ])
+          }
+        });
+        if (emp) {
+          folderId = emp.employeeId;
+        }
       } catch (err) {
-        console.error("Multer destination error:", err);
+        console.error("Multer destination lookup error:", err);
       }
     }
-
 
     let typeDir = 'documents';
 
@@ -75,8 +92,6 @@ const storage = multer.diskStorage({
     else if (file.fieldname === 'biometricProof') typeDir = 'attendance';
 
     const userDir = path.join(UPLOADS_DIR, folderId, typeDir);
-
-
 
     if (!fs.existsSync(userDir)) {
       fs.mkdirSync(userDir, { recursive: true });
@@ -89,7 +104,7 @@ const storage = multer.diskStorage({
     if (file.fieldname === 'avatar') prefix = 'profile';
     else if (file.fieldname === 'cv') prefix = 'resume';
     else if (file.fieldname === 'idDoc') prefix = 'id_proof';
-
+    else if (file.fieldname === 'biometricProof') prefix = 'proof';
 
     cb(null, `${prefix}_${sanitizedOriginal}`);
   }
@@ -494,9 +509,23 @@ app.delete('/api/employees/:id', authenticateToken, requireAdmin, async (req, re
 });
 
 app.post('/api/employees/:id/enroll', authenticateToken, async (req, res) => {
+  const { id } = req.params;
   try {
-    await prisma.employee.update({ where: { id: req.params.id }, data: { isBiometricEnrolled: true, biometricToken: JSON.stringify(req.body.faceDescriptor) } });
-    res.json({ message: 'Enrolled' });
+    const employee = await prisma.employee.findFirst({
+      where: {
+        OR: [
+          { id },
+          { employeeId: id }
+        ]
+      }
+    });
+    if (!employee) return res.status(404).json({ error: 'Employee not found' });
+
+    const updated = await prisma.employee.update({
+      where: { id: employee.id },
+      data: { isBiometricEnrolled: true, biometricToken: JSON.stringify(req.body.faceDescriptor) }
+    });
+    res.json({ ...updated, password: undefined });
   } catch (error) {
     res.status(400).json({ error: 'Enrollment failed' });
   }
@@ -509,7 +538,15 @@ app.post('/api/attendance/clock-in/:id', authenticateToken, upload.single('biome
   const { latitude, longitude } = req.body;
   if (!latitude || !longitude) return res.status(400).json({ error: 'Location required' });
   try {
-    const employee = await prisma.employee.findUnique({ where: { id }, include: { site: true } });
+    const employee = await prisma.employee.findFirst({
+      where: {
+        OR: [
+          { id },
+          { employeeId: id }
+        ]
+      },
+      include: { site: true }
+    });
     if (!employee) return res.status(404).json({ error: 'Employee not found' });
     if (!employee.site) return res.status(400).json({ error: 'No operational site assigned to your profile. Please contact admin.' });
     
@@ -519,9 +556,25 @@ app.post('/api/attendance/clock-in/:id', authenticateToken, upload.single('biome
       await prisma.securityAlert.create({ data: { type: 'GEOFENCE_VIOLATION', message: `${employee.firstName} clocked in from ${Math.round(distance)}m away.`, severity: 'MEDIUM', employeeId: employee.id, siteId: employee.siteId } });
       return res.status(403).json({ error: `Out of bounds (${Math.round(distance)}m away from ${employee.site.name})` });
     }
+    
     let biometricProof = null;
     if (req.file) {
       biometricProof = `/uploads/${employee.employeeId}/attendance/${req.file.filename}`;
+    } else if (req.body.biometricProof && req.body.biometricProof.startsWith('data:image')) {
+      try {
+        const base64Data = req.body.biometricProof.replace(/^data:image\/\w+;base64,/, "");
+        const buffer = Buffer.from(base64Data, 'base64');
+        const filename = `proof_${employee.employeeId}_${Date.now()}.jpg`;
+        const userDir = path.join(UPLOADS_DIR, employee.employeeId, 'attendance');
+        if (!fs.existsSync(userDir)) {
+          fs.mkdirSync(userDir, { recursive: true });
+        }
+        const filePath = path.join(userDir, filename);
+        fs.writeFileSync(filePath, buffer);
+        biometricProof = `/uploads/${employee.employeeId}/attendance/${filename}`;
+      } catch (err) {
+        console.error("Base64 clock-in biometricProof save error:", err);
+      }
     }
     
     const attendance = await prisma.attendance.create({ 
@@ -541,9 +594,17 @@ app.post('/api/attendance/clock-in/:id', authenticateToken, upload.single('biome
 });
 
 app.post('/api/attendance/clock-out/:id', authenticateToken, upload.single('biometricProof'), async (req: any, res: Response) => {
+  const { id } = req.params;
   try {
     const { latitude, longitude } = req.body;
-    const employee = await prisma.employee.findUnique({ where: { id: req.params.id } });
+    const employee = await prisma.employee.findFirst({
+      where: {
+        OR: [
+          { id },
+          { employeeId: id }
+        ]
+      }
+    });
     if (!employee) return res.status(404).json({ error: 'Employee not found' });
     const active = await prisma.attendance.findFirst({ where: { employeeId: employee.id, clockOut: null }, orderBy: { createdAt: 'desc' } });
     if (!active) return res.status(400).json({ error: 'No active clock-in' });
@@ -551,6 +612,21 @@ app.post('/api/attendance/clock-out/:id', authenticateToken, upload.single('biom
     let biometricProofOut = null;
     if (req.file) {
       biometricProofOut = `/uploads/${employee.employeeId}/attendance/${req.file.filename}`;
+    } else if (req.body.biometricProof && req.body.biometricProof.startsWith('data:image')) {
+      try {
+        const base64Data = req.body.biometricProof.replace(/^data:image\/\w+;base64,/, "");
+        const buffer = Buffer.from(base64Data, 'base64');
+        const filename = `proof_out_${employee.employeeId}_${Date.now()}.jpg`;
+        const userDir = path.join(UPLOADS_DIR, employee.employeeId, 'attendance');
+        if (!fs.existsSync(userDir)) {
+          fs.mkdirSync(userDir, { recursive: true });
+        }
+        const filePath = path.join(userDir, filename);
+        fs.writeFileSync(filePath, buffer);
+        biometricProofOut = `/uploads/${employee.employeeId}/attendance/${filename}`;
+      } catch (err) {
+        console.error("Base64 clock-out biometricProof save error:", err);
+      }
     }
 
     const updated = await prisma.attendance.update({ 
@@ -645,7 +721,15 @@ app.delete('/api/attendance/:id', authenticateToken, requireAdmin, async (req, r
 app.post('/api/attendance/manager-log', authenticateToken, requireManagement, upload.single('biometricProof'), async (req: any, res: Response) => {
   const { employeeId, type, latitude, longitude } = req.body;
   try {
-    const employee = await prisma.employee.findUnique({ where: { id: employeeId }, include: { site: true } });
+    const employee = await prisma.employee.findFirst({
+      where: {
+        OR: [
+          { id: employeeId },
+          { employeeId: employeeId }
+        ]
+      },
+      include: { site: true }
+    });
     if (!employee) return res.status(404).json({ error: 'Employee not found' });
     
     // Security check: Manager can only log for their site
@@ -656,6 +740,21 @@ app.post('/api/attendance/manager-log', authenticateToken, requireManagement, up
     let proofPath = null;
     if (req.file) {
       proofPath = `/uploads/${employee.employeeId}/attendance/${req.file.filename}`;
+    } else if (req.body.biometricProof && req.body.biometricProof.startsWith('data:image')) {
+      try {
+        const base64Data = req.body.biometricProof.replace(/^data:image\/\w+;base64,/, "");
+        const buffer = Buffer.from(base64Data, 'base64');
+        const filename = `proof_manager_${employee.employeeId}_${Date.now()}.jpg`;
+        const userDir = path.join(UPLOADS_DIR, employee.employeeId, 'attendance');
+        if (!fs.existsSync(userDir)) {
+          fs.mkdirSync(userDir, { recursive: true });
+        }
+        const filePath = path.join(userDir, filename);
+        fs.writeFileSync(filePath, buffer);
+        proofPath = `/uploads/${employee.employeeId}/attendance/${filename}`;
+      } catch (err) {
+        console.error("Base64 manager-log biometricProof save error:", err);
+      }
     }
 
     if (type === 'CLOCK_IN') {

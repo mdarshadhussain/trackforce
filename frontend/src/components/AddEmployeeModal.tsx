@@ -165,12 +165,24 @@ const AddEmployeeModal = ({ isOpen, onClose, onAdd }: AddEmployeeModalProps) => 
                   <label>{t('designation')}</label>
                   <div className="input-with-icon">
                     <Briefcase size={16} />
-                    <input 
-                      type="text" 
+                    <select 
                       value={formData.designation}
                       onChange={(e) => setFormData({...formData, designation: e.target.value})}
-                      placeholder="Security Officer" 
-                    />
+                      required
+                    >
+                      <option value="" disabled>Select Designation</option>
+                      <option value="Supervisor">Supervisor</option>
+                      <option value="Foreman">Foreman</option>
+                      <option value="Experience Worker">Experience Worker</option>
+                      <option value="Engineer">Engineer</option>
+                      <option value="Fresh Worker">Fresh Worker</option>
+                      <option value="Safety">Safety</option>
+                      <option value="Drawing">Drawing</option>
+                      <option value="QA/QC">QA/QC</option>
+                      <option value="QS">QS</option>
+                      <option value="Store keeper">Store keeper</option>
+                      <option value="Sr. Foreman">Sr. Foreman</option>
+                    </select>
                   </div>
                 </div>
                 <div className="form-group">

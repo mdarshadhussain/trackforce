@@ -220,7 +220,26 @@ const CompleteProfile = () => {
                   <div className="form-grid-2">
                     <div className="form-group">
                       <label>Designation</label>
-                      <input type="text" value={formData.designation} onChange={(e) => setFormData({...formData, designation: e.target.value})} />
+                      <select 
+                        value={formData.designation} 
+                        onChange={(e) => setFormData({...formData, designation: e.target.value})}
+                        required
+                        className="premium-select-native"
+                        style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', outline: 'none' }}
+                      >
+                        <option value="" disabled>Select Designation</option>
+                        <option value="Supervisor">Supervisor</option>
+                        <option value="Foreman">Foreman</option>
+                        <option value="Experience Worker">Experience Worker</option>
+                        <option value="Engineer">Engineer</option>
+                        <option value="Fresh Worker">Fresh Worker</option>
+                        <option value="Safety">Safety</option>
+                        <option value="Drawing">Drawing</option>
+                        <option value="QA/QC">QA/QC</option>
+                        <option value="QS">QS</option>
+                        <option value="Store keeper">Store keeper</option>
+                        <option value="Sr. Foreman">Sr. Foreman</option>
+                      </select>
                     </div>
                     <div className="form-group">
                       <label>Hourly Rate (₫)</label>

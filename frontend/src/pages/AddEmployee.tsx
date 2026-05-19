@@ -181,7 +181,7 @@ const AddEmployee = () => {
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="add-employee-page"
+      className="add-employee-page-v2"
     >
       <header className="page-header">
         <div className="header-left">
@@ -195,19 +195,20 @@ const AddEmployee = () => {
         </div>
       </header>
 
-      <div className="glass-card form-container-premium">
-        <form onSubmit={handleSubmit} className="premium-form">
-          {error && (
-            <div className="error-banner">
-              <AlertCircle size={18} />
-              <span>{error}</span>
-            </div>
-          )}
+      <form onSubmit={handleSubmit} className="add-employee-grid">
+        {error && (
+          <div className="error-banner full-width-banner">
+            <AlertCircle size={18} />
+            <span>{error}</span>
+          </div>
+        )}
 
-          <div className="form-section">
+        <div className="form-column">
+          {/* Core Identity Card */}
+          <div className="glass-card form-section-card">
             <div className="section-header">
               <User size={20} />
-              <h3>Basic Information</h3>
+              <h3>Core Identity</h3>
             </div>
             
             <div className="profile-top-site" style={{ display: 'flex', gap: '32px', alignItems: 'center' }}>
@@ -243,10 +244,10 @@ const AddEmployee = () => {
                 <p style={{ fontSize: '10px', color: 'var(--text-tertiary)', marginTop: '4px', textAlign: 'center', opacity: 0.8 }}>Avatar <span className="required-star">*</span></p>
               </div>
             </div>
-
           </div>
 
-          <div className="form-section">
+          {/* Security & Authentication Card */}
+          <div className="glass-card form-section-card">
             <div className="section-header">
               <Lock size={20} />
               <h3>Security & Authentication</h3>
@@ -300,7 +301,8 @@ const AddEmployee = () => {
             </div>
           </div>
 
-          <div className="form-section">
+          {/* Contact Details Card */}
+          <div className="glass-card form-section-card">
             <div className="section-header">
               <Smartphone size={20} />
               <h3>Contact Details</h3>
@@ -326,11 +328,14 @@ const AddEmployee = () => {
               </div>
             </div>
           </div>
+        </div>
 
-          <div className="form-section">
+        <div className="form-column">
+          {/* Payroll Parameters Card */}
+          <div className="glass-card form-section-card">
             <div className="section-header">
               <CheckCircle2 size={20} />
-              <h3>Payroll Parameters</h3>
+              <h3>Payroll & Project</h3>
             </div>
             <div className="form-grid-3">
               <div className="form-group">
@@ -376,31 +381,51 @@ const AddEmployee = () => {
                 </div>
               </div>
             </div>
-          </div>
-
-          <div className="form-section">
-            <div className="section-header">
+            
+            {/* Project & Role */}
+            <div className="section-header" style={{ marginTop: '24px' }}>
               <Briefcase size={20} />
-              <h3>Project & Role</h3>
+              <h3>Project & Access</h3>
             </div>
             <div className="form-grid-3">
-              <div className="form-group">
-                <label>Designation <span className="required-star">*</span></label>
-                <input 
-                  type="text" 
-                  required 
-                  value={formData.designation}
-                  onChange={(e) => setFormData({...formData, designation: e.target.value})}
-                  placeholder="Software Engineer" 
-                />
-              </div>
+              {formData.role === 'EMPLOYEE' && (
+                <div className="form-group">
+                  <label>Designation <span className="required-star">*</span></label>
+                  <PremiumSelect 
+                    required
+                    value={formData.designation}
+                    onChange={(val: string) => setFormData({...formData, designation: val})}
+                    options={[
+                      { label: 'Select Designation...', value: '' },
+                      { label: 'Supervisor', value: 'Supervisor' },
+                      { label: 'Foreman', value: 'Foreman' },
+                      { label: 'Experience Worker', value: 'Experience Worker' },
+                      { label: 'Engineer', value: 'Engineer' },
+                      { label: 'Fresh Worker', value: 'Fresh Worker' },
+                      { label: 'Safety', value: 'Safety' },
+                      { label: 'Drawing', value: 'Drawing' },
+                      { label: 'QA/QC', value: 'QA/QC' },
+                      { label: 'QS', value: 'QS' },
+                      { label: 'Store keeper', value: 'Store keeper' },
+                      { label: 'Sr. Foreman', value: 'Sr. Foreman' }
+                    ]}
+                    placeholder="Select Designation..."
+                  />
+                </div>
+              )}
               <div className="form-group">
                 <label>Access Level <span className="required-star">*</span></label>
                 <PremiumSelect 
                   required
                   disabled={!isAdmin}
                   value={formData.role}
-                  onChange={(val: string) => setFormData({...formData, role: val})}
+                  onChange={(val: string) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      role: val,
+                      ...(val !== 'EMPLOYEE' ? { designation: '' } : {})
+                    }));
+                  }}
                   options={[
                     { label: 'Standard Employee', value: 'EMPLOYEE' },
                     { label: 'Manager', value: 'MANAGER' },
@@ -424,7 +449,8 @@ const AddEmployee = () => {
             </div>
           </div>
 
-          <div className="form-section">
+          {/* Bank & Documents Card */}
+          <div className="glass-card form-section-card">
             <div className="section-header">
               <CreditCard size={20} />
               <h3>Bank Account Details</h3>
@@ -467,12 +493,10 @@ const AddEmployee = () => {
                 />
               </div>
             </div>
-          </div>
 
-          <div className="form-section">
-            <div className="section-header">
+            <div className="section-header" style={{ marginTop: '24px' }}>
               <FileText size={20} />
-              <h3>Passport and ID Details</h3>
+              <h3>Passport & Identity Documents</h3>
             </div>
             <div className="form-grid-3">
               <div className="form-group">
@@ -501,14 +525,10 @@ const AddEmployee = () => {
                 />
               </div>
             </div>
-          </div>
 
-          <div className="form-section">
-            <div className="section-header">
+            <div className="section-header" style={{ marginTop: '24px' }}>
               <FileText size={20} />
-              <h3>Employee Documents</h3>
-
-
+              <h3>Employee Resumes & Files</h3>
             </div>
             <div className="file-upload-grid-compact" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
               <div className="file-upload-node">
@@ -537,7 +557,7 @@ const AddEmployee = () => {
           </div>
 
           {!isEditMode && (
-            <div className="enrollment-notice">
+            <div className="enrollment-notice-v2">
               <CheckCircle2 size={24} />
               <div>
                 <h4>Face ID Enrollment Ready</h4>
@@ -546,7 +566,7 @@ const AddEmployee = () => {
             </div>
           )}
 
-          <div className="form-actions-premium">
+          <div className="form-actions-sticky glass-card">
             <button type="button" onClick={() => navigate('/employees')} className="btn btn-ghost">
               Cancel
             </button>
@@ -555,8 +575,8 @@ const AddEmployee = () => {
               {isEditMode ? <Save size={18} style={{ marginLeft: '8px' }} /> : <UserPlus size={18} style={{ marginLeft: '8px' }} />}
             </button>
           </div>
-        </form>
-      </div>
+        </div>
+      </form>
     </motion.div>
   );
 };

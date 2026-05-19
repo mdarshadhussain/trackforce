@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Clock, 
@@ -20,6 +20,8 @@ import { useAuth } from '../context/AuthContext';
 import Toast from '../components/Toast';
 import type { ToastType } from '../components/Toast';
 import PayslipModal from '../components/PayslipModal';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import PremiumSelect from '../components/PremiumSelect';
 import './Payroll.css';
 
 const StatCard = ({ icon, label, value, color }: any) => (
@@ -52,6 +54,8 @@ const Payroll = () => {
   const [toasts, setToasts] = useState<any[]>([]);
   const [isPayslipOpen, setIsPayslipOpen] = useState(false);
   const [selectedPayslip, setSelectedPayslip] = useState<any>(null);
+  const [designationFilter, setDesignationFilter] = useState('ALL');
+  const [monthFilter, setMonthFilter] = useState('');
 
   const addToast = (message: string, type: ToastType = 'info') => {
     const id = Math.random().toString(36).substr(2, 9);
@@ -101,11 +105,65 @@ const Payroll = () => {
     addToast('Report generated successfully', 'success');
   };
 
+  const filteredData = useMemo(() => {
+    return payrollData.filter(item => {
+      let match = true;
+      if (searchTerm && !`${item.employee?.firstName} ${item.employee?.lastName}`.toLowerCase().includes(searchTerm.toLowerCase())) {
+        match = false;
+      }
+      if (designationFilter !== 'ALL' && item.employee?.designation !== designationFilter) {
+        match = false;
+      }
+      if (monthFilter) {
+        const periodStart = item.periodStart ? new Date(item.periodStart) : null;
+        if (periodStart) {
+          const itemMonth = `${periodStart.getFullYear()}-${String(periodStart.getMonth() + 1).padStart(2, '0')}`;
+          if (itemMonth !== monthFilter) match = false;
+        } else {
+          match = false;
+        }
+      }
+      return match;
+    });
+  }, [payrollData, searchTerm, designationFilter, monthFilter]);
+
+  const chartData = useMemo(() => {
+    if (isEmployee) return [];
+    const spendByEmployee = filteredData.reduce((acc: any, item: any) => {
+      const name = `${item.employee?.firstName || 'Unknown'} ${item.employee?.lastName || ''}`.trim();
+      if (!acc[name]) {
+        acc[name] = { name, totalSpend: 0 };
+      }
+      acc[name].totalSpend += (item.earnings || 0);
+      return acc;
+    }, {});
+    
+    return Object.values(spendByEmployee).sort((a: any, b: any) => b.totalSpend - a.totalSpend);
+  }, [filteredData, isEmployee]);
+
+  const uniqueDesignations = useMemo(() => {
+    const desigs = new Set<string>();
+    payrollData.forEach(item => {
+      if (item.employee?.designation) desigs.add(item.employee.designation);
+    });
+    return Array.from(desigs);
+  }, [payrollData]);
+
   if (loading) return <div className="loading-state">Synchronizing Financial Nodes...</div>;
 
-  const filteredData = payrollData.filter(item => 
-    `${item.employee?.firstName} ${item.employee?.lastName}`.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+
+
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="chart-tooltip-premium">
+          <p className="tooltip-label">{label}</p>
+          <p className="tooltip-value">{payload[0].value.toLocaleString()} ₫</p>
+        </div>
+      );
+    }
+    return null;
+  };
 
   return (
     <div className="payroll-page">
@@ -145,6 +203,67 @@ const Payroll = () => {
           )}
         </div>
       </header>
+
+      {!isEmployee && (
+        <div className="payroll-dashboard-premium glass-card">
+          <div className="dashboard-header">
+            <h3>Expenditure Analytics</h3>
+            <div className="dashboard-filters">
+              <PremiumSelect 
+                placeholder="Filter Designation"
+                value={designationFilter}
+                onChange={(val: string) => setDesignationFilter(val)}
+                options={[
+                  { label: 'All Designations', value: 'ALL' },
+                  ...uniqueDesignations.map(d => ({ label: d, value: d }))
+                ]}
+                className="dashboard-filter-select"
+              />
+              <div className="month-filter-wrap">
+                <input 
+                  type="month" 
+                  className="month-filter-input"
+                  value={monthFilter}
+                  onChange={(e) => setMonthFilter(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+          
+          <div className="chart-wrapper">
+            {chartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                  <XAxis 
+                    dataKey="name" 
+                    stroke="var(--text-tertiary)" 
+                    fontSize={12} 
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis 
+                    stroke="var(--text-tertiary)" 
+                    fontSize={12} 
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(value) => `${(value / 1000000).toFixed(1)}M`}
+                  />
+                  <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(212, 175, 55, 0.05)' }} />
+                  <Bar 
+                    dataKey="totalSpend" 
+                    fill="var(--primary)" 
+                    radius={[4, 4, 0, 0]} 
+                    maxBarSize={50}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="empty-chart">No expenditure data available for selected filters.</div>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="stats-grid-premium">
         <StatCard 

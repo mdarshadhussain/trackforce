@@ -530,31 +530,41 @@ const ManagerAttendance: React.FC = () => {
             )}
           </div>
 
-          <div className="personal-actions-sidebar">
-            <div className={`status-indicator ${isMyClockedIn ? 'active' : 'inactive'}`}>
-              {isMyClockedIn && <div className="pulse-dot"></div>}
-              <span>{isMyClockedIn ? 'ON DUTY' : 'OFF DUTY'}</span>
-            </div>
-            
-            <button 
-              className={`btn-my-clock ${isMyClockedIn ? 'out' : 'in'}`}
-              onClick={handleMyClockAction}
-              disabled={submitting}
-            >
-              {isMyClockedIn ? <X size={18} /> : <Clock size={18} />}
-              <span>{isMyClockedIn ? 'Clock Out Now' : 'Clock In Now'}</span>
-            </button>
-          </div>
+          {user?.role !== 'ADMIN' ? (
+            <>
+              <div className="personal-actions-sidebar">
+                <div className={`status-indicator ${isMyClockedIn ? 'active' : 'inactive'}`}>
+                  {isMyClockedIn && <div className="pulse-dot"></div>}
+                  <span>{isMyClockedIn ? 'ON DUTY' : 'OFF DUTY'}</span>
+                </div>
+                
+                <button 
+                  className={`btn-my-clock ${isMyClockedIn ? 'out' : 'in'}`}
+                  onClick={handleMyClockAction}
+                  disabled={submitting}
+                >
+                  {isMyClockedIn ? <X size={18} /> : <Clock size={18} />}
+                  <span>{isMyClockedIn ? 'Clock Out Now' : 'Clock In Now'}</span>
+                </button>
+              </div>
 
-          <div className="hours-summary-mini">
-             <div className="hour-item">
-               <Clock size={16} />
-               <div className="v-stack">
-                 <span className="val">{personalStats.totalHours.toFixed(2)}</span>
-                 <span className="lab">Total hours</span>
-               </div>
-             </div>
-          </div>
+              <div className="hours-summary-mini">
+                 <div className="hour-item">
+                   <Clock size={16} />
+                   <div className="v-stack">
+                     <span className="val">{personalStats.totalHours.toFixed(2)}</span>
+                     <span className="lab">Total hours</span>
+                   </div>
+                 </div>
+              </div>
+            </>
+          ) : (
+            <div className="admin-exemption-badge">
+              <Shield size={24} color="var(--primary)" />
+              <strong>Duty Exempt</strong>
+              <span>System administrators are exempt from site-wide clocking requirements.</span>
+            </div>
+          )}
         </div>
       </div>
     </div>

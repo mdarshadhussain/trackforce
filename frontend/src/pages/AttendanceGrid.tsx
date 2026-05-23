@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ChevronLeft, 
@@ -14,6 +14,109 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { fetchEmployees, fetchAllLogs, fetchSites } from '../api/api';
 import './Attendance.css';
+
+
+const SearchableSiteDropdown = ({ 
+  sites, 
+  selectedSiteId, 
+  onSelectSite 
+}: { 
+  sites: any[]; 
+  selectedSiteId: string; 
+  onSelectSite: (id: string) => void; 
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectedSite = selectedSiteId === 'all' 
+    ? { id: 'all', name: 'All Sites' } 
+    : sites.find(s => s.id === selectedSiteId) || { id: 'all', name: 'All Sites' };
+
+  const filteredSites = sites.filter(s => 
+    s.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  return (
+    <div className="searchable-dropdown" ref={dropdownRef}>
+      <button 
+        type="button" 
+        className={"dropdown-trigger-btn " + (isOpen ? "active" : "")}
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <Filter size={14} className="trigger-icon" />
+        <span>{selectedSite.name}</span>
+        <span className="dropdown-arrow">▼</span>
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            className="dropdown-overlay-deck"
+          >
+            <div className="dropdown-search-box" onClick={(e) => e.stopPropagation()}>
+              <Search size={14} className="search-icon-inside" />
+              <input 
+                type="text" 
+                placeholder="Search sites..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                autoFocus
+              />
+            </div>
+
+            <div className="dropdown-list-scroller">
+              <button 
+                type="button"
+                className={"dropdown-list-item " + (selectedSiteId === 'all' ? 'active' : '')}
+                onClick={() => {
+                  onSelectSite('all');
+                  setIsOpen(false);
+                  setSearchQuery('');
+                }}
+              >
+                All Sites ({sites.length})
+              </button>
+              
+              {filteredSites.length > 0 ? (
+                filteredSites.map(site => (
+                  <button 
+                    key={site.id}
+                    type="button"
+                    className={"dropdown-list-item " + (selectedSiteId === site.id ? 'active' : '')}
+                    onClick={() => {
+                      onSelectSite(site.id);
+                      setIsOpen(false);
+                      setSearchQuery('');
+                    }}
+                  >
+                    {site.name}
+                  </button>
+                ))
+              ) : (
+                <div className="dropdown-no-results">No sites found</div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
 
 const AttendanceGrid: React.FC = () => {
   const navigate = useNavigate();
@@ -211,19 +314,11 @@ const AttendanceGrid: React.FC = () => {
           </div>
 
           {isAdmin && (
-            <div className="filter-hub">
-              <Filter size={18} />
-              <select 
-                value={selectedSite} 
-                onChange={(e) => setSelectedSite(e.target.value)}
-                className="site-select"
-              >
-                <option value="all">All Sites ({sites?.length || 0})</option>
-                {Array.isArray(sites) && sites.map(site => (
-                  <option key={site.id} value={site.id}>{site.name}</option>
-                ))}
-              </select>
-            </div>
+            <SearchableSiteDropdown 
+              sites={sites} 
+              selectedSiteId={selectedSite} 
+              onSelectSite={setSelectedSite} 
+            />
           )}
           
           {searchTerm && (

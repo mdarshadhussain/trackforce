@@ -6,8 +6,9 @@ async function main() {
     select: {
       id: true,
       employeeId: true,
-      cvPath: true,
-      idDocPath: true
+      firstName: true,
+      lastName: true,
+      role: true
     }
   });
   console.log(JSON.stringify(employees, null, 2));

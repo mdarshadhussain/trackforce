@@ -387,12 +387,23 @@ app.post('/api/employees', authenticateToken, requireAdmin, employeeUploads, asy
       if (files.idDoc) idDocPath = `/uploads/${employeeId}/passport_id/${files.idDoc[0].filename}`;
 
     }
+    const parseDate = (d: any) => {
+      if (!d || d === '' || d === 'null' || d === 'undefined') return null;
+      const parsed = new Date(d);
+      return isNaN(parsed.getTime()) ? null : parsed;
+    };
+
     const hashedPassword = await bcrypt.hash(password || 'password123', 10);
     const newEmployee = await prisma.employee.create({
       data: {
-        employeeId, firstName, lastName, phone, password: hashedPassword, plainPassword: password || 'password123', role: role || 'EMPLOYEE', designation, siteId, avatar, cvPath, idDocPath,
+        employeeId, firstName, lastName, phone, password: hashedPassword, plainPassword: password || 'password123', role: role || 'EMPLOYEE', designation, 
+        siteId: (siteId === '' || siteId === 'null' || siteId === 'undefined') ? null : siteId, 
+        avatar, cvPath, idDocPath,
         hourlyRate: parseFloat(hourlyRate as any) || 0.0, overtimeType: overtimeType || 'MULTIPLIER', overtimeValue: parseFloat(overtimeValue as any) || 1.5,
-        passportNumber, passportExpiry: passportExpiry ? new Date(passportExpiry) : null, passportIssue: passportIssue ? new Date(passportIssue) : null, dob: dob ? new Date(dob) : null,
+        passportNumber, 
+        passportExpiry: parseDate(passportExpiry), 
+        passportIssue: parseDate(passportIssue), 
+        dob: parseDate(dob),
         bankName, accountNumber, accountHolderName, swiftCode
       } as any
     });
@@ -481,21 +492,39 @@ app.put('/api/employees/:id', authenticateToken, employeeUploads, async (req: an
       if (files.cv) data.cvPath = `/uploads/${existing.employeeId}/cv/${files.cv[0].filename}`;
       if (files.idDoc) data.idDocPath = `/uploads/${existing.employeeId}/passport_id/${files.idDoc[0].filename}`;
     }
-    if (data.dob) data.dob = new Date(data.dob);
-    if (data.passportExpiry) data.passportExpiry = new Date(data.passportExpiry);
-    if (data.passportIssue) data.passportIssue = new Date(data.passportIssue);
+    const parseDate = (d: any) => {
+      if (!d || d === '' || d === 'null' || d === 'undefined') return null;
+      const parsed = new Date(d);
+      return isNaN(parsed.getTime()) ? null : parsed;
+    };
+
+    if (data.dob !== undefined) data.dob = parseDate(data.dob);
+    if (data.passportExpiry !== undefined) data.passportExpiry = parseDate(data.passportExpiry);
+    if (data.passportIssue !== undefined) data.passportIssue = parseDate(data.passportIssue);
+    
+    if (data.siteId === '' || data.siteId === 'null' || data.siteId === 'undefined') {
+      data.siteId = null;
+    }
+
     if (data.fullName) {
       const nameParts = data.fullName.split(' ');
       data.firstName = nameParts[0] || '';
       data.lastName = nameParts.slice(1).join(' ') || ' ';
       delete data.fullName;
     }
-    if (data.hourlyRate) data.hourlyRate = parseFloat(data.hourlyRate);
-    if (data.overtimeValue) data.overtimeValue = parseFloat(data.overtimeValue);
+    
+    if (data.hourlyRate !== undefined) {
+      data.hourlyRate = (data.hourlyRate === '' || data.hourlyRate === null) ? null : parseFloat(data.hourlyRate);
+    }
+    if (data.overtimeValue !== undefined) {
+      data.overtimeValue = (data.overtimeValue === '' || data.overtimeValue === null) ? null : parseFloat(data.overtimeValue);
+    }
+
     const updated = await prisma.employee.update({ where: { id }, data: data as any });
     res.json({ ...updated, password: undefined });
-  } catch (error) {
-    res.status(400).json({ error: 'Update failed' });
+  } catch (error: any) {
+    console.error("PUT employee error details:", error);
+    res.status(400).json({ error: `Update failed: ${error.message || error}` });
   }
 });
 

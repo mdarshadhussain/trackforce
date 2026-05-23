@@ -698,3 +698,381 @@
     box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
   }
 }
+
+/* --- Dashboard Filters Deck Styles --- */
+.dashboard-controls-block {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.dashboard-filters-deck {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Dropdown vs Search toggle */
+.filter-mode-toggle {
+  display: flex;
+  background: var(--surface-brighter);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 3px;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.filter-mode-toggle .toggle-btn {
+  background: transparent;
+  border: none;
+  padding: 8px 16px;
+  border-radius: calc(var(--radius-md) - 2px);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.filter-mode-toggle .toggle-btn.active {
+  background: var(--primary);
+  color: #ffffff;
+  box-shadow: 0 4px 12px var(--primary-glow);
+}
+
+.filter-mode-toggle .toggle-btn:hover:not(.active) {
+  color: var(--text-primary);
+  background: var(--surface-hover);
+}
+
+/* Global search container styling */
+.global-search-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 220px;
+}
+
+.global-search-input {
+  width: 100%;
+  padding: 12px 36px 12px 36px;
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 700;
+  outline: none;
+  transition: all 0.25s ease;
+}
+
+.global-search-input:focus {
+  border-color: var(--primary);
+  background: var(--surface);
+  box-shadow: 0 0 0 3px var(--primary-glow);
+}
+
+.search-icon-global {
+  position: absolute;
+  left: 14px;
+  color: var(--text-secondary);
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.search-clear-btn {
+  position: absolute;
+  right: 12px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.search-clear-btn:hover {
+  color: var(--text-primary);
+}
+
+/* Custom Date options deck styling */
+.custom-date-sub-deck {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface-brighter);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 4px 8px;
+}
+
+.date-type-selector {
+  display: flex;
+  background: var(--border);
+  border-radius: 8px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.sub-pill-btn {
+  background: transparent;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sub-pill-btn.active {
+  background: var(--surface);
+  color: var(--primary);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+.sub-pill-btn:hover:not(.active) {
+  color: var(--text-primary);
+}
+
+/* Range group inputs */
+.range-inputs-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.range-separator {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.range-input {
+  max-width: 135px;
+}
+
+/* Custom Dropdown Trigger */
+.searchable-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.dropdown-trigger-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.25s ease;
+  min-width: 170px;
+  justify-content: space-between;
+}
+
+.dropdown-trigger-btn:hover,
+.dropdown-trigger-btn.active {
+  border-color: var(--primary);
+  background: var(--border);
+  box-shadow: 0 4px 12px var(--primary-glow);
+}
+
+.trigger-icon {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.dropdown-arrow {
+  font-size: 8px;
+  color: var(--text-secondary);
+  margin-left: 8px;
+  transition: transform 0.2s;
+}
+
+.dropdown-trigger-btn.active .dropdown-arrow {
+  transform: rotate(180deg);
+}
+
+/* Custom Dropdown Popover List */
+.dropdown-overlay-deck {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  background: var(--glass);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  width: 280px;
+  z-index: 100;
+  padding: 10px 0;
+  overflow: hidden;
+}
+
+.dashboard-watt.light .dropdown-overlay-deck {
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+}
+
+/* Search Bar inside popover */
+.dropdown-search-box {
+  display: flex;
+  align-items: center;
+  position: relative;
+  padding: 4px 14px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.search-icon-inside {
+  position: absolute;
+  left: 24px;
+  color: var(--text-secondary);
+  opacity: 0.6;
+}
+
+.dropdown-search-box input {
+  width: 100%;
+  padding: 8px 12px 8px 32px;
+  background: var(--surface-brighter);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.dropdown-search-box input:focus {
+  border-color: var(--primary);
+  background: var(--surface);
+}
+
+.dashboard-watt.light .dropdown-search-box input:focus {
+  background: #fff;
+}
+
+/* Scroller list items */
+.dropdown-list-scroller {
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dropdown-list-scroller::-webkit-scrollbar {
+  width: 4px;
+}
+
+.dropdown-list-scroller::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 10px;
+}
+
+.dropdown-list-item {
+  width: 100%;
+  padding: 10px 14px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.dropdown-list-item:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.dropdown-list-item.active {
+  background: var(--primary-glow);
+  color: var(--primary);
+}
+
+.dropdown-no-results {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  padding: 16px;
+  text-align: center;
+}
+
+.filter-date-input {
+  padding: 11px 14px;
+  background: var(--surface-hover);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 700;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.filter-date-input:focus {
+  border-color: var(--primary);
+  background: var(--surface);
+}
+
+@media (max-width: 1200px) {
+  .dashboard-controls-block {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    margin-top: 16px;
+  }
+  
+  .dashboard-filters-deck {
+    flex-wrap: wrap;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .searchable-dropdown, .filter-date-input, .global-search-input-wrapper {
+    flex: 1;
+    min-width: 150px;
+  }
+
+  .dropdown-trigger-btn {
+    width: 100%;
+  }
+
+  .dropdown-overlay-deck {
+    width: 100%;
+  }
+
+  .custom-date-sub-deck {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .date-inputs-wrapper, .range-inputs-group {
+    width: 100%;
+  }
+
+  .range-input {
+    flex: 1;
+    max-width: none;
+  }
+}

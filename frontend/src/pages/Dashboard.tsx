@@ -1,11 +1,14 @@
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Users,
   Clock,
   TrendingUp,
   Activity,
   CheckCircle2,
-  Wallet
+  Wallet,
+  Calendar,
+  Layers,
+  Search
 } from 'lucide-react';
 import {
   XAxis,
@@ -21,9 +24,186 @@ import { useTranslation } from 'react-i18next';
 import { exportToCSV } from '../utils/export';
 import './Dashboard.css';
 
-import { useEffect, useState } from 'react';
-import { fetchStats } from '../api/api';
+import { useEffect, useState, useRef } from 'react';
+import { fetchStats, fetchSites, fetchEmployees, fetchAllLogs } from '../api/api';
 import { useAuth } from '../context/AuthContext';
+
+// Custom Searchable Project Dropdown
+const SearchableProjectDropdown = ({ 
+  sites, 
+  selectedSiteId, 
+  onSelectSite 
+}: { 
+  sites: any[]; 
+  selectedSiteId: string; 
+  onSelectSite: (id: string) => void; 
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectedSite = selectedSiteId === 'ALL' 
+    ? { id: 'ALL', name: 'All Projects' } 
+    : sites.find(s => s.id === selectedSiteId) || { id: 'ALL', name: 'All Projects' };
+
+  const filteredSites = sites.filter(s => 
+    s.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  return (
+    <div className="searchable-dropdown" ref={dropdownRef}>
+      <button 
+        type="button" 
+        className={"dropdown-trigger-btn " + (isOpen ? "active" : "")}
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <Layers size={14} className="trigger-icon" />
+        <span>{selectedSite.name}</span>
+        <span className="dropdown-arrow">▼</span>
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            className="dropdown-overlay-deck"
+          >
+            <div className="dropdown-search-box" onClick={(e) => e.stopPropagation()}>
+              <Search size={14} className="search-icon-inside" />
+              <input 
+                type="text" 
+                placeholder="Search projects..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                autoFocus
+              />
+            </div>
+
+            <div className="dropdown-list-scroller">
+              <button 
+                type="button"
+                className={"dropdown-list-item " + (selectedSiteId === 'ALL' ? 'active' : '')}
+                onClick={() => {
+                  onSelectSite('ALL');
+                  setIsOpen(false);
+                  setSearchQuery('');
+                }}
+              >
+                All Projects
+              </button>
+              
+              {filteredSites.length > 0 ? (
+                filteredSites.map(site => (
+                  <button 
+                    key={site.id}
+                    type="button"
+                    className={"dropdown-list-item " + (selectedSiteId === site.id ? 'active' : '')}
+                    onClick={() => {
+                      onSelectSite(site.id);
+                      setIsOpen(false);
+                      setSearchQuery('');
+                    }}
+                  >
+                    {site.name}
+                  </button>
+                ))
+              ) : (
+                <div className="dropdown-no-results">No projects found</div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+// Custom Date Selection Dropdown
+const CustomDateDropdown = ({
+  value,
+  onChange
+}: {
+  value: string;
+  onChange: (val: any) => void;
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const options = [
+    { value: 'TODAY', label: 'Today' },
+    { value: '7_DAYS', label: 'Last 7 Days' },
+    { value: 'MONTH', label: 'This Month' },
+    { value: 'CUSTOM', label: 'Custom Date' }
+  ];
+
+  const selectedOption = options.find(o => o.value === value) || options[1];
+
+  return (
+    <div className="searchable-dropdown" ref={dropdownRef}>
+      <button 
+        type="button" 
+        className={"dropdown-trigger-btn " + (isOpen ? "active" : "")}
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <Calendar size={14} className="trigger-icon" />
+        <span>{selectedOption.label}</span>
+        <span className="dropdown-arrow">▼</span>
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            className="dropdown-overlay-deck"
+            style={{ minWidth: '160px' }}
+          >
+            <div className="dropdown-list-scroller">
+              {options.map(opt => (
+                <button 
+                  key={opt.value}
+                  type="button"
+                  className={"dropdown-list-item " + (value === opt.value ? 'active' : '')}
+                  onClick={() => {
+                    onChange(opt.value);
+                    setIsOpen(false);
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
 
 const StatCard = ({ icon, label, value, trend, color, description, trendLabel }: any) => (
   <motion.div
@@ -42,7 +222,7 @@ const StatCard = ({ icon, label, value, trend, color, description, trendLabel }:
         </div>
       )}
       {trendLabel && (
-        <div className="stat-trend-label">
+        <div className="stat-trend-label" style={{ display: 'inline-block' }}>
           {trendLabel}
         </div>
       )}
@@ -60,27 +240,409 @@ const StatCard = ({ icon, label, value, trend, color, description, trendLabel }:
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const Dashboard = () => {
-  const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState<any>(null);
   const { user } = useAuth();
   const { t } = useTranslation();
   const navigate = useNavigate();
 
+  const isManagement = user?.role === 'ADMIN' || user?.role === 'MANAGER';
+
+  // State
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<any>(null); // Fallback for normal employees
+  const [sites, setSites] = useState<any[]>([]);
+  const [employees, setEmployees] = useState<any[]>([]);
+  const [allLogs, setAllLogs] = useState<any[]>([]);
+
+  // Filter States
+  const [selectedSiteId, setSelectedSiteId] = useState<string>('ALL');
+  const [dateFilter, setDateFilter] = useState<'TODAY' | '7_DAYS' | 'MONTH' | 'CUSTOM'>('7_DAYS');
+
+  // Project/Search Toggle & Query States
+  const [projectFilterMode, setProjectFilterMode] = useState<'DROPDOWN' | 'SEARCH'>('DROPDOWN');
+  const [searchVal, setSearchVal] = useState<string>('');
+
+  // Custom Date Options States
+  const [customDateType, setCustomDateType] = useState<'SINGLE' | 'RANGE' | 'MONTH'>('SINGLE');
+  const [customSingleDate, setCustomSingleDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [customRangeStart, setCustomRangeStart] = useState<string>(
+    (() => {
+      const d = new Date();
+      d.setDate(d.getDate() - 6);
+      return d.toISOString().split('T')[0];
+    })()
+  );
+  const [customRangeEnd, setCustomRangeEnd] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [customMonth, setCustomMonth] = useState<string>(
+    (() => {
+      const now = new Date();
+      return `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`;
+    })()
+  );
+
   useEffect(() => {
-    const loadData = () => {
-      fetchStats()
-        .then(setStats)
-        .catch(console.error)
-        .finally(() => setLoading(false));
+    const loadData = async () => {
+      try {
+        if (isManagement) {
+          const [sitesData, employeesData, logsData] = await Promise.all([
+            fetchSites().catch(() => []),
+            fetchEmployees().catch(() => []),
+            fetchAllLogs().catch(() => [])
+          ]);
+          setSites(sitesData);
+          setEmployees(employeesData);
+          setAllLogs(logsData);
+        } else {
+          const statsData = await fetchStats();
+          setStats(statsData);
+        }
+      } catch (err) {
+        console.error("Dashboard synchronization error:", err);
+      } finally {
+        setLoading(false);
+      }
     };
 
     loadData();
-    const interval = setInterval(loadData, 30000); // Refresh every 30s
+    const interval = setInterval(loadData, 30000); // 30s auto-sync
     return () => clearInterval(interval);
-  }, []);
+  }, [isManagement]);
 
-  const isManagement = user?.role === 'ADMIN' || user?.role === 'MANAGER';
-  const chartData = stats?.weeklyTrend || [];
+  // Calculations for 30-min block rounding
+  const calculateRoundedDuration = (clockIn: Date, clockOut: Date, breaks: any[] = []) => {
+    let durationMs = clockOut.getTime() - clockIn.getTime();
+    if (breaks && breaks.length > 0) {
+      breaks.forEach(b => {
+        if (b.startTime && b.endTime) {
+          durationMs -= (new Date(b.endTime).getTime() - new Date(b.startTime).getTime());
+        }
+      });
+    }
+    const durationMins = Math.max(0, durationMs / (1000 * 60));
+    return Math.floor(durationMins / 30) * 30; // Round down to nearest 30-min block
+  };
+
+  // Get active date boundaries
+  const getFilterBoundaries = () => {
+    const now = new Date();
+    let start = new Date();
+    let end = new Date();
+
+    if (dateFilter === 'TODAY') {
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+    } else if (dateFilter === '7_DAYS') {
+      start.setDate(now.getDate() - 6);
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+    } else if (dateFilter === 'MONTH') {
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+      end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    } else if (dateFilter === 'CUSTOM') {
+      if (customDateType === 'SINGLE') {
+        const parts = customSingleDate.split('-');
+        const yyyy = parseInt(parts[0] || '1970');
+        const mm = parseInt(parts[1] || '1') - 1;
+        const dd = parseInt(parts[2] || '1');
+        start = new Date(yyyy, mm, dd, 0, 0, 0, 0);
+        end = new Date(yyyy, mm, dd, 23, 59, 59, 999);
+      } else if (customDateType === 'RANGE') {
+        const startParts = customRangeStart.split('-');
+        const endParts = customRangeEnd.split('-');
+        
+        start = new Date(
+          parseInt(startParts[0] || '1970'), 
+          parseInt(startParts[1] || '1') - 1, 
+          parseInt(startParts[2] || '1'), 
+          0, 0, 0, 0
+        );
+        end = new Date(
+          parseInt(endParts[0] || '1970'), 
+          parseInt(endParts[1] || '1') - 1, 
+          parseInt(endParts[2] || '1'), 
+          23, 59, 59, 999
+        );
+      } else if (customDateType === 'MONTH') {
+        const parts = customMonth.split('-'); // YYYY-MM
+        const yyyy = parseInt(parts[0] || '1970');
+        const mm = parseInt(parts[1] || '1') - 1;
+        start = new Date(yyyy, mm, 1, 0, 0, 0, 0);
+        end = new Date(yyyy, mm + 1, 0, 23, 59, 59, 999);
+      }
+    }
+    return { start, end };
+  };
+
+  const { start: filterStart, end: filterEnd } = getFilterBoundaries();
+
+  // 1. Filtered Datasets
+  const filteredEmployees = employees.filter(emp => {
+    // Project filter
+    if (projectFilterMode === 'DROPDOWN') {
+      if (selectedSiteId !== 'ALL' && emp.siteId !== selectedSiteId) return false;
+    } else { // SEARCH Mode
+      if (searchVal.trim() !== '') {
+        const q = searchVal.toLowerCase();
+        const empName = `${emp.firstName || ''} ${emp.lastName || ''}`.toLowerCase();
+        const siteName = (sites.find(s => s.id === emp.siteId)?.name || '').toLowerCase();
+        const matchesName = empName.includes(q);
+        const matchesSite = siteName.includes(q);
+        const matchesRole = (emp.role || '').toLowerCase().includes(q);
+        if (!matchesName && !matchesSite && !matchesRole) return false;
+      }
+    }
+    return true;
+  });
+
+  const filteredLogs = allLogs.filter(log => {
+    // Project filter
+    if (projectFilterMode === 'DROPDOWN') {
+      if (selectedSiteId !== 'ALL' && log.siteId !== selectedSiteId) return false;
+    } else { // SEARCH Mode
+      if (searchVal.trim() !== '') {
+        const q = searchVal.toLowerCase();
+        const emp = employees.find(e => e.id === log.employeeId);
+        const empName = emp ? `${emp.firstName || ''} ${emp.lastName || ''}`.toLowerCase() : '';
+        const siteName = (log.site?.name || '').toLowerCase();
+        const statusStr = (log.status || '').toLowerCase();
+        const typeStr = (log.clockOut ? 'clock out' : 'clock in').toLowerCase();
+        
+        const matchesName = empName.includes(q);
+        const matchesSite = siteName.includes(q);
+        const matchesStatus = statusStr.includes(q) || (statusStr === 'approved' && 'verified'.includes(q));
+        const matchesType = typeStr.includes(q);
+        
+        if (!matchesName && !matchesSite && !matchesStatus && !matchesType) return false;
+      }
+    }
+
+    // Date filter
+    const logDate = new Date(log.date || log.clockIn);
+    return logDate >= filterStart && logDate <= filterEnd;
+  });
+
+  // 2. Compute Card Metrics
+  const computedTotalWorkforce = filteredEmployees.length;
+
+  const computedActiveNow = allLogs.filter(log => {
+    if (log.clockOut !== null) return false;
+
+    // Project filter
+    if (projectFilterMode === 'DROPDOWN') {
+      if (selectedSiteId !== 'ALL' && log.siteId !== selectedSiteId) return false;
+    } else { // SEARCH Mode
+      if (searchVal.trim() !== '') {
+        const q = searchVal.toLowerCase();
+        const emp = employees.find(e => e.id === log.employeeId);
+        const empName = emp ? `${emp.firstName || ''} ${emp.lastName || ''}`.toLowerCase() : '';
+        const siteName = (log.site?.name || '').toLowerCase();
+        const statusStr = (log.status || '').toLowerCase();
+        const typeStr = 'clock in';
+        
+        const matchesName = empName.includes(q);
+        const matchesSite = siteName.includes(q);
+        const matchesStatus = statusStr.includes(q);
+        const matchesType = typeStr.includes(q);
+        
+        if (!matchesName && !matchesSite && !matchesStatus && !matchesType) return false;
+      }
+    }
+    return true;
+  }).length;
+
+  const verifiedShifts = filteredLogs.filter(l => l.status === 'APPROVED' || l.status === 'PRESENT' || l.status === 'PAID').length;
+  const computedEfficiency = filteredLogs.length > 0 
+    ? parseFloat(((verifiedShifts / filteredLogs.length) * 100).toFixed(1)) 
+    : 94.2;
+
+  // Estimate Payroll Sum
+  let estimatedPayrollVndSum = 0;
+  filteredLogs.forEach(log => {
+    if (log.clockIn && log.clockOut) {
+      const emp = employees.find(e => e.id === log.employeeId);
+      const rate = emp?.hourlyRate || 50000;
+      const otType = emp?.overtimeType || 'MULTIPLIER';
+      const otValue = emp?.overtimeValue || 1.5;
+
+      const durationMins = calculateRoundedDuration(new Date(log.clockIn), new Date(log.clockOut), log.breaks);
+      const durationHours = durationMins / 60;
+
+      let earnings = 0;
+      if (durationHours > 8) {
+        const regularHours = 8;
+        const otHours = durationHours - 8;
+        const otRate = otType === 'MULTIPLIER' ? rate * otValue : rate + otValue;
+        earnings = (regularHours * rate) + (otHours * otRate);
+      } else {
+        earnings = durationHours * rate;
+      }
+      estimatedPayrollVndSum += earnings;
+    }
+  });
+
+  const isVnd = estimatedPayrollVndSum > 50000;
+  const formattedPayrollValue = isVnd 
+    ? (estimatedPayrollVndSum / 1000000).toFixed(1) 
+    : (estimatedPayrollVndSum / 1000).toFixed(1);
+  const formattedPayrollDesc = isVnd ? "M ₫" : "k $";
+
+  // 3. Compute Chart Activity Trend
+  const getChartData = () => {
+    if (dateFilter === 'TODAY' || (dateFilter === 'CUSTOM' && customDateType === 'SINGLE')) {
+      const hours = [8, 10, 12, 14, 16, 18];
+      return hours.map(h => {
+        const timeStr = `${h.toString().padStart(2, '0')}:00`;
+        const targetTime = new Date(filterStart);
+        targetTime.setHours(h, 0, 0, 0);
+
+        const count = allLogs.filter(log => {
+          // Project filter
+          if (projectFilterMode === 'DROPDOWN' && selectedSiteId !== 'ALL' && log.siteId !== selectedSiteId) return false;
+          // Search filter
+          if (projectFilterMode === 'SEARCH' && searchVal.trim() !== '') {
+            const q = searchVal.toLowerCase();
+            const emp = employees.find(e => e.id === log.employeeId);
+            const empName = emp ? `${emp.firstName || ''} ${emp.lastName || ''}`.toLowerCase() : '';
+            const siteName = (log.site?.name || '').toLowerCase();
+            if (!empName.includes(q) && !siteName.includes(q)) return false;
+          }
+
+          const clockInTime = new Date(log.clockIn);
+          const clockOutTime = log.clockOut ? new Date(log.clockOut) : null;
+          return clockInTime <= targetTime && (clockOutTime === null || clockOutTime >= targetTime);
+        }).length;
+
+        return { name: timeStr, attendance: count };
+      });
+    } else if (dateFilter === '7_DAYS' || (dateFilter === 'CUSTOM' && customDateType === 'RANGE')) {
+      const trend: any[] = [];
+      const diffTime = Math.abs(filterEnd.getTime() - filterStart.getTime());
+      const diffDays = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+
+      for (let i = 0; i < diffDays; i++) {
+        const date = new Date(filterStart);
+        date.setDate(date.getDate() + i);
+        const startOfDay = new Date(date.setHours(0,0,0,0));
+        const endOfDay = new Date(date.setHours(23,59,59,999));
+
+        const count = allLogs.filter(log => {
+          // Project filter
+          if (projectFilterMode === 'DROPDOWN' && selectedSiteId !== 'ALL' && log.siteId !== selectedSiteId) return false;
+          // Search filter
+          if (projectFilterMode === 'SEARCH' && searchVal.trim() !== '') {
+            const q = searchVal.toLowerCase();
+            const emp = employees.find(e => e.id === log.employeeId);
+            const empName = emp ? `${emp.firstName || ''} ${emp.lastName || ''}`.toLowerCase() : '';
+            const siteName = (log.site?.name || '').toLowerCase();
+            if (!empName.includes(q) && !siteName.includes(q)) return false;
+          }
+
+          const logDate = new Date(log.date || log.clockIn);
+          return logDate >= startOfDay && logDate <= endOfDay;
+        }).length;
+
+        trend.push({
+          name: startOfDay.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          attendance: count
+        });
+      }
+      return trend;
+    } else { // MONTH or (CUSTOM and customDateType === 'MONTH')
+      const trend: any[] = [];
+      const daysInMonth = filterEnd.getDate();
+      const chunks = [
+        { label: 'W1 (1-7)', start: 1, end: 7 },
+        { label: 'W2 (8-14)', start: 8, end: 14 },
+        { label: 'W3 (15-21)', start: 15, end: 21 },
+        { label: 'W4 (22-28)', start: 22, end: 28 },
+        { label: 'W5 (29-End)', start: 29, end: daysInMonth }
+      ];
+
+      chunks.forEach(chunk => {
+        const startDay = new Date(filterStart);
+        startDay.setDate(chunk.start);
+        startDay.setHours(0, 0, 0, 0);
+
+        const endDay = new Date(filterStart);
+        endDay.setDate(chunk.end);
+        endDay.setHours(23, 59, 59, 999);
+
+        const count = allLogs.filter(log => {
+          // Project filter
+          if (projectFilterMode === 'DROPDOWN' && selectedSiteId !== 'ALL' && log.siteId !== selectedSiteId) return false;
+          // Search filter
+          if (projectFilterMode === 'SEARCH' && searchVal.trim() !== '') {
+            const q = searchVal.toLowerCase();
+            const emp = employees.find(e => e.id === log.employeeId);
+            const empName = emp ? `${emp.firstName || ''} ${emp.lastName || ''}`.toLowerCase() : '';
+            const siteName = (log.site?.name || '').toLowerCase();
+            if (!empName.includes(q) && !siteName.includes(q)) return false;
+          }
+
+          const logDate = new Date(log.date || log.clockIn);
+          return logDate >= startDay && logDate <= endDay;
+        }).length;
+
+        trend.push({ name: chunk.label, attendance: count });
+      });
+      return trend;
+    }
+  };
+
+  const computedChartData = getChartData();
+
+  // 4. Site Distribution list
+  const getSitePerformance = () => {
+    const activeLogs = allLogs.filter(l => l.clockOut === null);
+    const groups: { [key: string]: { name: string; count: number; activeEmployees: string[] } } = {};
+
+    activeLogs.forEach(log => {
+      // Project filter
+      if (projectFilterMode === 'DROPDOWN') {
+        if (selectedSiteId !== 'ALL' && log.siteId !== selectedSiteId) return;
+      } else { // SEARCH Mode
+        if (searchVal.trim() !== '') {
+          const q = searchVal.toLowerCase();
+          const emp = employees.find(e => e.id === log.employeeId);
+          const empName = emp ? `${emp.firstName || ''} ${emp.lastName || ''}`.toLowerCase() : '';
+          const siteName = (log.site?.name || '').toLowerCase();
+          const statusStr = (log.status || '').toLowerCase();
+          
+          const matchesName = empName.includes(q);
+          const matchesSite = siteName.includes(q);
+          const matchesStatus = statusStr.includes(q);
+          
+          if (!matchesName && !matchesSite && !matchesStatus) return;
+        }
+      }
+
+      const sId = log.siteId || 'mobile';
+      const sName = log.site?.name || 'Mobile Operations';
+      const empName = log.employee ? `${log.employee.firstName} ${log.employee.lastName}` : 'Unknown';
+
+      if (!groups[sId]) {
+        groups[sId] = { name: sName, count: 0, activeEmployees: [] };
+      }
+      if (!groups[sId].activeEmployees.includes(empName)) {
+        groups[sId].activeEmployees.push(empName);
+        groups[sId].count++;
+      }
+    });
+    return Object.values(groups);
+  };
+
+  const computedSitePerformance = getSitePerformance();
+
+  // 5. Table recent logs list (dynamic logs computed from verified database logs)
+  const computedTableLogs = filteredLogs.slice(0, 10).map(log => {
+    const name = log.employee ? `${log.employee.firstName} ${log.employee.lastName}` : 'Unknown Employee';
+    return {
+      time: log.clockOut || log.clockIn,
+      title: name,
+      type: log.clockOut ? 'Clock Out' : 'Clock In',
+      status: log.status,
+      entityId: log.employeeId
+    };
+  });
 
   const avatarSrc = user?.avatar 
     ? (user.avatar.startsWith('http') ? user.avatar : `${API_URL}${user.avatar}`) 
@@ -95,29 +657,11 @@ const Dashboard = () => {
     }
   };
 
-  if (loading && !stats) {
+  if (loading && allLogs.length === 0 && !stats) {
     return (
       <div className="dashboard-loading">
         <div className="loading-spinner-watt"></div>
         <p>Synchronizing Intelligence...</p>
-      </div>
-    );
-  }
-
-  if (!loading && !stats) {
-    return (
-      <div className="dashboard-watt">
-        <header className="dashboard-header">
-          <h1 className="page-title">System Overview</h1>
-        </header>
-        <div className="watt-card error-state">
-          <Activity size={48} color="#EF4444" />
-          <h3>Connectivity Interrupted</h3>
-          <p>We're unable to sync with the intelligence grid. Please verify your credentials or network status.</p>
-          <button className="watt-btn primary" onClick={() => window.location.reload()}>
-            Retry Sync
-          </button>
-        </div>
       </div>
     );
   }
@@ -145,53 +689,192 @@ const Dashboard = () => {
           </div>
           <p className="page-subtitle">Real-time intelligence from your workforce grid.</p>
         </div>
-        <div className="header-actions">
-          <button className="watt-btn secondary">
-            <Clock size={18} />
-            <span>Last 24 Hours</span>
-          </button>
-          <button className="watt-btn primary" onClick={() => stats && exportToCSV([stats], 'Dashboard_Stats')}>
-            <CheckCircle2 size={18} />
-            <span>Export Data</span>
-          </button>
+
+        {/* Filters and Controls */}
+        <div className="dashboard-controls-block">
+          {isManagement && (
+            <div className="dashboard-filters-deck">
+              {/* Dropdown vs Search Toggle */}
+              {user?.role === 'ADMIN' && (
+                <div className="filter-mode-toggle">
+                  <button 
+                    type="button"
+                    className={"toggle-btn " + (projectFilterMode === 'DROPDOWN' ? 'active' : '')}
+                    onClick={() => {
+                      setProjectFilterMode('DROPDOWN');
+                      setSearchVal('');
+                    }}
+                  >
+                    <span>Dropdown</span>
+                  </button>
+                  <button 
+                    type="button"
+                    className={"toggle-btn " + (projectFilterMode === 'SEARCH' ? 'active' : '')}
+                    onClick={() => {
+                      setProjectFilterMode('SEARCH');
+                      setSelectedSiteId('ALL');
+                    }}
+                  >
+                    <span>Search</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Toggleable Project Selector or Global Search Input */}
+              {projectFilterMode === 'DROPDOWN' ? (
+                user?.role === 'ADMIN' && (
+                  <SearchableProjectDropdown 
+                    sites={sites} 
+                    selectedSiteId={selectedSiteId} 
+                    onSelectSite={setSelectedSiteId} 
+                  />
+                )
+              ) : (
+                <div className="global-search-input-wrapper">
+                  <Search size={14} className="search-icon-global" />
+                  <input 
+                    type="text" 
+                    placeholder="Search in all projects..." 
+                    value={searchVal}
+                    onChange={(e) => setSearchVal(e.target.value)}
+                    className="global-search-input"
+                  />
+                  {searchVal && (
+                    <button 
+                      type="button" 
+                      className="search-clear-btn" 
+                      onClick={() => setSearchVal('')}
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Custom Date Dropdown */}
+              <CustomDateDropdown 
+                value={dateFilter} 
+                onChange={setDateFilter} 
+              />
+
+              {/* Custom Date Options panel */}
+              {dateFilter === 'CUSTOM' && (
+                <div className="custom-date-sub-deck">
+                  <div className="date-type-selector">
+                    <button 
+                      type="button"
+                      className={"sub-pill-btn " + (customDateType === 'SINGLE' ? 'active' : '')}
+                      onClick={() => setCustomDateType('SINGLE')}
+                    >
+                      Day
+                    </button>
+                    <button 
+                      type="button"
+                      className={"sub-pill-btn " + (customDateType === 'RANGE' ? 'active' : '')}
+                      onClick={() => setCustomDateType('RANGE')}
+                    >
+                      Range
+                    </button>
+                    <button 
+                      type="button"
+                      className={"sub-pill-btn " + (customDateType === 'MONTH' ? 'active' : '')}
+                      onClick={() => setCustomDateType('MONTH')}
+                    >
+                      Month
+                    </button>
+                  </div>
+
+                  <div className="date-inputs-wrapper">
+                    {customDateType === 'SINGLE' && (
+                      <input 
+                        type="date" 
+                        value={customSingleDate} 
+                        onChange={(e) => setCustomSingleDate(e.target.value)}
+                        className="filter-date-input"
+                      />
+                    )}
+
+                    {customDateType === 'RANGE' && (
+                      <div className="range-inputs-group">
+                        <input 
+                          type="date" 
+                          value={customRangeStart} 
+                          onChange={(e) => setCustomRangeStart(e.target.value)}
+                          className="filter-date-input range-input"
+                        />
+                        <span className="range-separator">to</span>
+                        <input 
+                          type="date" 
+                          value={customRangeEnd} 
+                          onChange={(e) => setCustomRangeEnd(e.target.value)}
+                          className="filter-date-input range-input"
+                        />
+                      </div>
+                    )}
+
+                    {customDateType === 'MONTH' && (
+                      <input 
+                        type="month" 
+                        value={customMonth} 
+                        onChange={(e) => setCustomMonth(e.target.value)}
+                        className="filter-date-input"
+                      />
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="header-actions">
+            <button 
+              className="watt-btn primary" 
+              onClick={() => exportToCSV(isManagement ? computedTableLogs : (stats?.recentLogs || []), 'Dashboard_Stats')}
+            >
+              <CheckCircle2 size={18} />
+              <span>Export Data</span>
+            </button>
+          </div>
         </div>
       </header>
 
+      {/* Stats Cards */}
       <section className="stats-grid-watt">
         <StatCard
           icon={<Users size={20} />}
           label={isManagement ? "Total Workforce" : "Weekly Hours"}
-          value={isManagement ? (stats?.totalEmployees ?? 0) : (stats?.weeklyHours ?? "0.0")}
-          trend={4.2}
+          value={isManagement ? computedTotalWorkforce : (stats?.weeklyHours ?? "0.0")}
+          trend={isManagement ? undefined : 4.2}
           color="#3B82F6"
-          description={isManagement ? "" : "hours"}
+          description={isManagement ? "workers" : "hours"}
         />
         <StatCard
           icon={<Activity size={20} />}
           label={isManagement ? "Active Now" : "Efficiency"}
-          value={isManagement ? (stats?.activeNow ?? 0) : `${stats?.efficiency ?? 0}%`}
-          trend={1.8}
+          value={isManagement ? computedActiveNow : `${stats?.efficiency ?? 0}%`}
+          trend={isManagement ? undefined : 1.8}
           color="#10B981"
-          description={isManagement ? "personnel" : ""}
+          description={isManagement ? "active" : ""}
         />
         <StatCard
           icon={<TrendingUp size={20} />}
           label={isManagement ? "Operational Efficiency" : "Monthly Hours"}
-          value={isManagement ? "94.2" : (stats?.monthlyHours ?? "0.0")}
+          value={isManagement ? computedEfficiency : (stats?.monthlyHours ?? "0.0")}
           color="#F59E0B"
           description={isManagement ? "%" : "hours"}
-          trendLabel={isManagement ? "Stable" : "This Month"}
+          trendLabel={isManagement ? "Optimal" : "This Month"}
         />
         <StatCard
           icon={<Wallet size={20} />}
           label={isManagement ? "Est. Payroll" : "Total Earnings"}
-          value={isManagement ? "42.5" : (stats?.earnings ?? 0).toLocaleString()}
+          value={isManagement ? formattedPayrollValue : (stats?.earnings ?? 0).toLocaleString()}
           color="#8B5CF6"
-          description={isManagement ? "k" : (stats?.currencySymbol || "$")}
-          trendLabel={isManagement ? "Proj. $840" : `Rate: $${stats?.hourlyRate || '25'}/hr`}
+          description={isManagement ? formattedPayrollDesc : (stats?.currencySymbol || "$")}
+          trendLabel={isManagement ? "Calculated" : `Rate: $${stats?.hourlyRate || '25'}/hr`}
         />
       </section>
 
+      {/* Charts Grid */}
       <div className="main-charts-grid">
         <div className="watt-card chart-main">
           <div className="card-header-watt">
@@ -202,9 +885,9 @@ const Dashboard = () => {
             </div>
           </div>
           <div className="chart-wrapper-watt" style={{ minHeight: '320px' }}>
-            {chartData.length > 0 ? (
+            {(isManagement ? computedChartData : (stats?.weeklyTrend || [])).length > 0 ? (
               <ResponsiveContainer width="100%" height={320}>
-                <AreaChart data={chartData}>
+                <AreaChart data={isManagement ? computedChartData : (stats?.weeklyTrend || [])}>
                   <defs>
                     <linearGradient id="wattBlue" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor={isManagement ? "#3B82F6" : "#10B981"} stopOpacity={0.1} />
@@ -254,7 +937,7 @@ const Dashboard = () => {
           </div>
           <div className="asset-list">
             {isManagement ? (
-              (stats?.sitePerformance || []).length > 0 ? (stats?.sitePerformance || []).map((site: any, idx: number) => (
+              computedSitePerformance.length > 0 ? computedSitePerformance.map((site: any, idx: number) => (
                 <div key={idx} className="asset-item">
                   <div className="asset-info">
                     <span className="asset-name">{site.name}</span>
@@ -306,16 +989,13 @@ const Dashboard = () => {
         </div>
       </div>
 
+      {/* Recent Activity Table */}
       <div className="watt-card recent-events">
         <div className="card-header-watt">
           <h3 className="card-title">Recent Activity Logs</h3>
-          <div className="header-controls">
-            <button className="icon-btn-small"><TrendingUp size={16} /></button>
-            <button className="icon-btn-small"><Clock size={16} /></button>
-          </div>
         </div>
         <div className="events-table-wrapper">
-          { (stats?.recentLogs || []).length > 0 ? (
+          {(isManagement ? computedTableLogs : (stats?.recentLogs || [])).length > 0 ? (
           <table className="events-table">
             <thead>
               <tr>
@@ -327,14 +1007,14 @@ const Dashboard = () => {
               </tr>
             </thead>
             <tbody>
-              {stats.recentLogs.map((log: any, idx: number) => (
+              {(isManagement ? computedTableLogs : (stats?.recentLogs || [])).map((log: any, idx: number) => (
                 <tr key={idx}>
                   <td className="timestamp" data-label="TIMESTAMP">{formatTime(log.time)}</td>
                   <td className="entity" data-label="ENTITY">{log.title}</td>
                   <td className="event-type" data-label="EVENT TYPE">{log.type}</td>
                   <td data-label="STATUS">
-                    <span className={`status-pill ${log.type === 'ALERT' ? 'warning' : 'success'}`}>
-                      {log.type === 'ALERT' ? 'Pending' : 'Verified'}
+                    <span className={`status-pill ${log.type === 'ALERT' || log.status === 'PENDING' ? 'warning' : 'success'}`}>
+                      {log.type === 'ALERT' || log.status === 'PENDING' ? 'Pending' : 'Verified'}
                     </span>
                   </td>
                   <td data-label="ACTION">

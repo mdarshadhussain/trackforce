@@ -409,11 +409,31 @@ export const submitManagerLog = async (formData: FormData) => {
   }
   return response.json();
 };
-export const updateAttendanceTimes = async (id: string, clockIn: string, clockOut: string | null) => {
+export const updateAttendanceTimes = async (id: string, clockIn: string, clockOut: string | null, biometricProof?: File | null, employeeId?: string) => {
+  let body: any;
+  let headers: any;
+
+  if (biometricProof) {
+    const formData = new FormData();
+    formData.append('clockIn', clockIn);
+    if (clockOut) {
+      formData.append('clockOut', clockOut);
+    }
+    formData.append('biometricProof', biometricProof);
+    if (employeeId) {
+      formData.append('employeeId', employeeId);
+    }
+    body = formData;
+    headers = getAuthHeaders(true);
+  } else {
+    body = JSON.stringify({ clockIn, clockOut });
+    headers = getAuthHeaders(false);
+  }
+
   const response = await fetch(`${BASE_URL}/attendance/${id}`, {
     method: 'PUT',
-    headers: getAuthHeaders(),
-    body: JSON.stringify({ clockIn, clockOut })
+    headers,
+    body
   });
   await handleResponse(response);
   return response.json();

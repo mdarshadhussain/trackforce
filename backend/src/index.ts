@@ -579,7 +579,7 @@ app.post('/api/attendance/clock-in/:id', authenticateToken, upload.single('biome
     if (!employee) return res.status(404).json({ error: 'Employee not found' });
     if (!employee.site) return res.status(400).json({ error: 'No operational site assigned to your profile. Please contact admin.' });
 
-    // Restrict to max 2 clock-ins per day
+    // Restrict to max 5 clock-ins per day
     const todayStr = new Date().toISOString().split('T')[0];
     const todayLogsCount = await prisma.attendance.count({
       where: {
@@ -589,8 +589,8 @@ app.post('/api/attendance/clock-in/:id', authenticateToken, upload.single('biome
         }
       }
     });
-    if (todayLogsCount >= 2) {
-      return res.status(400).json({ error: 'Daily clock-in limit reached. You can only clock in up to two times per day.' });
+    if (todayLogsCount >= 5) {
+      return res.status(400).json({ error: 'Daily clock-in limit reached. You can only clock in up to five times per day.' });
     }
     
     const distance = getDistance(parseFloat(latitude), parseFloat(longitude), employee.site.latitude || 0, employee.site.longitude || 0);
@@ -687,8 +687,56 @@ app.post('/api/attendance/clock-out/:id', authenticateToken, upload.single('biom
   }
 });
 
+const autoMarkAbsents = async () => {
+  try {
+    const now = new Date();
+    if (now.getHours() >= 17) {
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const todayEnd = new Date();
+      todayEnd.setHours(23, 59, 59, 999);
+
+      const employees = await prisma.employee.findMany({
+        where: { role: { not: 'ADMIN' } }
+      });
+
+      for (const emp of employees) {
+        const hasLog = await prisma.attendance.findFirst({
+          where: {
+            employeeId: emp.id,
+            date: {
+              gte: todayStart,
+              lte: todayEnd
+            }
+          }
+        });
+
+        if (!hasLog) {
+          const defaultClock = new Date();
+          defaultClock.setHours(17, 0, 0, 0);
+          await prisma.attendance.create({
+            data: {
+              employeeId: emp.id,
+              siteId: emp.siteId,
+              date: todayStart,
+              clockIn: null,
+              clockOut: null,
+              status: 'ABSENT',
+              biometricProof: 'AUTO_ABSENT'
+            }
+          });
+          console.log(`[Auto-Absent] Marked ${emp.firstName} ${emp.lastName} as absent for today.`);
+        }
+      }
+    }
+  } catch (err) {
+    console.error("autoMarkAbsents calculation error:", err);
+  }
+};
+
 app.get('/api/attendance/today/:id', authenticateToken, async (req, res) => {
   try {
+    await autoMarkAbsents();
     const employee = await prisma.employee.findUnique({ where: { id: req.params.id } });
     if (!employee) return res.status(404).json({ error: 'Employee not found' });
     const logs = await prisma.attendance.findMany({ where: { employeeId: employee.id, date: { gte: new Date(new Date().setHours(0,0,0,0)) } }, orderBy: { createdAt: 'desc' }, include: { breaks: true } });
@@ -700,6 +748,7 @@ app.get('/api/attendance/today/:id', authenticateToken, async (req, res) => {
 
 app.get('/api/attendance', authenticateToken, async (req: any, res) => {
   try {
+    await autoMarkAbsents();
     const isAdmin = req.user.role === 'ADMIN';
     const isManager = req.user.role === 'MANAGER';
     
@@ -735,18 +784,34 @@ app.patch('/api/attendance/:id', authenticateToken, requireManagement, async (re
   }
 });
 
-app.put('/api/attendance/:id', authenticateToken, requireManagement, async (req, res) => {
+app.put('/api/attendance/:id', authenticateToken, requireManagement, upload.single('biometricProof'), async (req: any, res) => {
   const { clockIn, clockOut } = req.body;
   try {
+    const existing = await prisma.attendance.findUnique({
+      where: { id: req.params.id },
+      include: { employee: true }
+    });
+    if (!existing) return res.status(404).json({ error: 'Record not found' });
+
+    let dataToUpdate: any = {
+      clockIn: clockIn ? new Date(clockIn) : undefined,
+      clockOut: clockOut ? new Date(clockOut) : null,
+    };
+
+    if (req.file) {
+      dataToUpdate.biometricProof = `/uploads/${existing.employee.employeeId}/attendance/${req.file.filename}`;
+      if (existing.status === 'ABSENT') {
+        dataToUpdate.status = 'PRESENT';
+      }
+    }
+
     const updated = await prisma.attendance.update({
       where: { id: req.params.id },
-      data: { 
-        clockIn: clockIn ? new Date(clockIn) : undefined,
-        clockOut: clockOut ? new Date(clockOut) : null,
-      }
+      data: dataToUpdate
     });
     res.json(updated);
   } catch (error) {
+    console.error("PUT attendance error:", error);
     res.status(400).json({ error: 'Manual update failed' });
   }
 });
@@ -834,12 +899,69 @@ app.post('/api/attendance/manager-log', authenticateToken, requireManagement, up
   }
 });
 
-app.post('/api/attendance/manual', authenticateToken, requireManagement, async (req, res) => {
-  const { employeeId, siteId, clockIn, clockOut, date, status } = req.body;
+app.post('/api/attendance/manual', authenticateToken, requireManagement, async (req: any, res: Response) => {
+  const { employeeId, siteId, clockIn, clockOut, date, status, biometricProof, biometricProofOut } = req.body;
+  
+  if (req.user.role !== 'ADMIN') {
+    return res.status(403).json({ error: 'Unauthorized: Only Administrators can create manual log records.' });
+  }
+
   try {
-    const att = await prisma.attendance.create({ data: { employeeId, siteId, clockIn: new Date(clockIn), clockOut: clockOut ? new Date(clockOut) : null, date: new Date(date), status: status || 'PRESENT', biometricProof: 'MANUAL' } });
+    const employee = await prisma.employee.findUnique({ where: { id: employeeId } });
+    if (!employee) return res.status(404).json({ error: 'Employee not found' });
+
+    let checkInPath = 'MANUAL';
+    let checkOutPath = null;
+
+    if (biometricProof && biometricProof.startsWith('data:image')) {
+      try {
+        const base64Data = biometricProof.replace(/^data:image\/\w+;base64,/, "");
+        const buffer = Buffer.from(base64Data, 'base64');
+        const filename = `manual_in_${employee.employeeId}_${Date.now()}.jpg`;
+        const userDir = path.join(UPLOADS_DIR, employee.employeeId, 'attendance');
+        if (!fs.existsSync(userDir)) {
+          fs.mkdirSync(userDir, { recursive: true });
+        }
+        const filePath = path.join(userDir, filename);
+        fs.writeFileSync(filePath, buffer);
+        checkInPath = `/uploads/${employee.employeeId}/attendance/${filename}`;
+      } catch (err) {
+        console.error("Manual check-in save error:", err);
+      }
+    }
+
+    if (biometricProofOut && biometricProofOut.startsWith('data:image')) {
+      try {
+        const base64Data = biometricProofOut.replace(/^data:image\/\w+;base64,/, "");
+        const buffer = Buffer.from(base64Data, 'base64');
+        const filename = `manual_out_${employee.employeeId}_${Date.now()}.jpg`;
+        const userDir = path.join(UPLOADS_DIR, employee.employeeId, 'attendance');
+        if (!fs.existsSync(userDir)) {
+          fs.mkdirSync(userDir, { recursive: true });
+        }
+        const filePath = path.join(userDir, filename);
+        fs.writeFileSync(filePath, buffer);
+        checkOutPath = `/uploads/${employee.employeeId}/attendance/${filename}`;
+      } catch (err) {
+        console.error("Manual check-out save error:", err);
+      }
+    }
+
+    const att = await prisma.attendance.create({ 
+      data: { 
+        employeeId, 
+        siteId, 
+        clockIn: new Date(clockIn), 
+        clockOut: clockOut ? new Date(clockOut) : null, 
+        date: new Date(date), 
+        status: status || 'PRESENT', 
+        biometricProof: checkInPath,
+        biometricProofOut: checkOutPath
+      } 
+    });
     res.status(201).json(att);
   } catch (error) {
+    console.error('Manual log failed:', error);
     res.status(400).json({ error: 'Log failed' });
   }
 });
@@ -1005,15 +1127,40 @@ app.get('/api/stats', authenticateToken, async (req: any, res: Response) => {
     const activeNow = await prisma.attendance.count({ 
       where: { 
         clockOut: null, 
+        status: { not: 'ABSENT' },
         ...(isManager ? { siteId: req.user.siteId } : (isAdmin ? {} : { employeeId: req.user.id })) 
       } 
     });
     const totalSites = isAdmin ? await prisma.site.count() : (isManager ? 1 : 0);
+
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+
+    const presentToday = await prisma.attendance.groupBy({
+      by: ['employeeId'],
+      where: {
+        date: { gte: todayStart, lte: todayEnd },
+        status: { not: 'ABSENT' },
+        ...(isManager ? { siteId: req.user.siteId } : (isAdmin ? {} : { employeeId: req.user.id }))
+      }
+    }).then(groups => groups.length);
+
+    const absentToday = await prisma.attendance.groupBy({
+      by: ['employeeId'],
+      where: {
+        date: { gte: todayStart, lte: todayEnd },
+        status: 'ABSENT',
+        ...(isManager ? { siteId: req.user.siteId } : (isAdmin ? {} : { employeeId: req.user.id }))
+      }
+    }).then(groups => groups.length);
     
     // 2. Site Performance (Active employees per site with names)
     const activeAttendances = await prisma.attendance.findMany({
       where: {
         clockOut: null,
+        status: { not: 'ABSENT' },
         ...(isManager ? { siteId: req.user.siteId } : (isAdmin ? {} : { employeeId: req.user.id }))
       },
       include: {
@@ -1158,6 +1305,8 @@ app.get('/api/stats', authenticateToken, async (req: any, res: Response) => {
     res.json({
       totalEmployees,
       activeNow,
+      presentToday,
+      absentToday,
       sites: totalSites,
       sitePerformance,
       weeklyTrend: trend,

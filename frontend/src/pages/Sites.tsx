@@ -164,31 +164,7 @@ const Sites = () => {
 
       <div className="sites-layout">
         <div className="sites-list-section">
-          <div className="glass-card search-filter-card">
-            <div className="search-box">
-              <Search size={18} />
-              <input 
-                type="text" 
-                placeholder="Find a site..." 
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              {isAdmin && (
-                <motion.button 
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="btn btn-primary btn-sm" 
-                  onClick={() => {
-                    setEditingSite(null);
-                    setIsModalOpen(true);
-                  }}
-                  style={{ whiteSpace: 'nowrap', padding: '8px 16px', fontSize: '12px' }}
-                >
-                  <Plus size={16} /> Add Site
-                </motion.button>
-              )}
-            </div>
-          </div>
+          
 
           <div className="sites-grid">
             {loading ? (

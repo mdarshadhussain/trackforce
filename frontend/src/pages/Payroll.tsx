@@ -108,8 +108,13 @@ const Payroll = () => {
   const filteredData = useMemo(() => {
     return payrollData.filter(item => {
       let match = true;
-      if (searchTerm && !`${item.employee?.firstName} ${item.employee?.lastName}`.toLowerCase().includes(searchTerm.toLowerCase())) {
-        match = false;
+      if (searchTerm) {
+        const query = searchTerm.toLowerCase();
+        const nameMatch = `${item.employee?.firstName} ${item.employee?.lastName}`.toLowerCase().includes(query);
+        const idMatch = item.employee?.employeeId?.toLowerCase().includes(query) || false;
+        if (!nameMatch && !idMatch) {
+          match = false;
+        }
       }
       if (designationFilter !== 'ALL' && item.employee?.designation !== designationFilter) {
         match = false;

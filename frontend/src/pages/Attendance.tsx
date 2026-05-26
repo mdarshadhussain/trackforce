@@ -25,6 +25,7 @@ import {
   Filter,
   ChevronRight,
   Pencil,
+  AlertCircle,
 } from 'lucide-react';
 
 
@@ -35,6 +36,21 @@ import Toast from '../components/Toast';
 import type { ToastType } from '../components/Toast';
 
 import { loadFaceApiModels, areModelsLoaded } from '../utils/aiModels';
+
+// Simple sound feedback using Web Audio API
+function playSound(type: 'success' | 'error') {
+  const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+  const oscillator = ctx.createOscillator();
+  const gain = ctx.createGain();
+  oscillator.connect(gain);
+  gain.connect(ctx.destination);
+  oscillator.type = 'sine';
+  oscillator.frequency.value = type === 'success' ? 440 : 200; // Hz
+  gain.gain.setValueAtTime(0.1, ctx.currentTime);
+  oscillator.start();
+  oscillator.stop(ctx.currentTime + 0.2); // 200ms beep
+}
+
 import './Attendance.css';
 import EmployeeAttendance from './EmployeeAttendance';
 
@@ -156,6 +172,162 @@ const SearchableSiteDropdown = ({
   );
 };
 
+const SearchableSelect = ({
+  options,
+  placeholder,
+  selectedValue,
+  onSelect,
+  disabled = false,
+  showSearch = true,
+}: {
+  options: { value: string; label: string; sublabel?: string }[];
+  placeholder: string;
+  selectedValue: string;
+  onSelect: (value: string) => void;
+  disabled?: boolean;
+  showSearch?: boolean;
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  const selectedOption = options.find(o => o.value === selectedValue);
+  const filteredOptions = options.filter(o => 
+    o.label.toLowerCase().includes(search.toLowerCase()) || 
+    (o.sublabel && o.sublabel.toLowerCase().includes(search.toLowerCase()))
+  );
+
+  return (
+    <div ref={dropdownRef} style={{ position: 'relative', width: '100%' }}>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setIsOpen(!isOpen)}
+        style={{
+          width: '100%',
+          padding: '12px 16px',
+          background: 'var(--surface-hover)',
+          border: '1px solid var(--border)',
+          borderRadius: '12px',
+          color: selectedValue ? 'var(--text-primary)' : 'var(--text-tertiary)',
+          textAlign: 'left',
+          cursor: disabled ? 'not-allowed' : 'pointer',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          opacity: disabled ? 0.6 : 1,
+          fontFamily: 'inherit',
+          fontSize: '14px',
+          outline: 'none',
+        }}
+      >
+        <span>{selectedOption ? selectedOption.label : placeholder}</span>
+        <span style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>▼</span>
+      </button>
+
+      <AnimatePresence>
+        {isOpen && !disabled && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            style={{
+              position: 'absolute',
+              top: 'calc(100% + 4px)',
+              left: 0,
+              right: 0,
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: '12px',
+              boxShadow: 'var(--shadow-lg)',
+              zIndex: 1000,
+              padding: '8px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px',
+              maxHeight: '260px',
+            }}
+          >
+            {showSearch && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                background: 'var(--surface-hover)',
+                border: '1px solid var(--border)',
+                borderRadius: '8px',
+                padding: '6px 10px',
+              }}>
+                <Search size={14} style={{ color: 'var(--text-tertiary)' }} />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  onClick={e => e.stopPropagation()}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--text-primary)',
+                    fontSize: '13px',
+                    width: '100%',
+                    outline: 'none',
+                  }}
+                />
+              </div>
+            )}
+
+            <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
+              {filteredOptions.length > 0 ? (
+                filteredOptions.map(opt => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => {
+                      onSelect(opt.value);
+                      setIsOpen(false);
+                      setSearch('');
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      background: selectedValue === opt.value ? 'var(--primary-glow)' : 'transparent',
+                      border: 'none',
+                      borderRadius: '6px',
+                      color: selectedValue === opt.value ? 'var(--primary)' : 'var(--text-primary)',
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      fontFamily: 'inherit',
+                      display: 'flex',
+                      flexDirection: 'column',
+                    }}
+                  >
+                    <span style={{ fontWeight: 600 }}>{opt.label}</span>
+                    {opt.sublabel && <span style={{ fontSize: '10px', color: 'var(--text-tertiary)', marginTop: '2px' }}>{opt.sublabel}</span>}
+                  </button>
+                ))
+              ) : (
+                <div style={{ padding: '8px', textAlign: 'center', fontSize: '12px', color: 'var(--text-tertiary)' }}>No results found</div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
 const Attendance = () => {
   const navigate = useNavigate();
   const { user, updateUser } = useAuth();
@@ -205,6 +377,7 @@ const Attendance = () => {
     clockIn: '',
     clockOut: ''
   });
+  const [editImageFile, setEditImageFile] = useState<File | null>(null);
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]); // YYYY-MM-DD
   const [showCalendar, setShowCalendar] = useState(false);
@@ -217,7 +390,9 @@ const Attendance = () => {
     date: new Date().toISOString().split('T')[0],
     clockIn: '09:00',
     clockOut: '17:00',
-    status: 'PRESENT'
+    status: 'PRESENT',
+    biometricProof: '',
+    biometricProofOut: ''
   });
 
   const [showCorrectionModal, setShowCorrectionModal] = useState(false);
@@ -232,6 +407,12 @@ const Attendance = () => {
   const addToast = (message: string, type: ToastType = 'info') => {
     const id = Math.random().toString(36).substr(2, 9);
     setToasts((prev) => [...prev, { id, message, type }]);
+    // Trigger auditory feedback for success and error toasts
+    if (type === 'success') {
+      playSound('success');
+    } else if (type === 'error') {
+      playSound('error');
+    }
   };
 
   const removeToast = (id: string) => {
@@ -301,8 +482,31 @@ const Attendance = () => {
     }
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, field: 'biometricProof' | 'biometricProofOut') => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setManualData(prev => ({
+          ...prev,
+          [field]: reader.result as string
+        }));
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setManualData(prev => ({
+        ...prev,
+        [field]: ''
+      }));
+    }
+  };
+
   const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!manualData.siteId || !manualData.employeeId) {
+      addToast("Please select both a site and an employee.", 'warning');
+      return;
+    }
     try {
       const fullIn = `${manualData.date}T${manualData.clockIn}:00`;
       const fullOut = manualData.clockOut ? `${manualData.date}T${manualData.clockOut}:00` : null;
@@ -315,6 +519,16 @@ const Attendance = () => {
       
       addToast("Attendance logged successfully!", 'success');
       setShowManualLog(false);
+      setManualData({
+        employeeId: '',
+        siteId: '',
+        date: new Date().toISOString().split('T')[0],
+        clockIn: '09:00',
+        clockOut: '17:00',
+        status: 'PRESENT',
+        biometricProof: '',
+        biometricProofOut: ''
+      });
       loadData(); // Refresh logs
     } catch (err: any) {
       addToast(err.message, 'error');
@@ -388,12 +602,26 @@ const Attendance = () => {
       return;
     }
     if (!editingLog) return;
+
+    // Validation: checkout must be after checkin
+    if (editForm.clockOut && editForm.clockIn >= editForm.clockOut) {
+      addToast("Check-out time must be after check-in time", 'error');
+      return;
+    }
+
     try {
-      const dateStr = new Date(editingLog.date).toISOString().split('T')[0];
+      const dObj = new Date(editingLog.date);
+      const dateStr = `${dObj.getFullYear()}-${(dObj.getMonth() + 1).toString().padStart(2, '0')}-${dObj.getDate().toString().padStart(2, '0')}`;
       const fullIn = `${dateStr}T${editForm.clockIn}:00`;
       const fullOut = editForm.clockOut ? `${dateStr}T${editForm.clockOut}:00` : null;
 
-      await updateAttendanceTimes(editingLog.id, fullIn, fullOut);
+      await updateAttendanceTimes(
+        editingLog.id,
+        fullIn,
+        fullOut,
+        editImageFile,
+        editingLog.employee?.employeeId || editingLog.employeeId
+      );
       addToast("Log updated successfully", 'success');
       setShowEditModal(false);
       loadData();
@@ -767,236 +995,195 @@ const Attendance = () => {
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
               className="glass-card scanner-modal-obsidian manual-log-modal"
-              style={{ maxWidth: '500px' }}
+              style={{ maxWidth: '520px', width: '100%' }}
             >
               <div className="modal-header-premium">
                 <h3>Log Manual Attendance</h3>
                 <button className="close-btn-premium" onClick={() => setShowManualLog(false)}><X size={20} /></button>
               </div>
 
-              <form onSubmit={handleManualSubmit} className="manual-log-form" style={{ padding: '20px' }}>
-                <div className="form-group-premium">
-                  <label>Select Employee</label>
-                  <select 
-                    value={manualData.employeeId} 
-                    onChange={e => setManualData({...manualData, employeeId: e.target.value})}
-                    required
-                    className="premium-input"
-                  >
-                    <option value="">Choose Employee...</option>
-                    {employees.map(emp => (
-                      <option key={emp.id} value={emp.id}>{emp.firstName} {emp.lastName} ({emp.email})</option>
-                    ))}
-                  </select>
-                </div>
-
+              <form onSubmit={handleManualSubmit} className="manual-log-form" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div className="form-group-premium">
                   <label>Operational Site</label>
-                  <select 
-                    value={manualData.siteId} 
-                    onChange={e => setManualData({...manualData, siteId: e.target.value})}
-                    required
-                    className="premium-input"
-                  >
-                    <option value="">Choose Site...</option>
-                    {sites.map(s => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
-                  </select>
+                  <SearchableSelect 
+                    options={sites.map(s => ({ value: s.id, label: s.name, sublabel: s.address }))}
+                    placeholder="Choose Site..."
+                    selectedValue={manualData.siteId}
+                    onSelect={val => setManualData({...manualData, siteId: val, employeeId: ''})}
+                  />
                 </div>
 
-                <div className="form-row-premium">
-                  <div className="form-group-premium" style={{ position: 'relative' }}>
+                <div className="form-group-premium">
+                  <label>Select Employee</label>
+                  <SearchableSelect 
+                    options={
+                      manualData.siteId 
+                        ? employees.filter(emp => emp.siteId === manualData.siteId).map(emp => ({ 
+                            value: emp.id, 
+                            label: `${emp.firstName} ${emp.lastName}`, 
+                            sublabel: emp.employeeId ? `ID: ${emp.employeeId}` : (emp.phone ? `Phone: ${emp.phone}` : '') 
+                          }))
+                        : []
+                    }
+                    placeholder={manualData.siteId ? "Choose Employee..." : "Please select a site first"}
+                    selectedValue={manualData.employeeId}
+                    onSelect={val => setManualData({...manualData, employeeId: val})}
+                    disabled={!manualData.siteId}
+                  />
+                </div>                 <div className="form-row-premium" style={{ display: 'flex', gap: '16px', margin: 0 }}>
+                  <div className="form-group-premium" style={{ flex: 1 }}>
                     <label>Record Date</label>
-                    <div 
-                      className="premium-input custom-date-trigger" 
-                      onClick={() => setShowCalendar(!showCalendar)}
-                    >
-                      <Calendar size={16} />
-                      <span>{new Date(manualData.date).toLocaleDateString()}</span>
-                    </div>
-
-                    <AnimatePresence>
-                      {showCalendar && (
-                        <motion.div 
-                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                          className="custom-calendar-popup glass-card"
-                        >
-                          <div className="calendar-grid-premium">
-                            <div className="cal-header">
-                              {new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}
-                            </div>
-                            <div className="cal-days">
-                              {['S','M','T','W','T','F','S'].map(d => <div key={d} className="cal-day-label">{d}</div>)}
-                              {Array.from({length: 31}, (_, i) => {
-                                const d = i + 1;
-                                const isSelected = new Date(manualData.date).getDate() === d;
-                                return (
-                                  <div 
-                                    key={d} 
-                                    className={`cal-date ${isSelected ? 'selected' : ''}`}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      const newDate = new Date();
-                                      newDate.setDate(d);
-                                      setManualData({...manualData, date: newDate.toISOString().split('T')[0]});
-                                      setShowCalendar(false);
-                                    }}
-                                  >
-                                    {d}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                    <input 
+                      type="date" 
+                      className="premium-input" 
+                      value={manualData.date}
+                      onChange={e => setManualData({...manualData, date: e.target.value})}
+                      required
+                      style={{
+                        width: '100%',
+                        height: '46px',
+                        padding: '12px 16px',
+                        background: 'var(--surface-hover)',
+                        border: '1px solid var(--border)',
+                        borderRadius: '12px',
+                        color: 'var(--text-primary)',
+                        fontFamily: 'inherit',
+                        fontSize: '14px',
+                        outline: 'none',
+                        boxSizing: 'border-box'
+                      }}
+                    />
                   </div>
-                  <div className="form-group-premium">
+                  <div className="form-group-premium" style={{ flex: 1 }}>
                     <label>Attendance Status</label>
-                    <select 
-                      value={manualData.status} 
-                      onChange={e => setManualData({...manualData, status: e.target.value})}
-                      className="premium-input"
-                    >
-                      <option value="PRESENT">PRESENT</option>
-                      <option value="LATE">LATE</option>
-                      <option value="ABSENT">ABSENT</option>
-                    </select>
+                    <SearchableSelect 
+                      options={[
+                        { value: 'PRESENT', label: 'PRESENT' },
+                        { value: 'LATE', label: 'LATE' },
+                        { value: 'ABSENT', label: 'ABSENT' }
+                      ]}
+                      placeholder="Select Status"
+                      selectedValue={manualData.status}
+                      onSelect={val => setManualData({...manualData, status: val})}
+                      showSearch={false}
+                    />
                   </div>
                 </div>
 
-                <div className="form-row-premium bottom-row">
-                  <div className="form-group-premium" style={{ position: 'relative' }}>
+                <div className="form-row-premium" style={{ display: 'flex', gap: '16px', margin: 0 }}>
+                  <div className="form-group-premium" style={{ flex: 1 }}>
                     <label>Clock-In (T1)</label>
-                    <div 
-                      className="premium-input custom-date-trigger" 
-                      onClick={() => {
-                        setShowInTimePicker(!showInTimePicker);
-                        setShowOutTimePicker(false);
-                        setShowCalendar(false);
+                    <input 
+                      type="time" 
+                      className="premium-input" 
+                      value={manualData.clockIn}
+                      onChange={e => setManualData({...manualData, clockIn: e.target.value})}
+                      required
+                      style={{
+                        width: '100%',
+                        height: '46px',
+                        padding: '12px 16px',
+                        background: 'var(--surface-hover)',
+                        border: '1px solid var(--border)',
+                        borderRadius: '12px',
+                        color: 'var(--text-primary)',
+                        fontFamily: 'inherit',
+                        fontSize: '14px',
+                        outline: 'none',
+                        boxSizing: 'border-box'
                       }}
-                    >
-                      <Clock size={16} />
-                      <span>{manualData.clockIn}</span>
-                    </div>
-                    <AnimatePresence>
-                      {showInTimePicker && (
-                        <motion.div 
-                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                          className="custom-time-popup glass-card"
-                        >
-                          <div className="time-picker-precision">
-                            <div className="time-column">
-                              <div className="col-label">Hrs</div>
-                              {[...Array(24)].map((_, h) => {
-                                const val = h.toString().padStart(2, '0');
-                                const isSel = manualData.clockIn.startsWith(val);
-                                return (
-                                  <div 
-                                    key={h} 
-                                    className={`time-unit ${isSel ? 'selected' : ''}`}
-                                    onClick={() => setManualData({...manualData, clockIn: `${val}:${manualData.clockIn.split(':')[1]}`})}
-                                  >
-                                    {val}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                            <div className="time-column">
-                              <div className="col-label">Min</div>
-                              {[...Array(60)].map((_, m) => {
-                                const val = m.toString().padStart(2, '0');
-                                const isSel = manualData.clockIn.endsWith(val);
-                                return (
-                                  <div 
-                                    key={m} 
-                                    className={`time-unit ${isSel ? 'selected' : ''}`}
-                                    onClick={() => setManualData({...manualData, clockIn: `${manualData.clockIn.split(':')[0]}:${val}`})}
-                                  >
-                                    {val}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                          <button className="btn-tiny-done" onClick={() => setShowInTimePicker(false)}>Done</button>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                    />
                   </div>
-                  <div className="form-group-premium" style={{ position: 'relative' }}>
+                  <div className="form-group-premium" style={{ flex: 1 }}>
                     <label>Clock-Out (T2)</label>
-                    <div 
-                      className="premium-input custom-date-trigger" 
-                      onClick={() => {
-                        setShowOutTimePicker(!showOutTimePicker);
-                        setShowInTimePicker(false);
-                        setShowCalendar(false);
+                    <input 
+                      type="time" 
+                      className="premium-input" 
+                      value={manualData.clockOut}
+                      onChange={e => setManualData({...manualData, clockOut: e.target.value})}
+                      style={{
+                        width: '100%',
+                        height: '46px',
+                        padding: '12px 16px',
+                        background: 'var(--surface-hover)',
+                        border: '1px solid var(--border)',
+                        borderRadius: '12px',
+                        color: 'var(--text-primary)',
+                        fontFamily: 'inherit',
+                        fontSize: '14px',
+                        outline: 'none',
+                        boxSizing: 'border-box'
                       }}
-                    >
-                      <Clock size={16} />
-                      <span>{manualData.clockOut}</span>
-                    </div>
-                    <AnimatePresence>
-                      {showOutTimePicker && (
-                        <motion.div 
-                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                          className="custom-time-popup glass-card"
-                        >
-                          <div className="time-picker-precision">
-                            <div className="time-column">
-                              <div className="col-label">Hrs</div>
-                              {[...Array(24)].map((_, h) => {
-                                const val = h.toString().padStart(2, '0');
-                                const isSel = manualData.clockOut.startsWith(val);
-                                return (
-                                  <div 
-                                    key={h} 
-                                    className={`time-unit ${isSel ? 'selected' : ''}`}
-                                    onClick={() => setManualData({...manualData, clockOut: `${val}:${manualData.clockOut.split(':')[1]}`})}
-                                  >
-                                    {val}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                            <div className="time-column">
-                              <div className="col-label">Min</div>
-                              {[...Array(60)].map((_, m) => {
-                                const val = m.toString().padStart(2, '0');
-                                const isSel = manualData.clockOut.endsWith(val);
-                                return (
-                                  <div 
-                                    key={m} 
-                                    className={`time-unit ${isSel ? 'selected' : ''}`}
-                                    onClick={() => setManualData({...manualData, clockOut: `${manualData.clockOut.split(':')[0]}:${val}`})}
-                                  >
-                                    {val}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                          <button className="btn-tiny-done" onClick={() => setShowOutTimePicker(false)}>Done</button>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                    />
                   </div>
                 </div>
 
-                <div className="modal-actions-premium" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <button type="submit" className="btn btn-primary btn-block btn-lg">
+                <div className="form-row-premium" style={{ display: 'flex', gap: '16px', margin: 0 }}>
+                  <div className="form-group-premium" style={{ flex: 1 }}>
+                    <label>Check-in Image (Optional)</label>
+                    <label className="file-upload-premium" style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      height: '46px',
+                      padding: '12px 16px',
+                      background: 'var(--surface-hover)',
+                      border: '1px dashed var(--border)',
+                      borderRadius: '12px',
+                      cursor: 'pointer',
+                      color: manualData.biometricProof ? 'var(--success)' : 'var(--text-secondary)',
+                      fontSize: '13px',
+                      width: '100%',
+                      boxSizing: 'border-box',
+                      transition: 'all 0.2s ease',
+                    }}>
+                      <Camera size={14} style={{ color: manualData.biometricProof ? 'var(--success)' : 'var(--primary)' }} />
+                      <span style={{ fontWeight: 600 }}>{manualData.biometricProof ? "Check-in Photo Selected" : "Upload Check-in Photo"}</span>
+                      <input 
+                        type="file" 
+                        accept="image/*"
+                        onChange={e => handleFileChange(e, 'biometricProof')}
+                        style={{ display: 'none' }}
+                      />
+                    </label>
+                  </div>
+                  <div className="form-group-premium" style={{ flex: 1 }}>
+                    <label>Check-out Image (Optional)</label>
+                    <label className="file-upload-premium" style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      height: '46px',
+                      padding: '12px 16px',
+                      background: 'var(--surface-hover)',
+                      border: '1px dashed var(--border)',
+                      borderRadius: '12px',
+                      cursor: 'pointer',
+                      color: manualData.biometricProofOut ? 'var(--success)' : 'var(--text-secondary)',
+                      fontSize: '13px',
+                      width: '100%',
+                      boxSizing: 'border-box',
+                      transition: 'all 0.2s ease',
+                    }}>
+                      <Camera size={14} style={{ color: manualData.biometricProofOut ? 'var(--success)' : 'var(--primary)' }} />
+                      <span style={{ fontWeight: 600 }}>{manualData.biometricProofOut ? "Check-out Photo Selected" : "Upload Check-out Photo"}</span>
+                      <input 
+                        type="file" 
+                        accept="image/*"
+                        onChange={e => handleFileChange(e, 'biometricProofOut')}
+                        style={{ display: 'none' }}
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                <div className="modal-actions-premium" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '8px' }}>
+                  <button type="submit" className="btn btn-primary btn-block btn-lg" style={{ height: '48px', borderRadius: '12px' }}>
                     Log Official Record
                   </button>
-                  <button type="button" className="btn btn-ghost btn-block" onClick={() => setShowManualLog(false)}>
+                  <button type="button" className="btn btn-ghost btn-block" style={{ height: '48px', borderRadius: '12px' }} onClick={() => setShowManualLog(false)}>
                     Discard
                   </button>
                 </div>
@@ -1299,7 +1486,6 @@ const Attendance = () => {
             >
               <div className="modal-header-premium">
                 <div className="m-title">
-                  <Pencil size={20} />
                   <div>
                     <h3>Edit Attendance Record</h3>
                     <p>Adjusting logs for {editingLog?.employee?.firstName} {editingLog?.employee?.lastName}</p>
@@ -1310,35 +1496,88 @@ const Attendance = () => {
                 </button>
               </div>
 
-              <form onSubmit={handleEditSubmit} className="modal-body-premium">
-                <div className="form-row-premium" style={{ padding: '20px' }}>
-                   <div className="form-group-premium">
-                     <label>Check-in Time</label>
+              <form onSubmit={handleEditSubmit} className="modal-body-premium" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div className="form-row-premium" style={{ display: 'flex', gap: '16px', margin: 0 }}>
+                   <div className="form-group-premium" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                     <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>Check-in Time</label>
                      <input 
                        type="time" 
                        className="premium-input" 
                        value={editForm.clockIn}
                        onChange={(e) => setEditForm({...editForm, clockIn: e.target.value})}
                        required
+                       style={{ width: '100%', padding: '12px', borderRadius: '12px' }}
                      />
                    </div>
-                   <div className="form-group-premium">
-                     <label>Check-out Time</label>
+                   <div className="form-group-premium" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                     <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>Check-out Time</label>
                      <input 
                        type="time" 
                        className="premium-input" 
                        value={editForm.clockOut}
                        onChange={(e) => setEditForm({...editForm, clockOut: e.target.value})}
+                       style={{ width: '100%', padding: '12px', borderRadius: '12px' }}
                      />
-                     <p className="field-hint">Leave blank if still on-site</p>
                    </div>
                 </div>
 
-                <div className="modal-actions-premium" style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '0 20px 20px' }}>
-                  <button type="submit" className="btn btn-primary btn-block btn-lg">
+                {editingLog?.biometricProof ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>Verification Proof</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                      <img 
+                        src={editingLog.biometricProof.startsWith('http') ? editingLog.biometricProof : `${API_URL}${editingLog.biometricProof}`} 
+                        alt="Verification Proof" 
+                        style={{ width: '60px', height: '60px', borderRadius: '8px', objectFit: 'cover', border: '1px solid var(--border)' }} 
+                      />
+                      <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>Proof image is already uploaded.</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>Upload Verification Image (Optional)</label>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          setEditImageFile(e.target.files[0]);
+                        }
+                      }}
+                      style={{ 
+                        width: '100%', 
+                        padding: '10px', 
+                        borderRadius: '12px', 
+                        background: 'rgba(255,255,255,0.02)', 
+                        border: '1px solid var(--border)',
+                        color: 'var(--text-primary)',
+                        fontSize: '13px'
+                      }}
+                    />
+                  </div>
+                )}
+
+                <div className="alert-banner-premium" style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  background: 'rgba(59, 130, 246, 0.08)',
+                  border: '1px solid rgba(59, 130, 246, 0.15)',
+                  borderRadius: '12px',
+                  padding: '12px 16px',
+                  color: 'var(--text-secondary)',
+                  fontSize: '13px',
+                  lineHeight: '1.4'
+                }}>
+                  <AlertCircle size={16} style={{ color: '#3b82f6', flexShrink: 0 }} />
+                  <span>Leave blank if the employee is still on-site.</span>
+                </div>
+
+                <div className="modal-actions-premium" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '8px' }}>
+                  <button type="submit" className="btn btn-primary btn-block btn-lg" style={{ height: '48px', borderRadius: '12px' }}>
                     Save Changes
                   </button>
-                  <button type="button" className="btn btn-ghost btn-block" onClick={() => setShowEditModal(false)}>
+                  <button type="button" className="btn btn-ghost btn-block" style={{ height: '48px', borderRadius: '12px' }} onClick={() => setShowEditModal(false)}>
                     Cancel
                   </button>
                 </div>
@@ -1367,7 +1606,7 @@ const Attendance = () => {
     if (searchTerm) {
       const s = searchTerm.toLowerCase();
       const empName = `${log.employee?.firstName} ${log.employee?.lastName}`.toLowerCase();
-      const empId = log.employeeId?.toString().toLowerCase() || '';
+      const empId = log.employee?.employeeId?.toLowerCase() || '';
       if (!empName.includes(s) && !empId.includes(s)) {
         return false;
       }
@@ -1594,7 +1833,7 @@ const Attendance = () => {
               </button>
               <button className="btn-outline" onClick={handleExport}>{t('exportReport')}</button>
               {isAdmin && (
-                  <button className="btn btn-primary" onClick={() => navigate('/attendance/manager')}>
+                  <button className="btn btn-primary" onClick={() => setShowManualLog(true)}>
                     <UserPlus size={16} /> Log Manual Entry
                   </button>
                 )}
@@ -1622,8 +1861,8 @@ const Attendance = () => {
                         <span>{log.employee?.firstName || 'Unknown'} {log.employee?.lastName || ''}</span>
                       </td>
                       <td data-label={t('date')}>{new Date(log.date).toLocaleDateString()}</td>
-                      <td data-label={t('checkin')}>{log.clockIn ? new Date(log.clockIn).toLocaleTimeString() : '---'}</td>
-                      <td data-label={t('checkout')}>{log.clockOut ? new Date(log.clockOut).toLocaleTimeString() : '---'}</td>
+          <td data-label={t('checkin')}>{log.clockIn ? new Date(log.clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '---'}</td>
+          <td data-label={t('checkout')}>{log.clockOut ? new Date(log.clockOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '---'}</td>
                       <td data-label={t('verification')}>
                         <div className="proof-stack-mini">
                           {log.biometricProof && (
@@ -1654,6 +1893,7 @@ const Attendance = () => {
                                   clockIn: log.clockIn ? new Date(log.clockIn).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit' }) : '',
                                   clockOut: log.clockOut ? new Date(log.clockOut).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit' }) : ''
                                 });
+                                setEditImageFile(null);
                                 setShowEditModal(true);
                               }}
                               title="Edit Times"
@@ -1688,12 +1928,14 @@ const Attendance = () => {
                               <button className="status-btn reject" onClick={() => { setRejectLogId(log.id); setShowRejectReasonModal(true); }} title="Reject"><X size={14} /></button>
                             </>
                           )}
-                          <button className="status-btn delete" onClick={() => {
-                              setPurgeLogId(log.id);
-                              setShowPurgeReasonModal(true);
-                            }} title="Purge Log" style={{ color: 'var(--error)' }}>
-                              <Trash2 size={14} />
-                            </button>
+                          {isAdmin && (
+                            <button className="status-btn delete" onClick={() => {
+                                setPurgeLogId(log.id);
+                                setShowPurgeReasonModal(true);
+                              }} title="Purge Log" style={{ color: 'var(--error)' }}>
+                                <Trash2 size={14} />
+                              </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -1702,13 +1944,13 @@ const Attendance = () => {
               </table>
             </div>
           ) : activeView === 'timeline' ? (
-            <div className="timeline-container glass-card">
+            <div className="timeline-container glass-card" style={{ paddingBottom: '0px' }}>
               <div className="timeline-grid">
                 <div className="timeline-header">
                   <div className="employee-col">Employee</div>
                   <div className="time-axis">
-                    {[...Array(12)].map((_, i) => (
-                      <div key={i} className="time-label">{(i * 2).toString().padStart(2, '0')}:00</div>
+                    {[6, 8, 10, 12, 14, 16, 18, 20, 22].map((hour) => (
+                      <div key={hour} className="time-label">{hour.toString().padStart(2, '0')}:00</div>
                     ))}
                   </div>
                 </div>
@@ -1726,21 +1968,79 @@ const Attendance = () => {
                         </div>
                         <div className="shift-track">
                           {empLogs.map(log => {
+                            if (log.status === 'ABSENT') {
+                              return (
+                                <div 
+                                  key={log.id} 
+                                  className="shift-bar absent"
+                                  style={{ 
+                                    left: '0%', 
+                                    width: '100%', 
+                                    display: 'flex', 
+                                    justifyContent: 'center', 
+                                    alignItems: 'center', 
+                                    background: 'rgba(239, 68, 68, 0.12)', 
+                                    border: '1px dashed rgba(239, 68, 68, 0.3)', 
+                                    color: '#ef4444', 
+                                    height: '100%', 
+                                    borderRadius: '8px', 
+                                    fontWeight: 700,
+                                    fontSize: '13px'
+                                  }}
+                                  title={`${emp?.firstName}: ABSENT`}
+                                >
+                                  <span>Absent</span>
+                                </div>
+                              );
+                            }
+
                             if (!log.clockIn) return null;
                             const start = new Date(log.clockIn);
                             const end = log.clockOut ? new Date(log.clockOut) : new Date();
                             
-                            const startPct = ((start.getHours() * 60 + start.getMinutes()) / 1440) * 100;
-                            const durationPct = (((end.getTime() - start.getTime()) / 60000) / 1440) * 100;
+                            // 6:00 AM (360 mins) to 10:00 PM (1320 mins) -> 16 hours (960 mins)
+                            const startMins = start.getHours() * 60 + start.getMinutes();
+                            const relativeStartMins = Math.max(0, startMins - 360);
+                            const startPct = (relativeStartMins / 960) * 100;
+
+                            const endMins = end.getHours() * 60 + end.getMinutes();
+                            const clampedEndMins = Math.min(1320, endMins);
+                            const durationMins = Math.max(0, clampedEndMins - Math.max(360, startMins));
+                            const durationPct = (durationMins / 960) * 100;
+                            
+                            const durationMs = end.getTime() - start.getTime();
+                            const totalDurationMins = Math.floor(durationMs / 60000);
+                            const hours = Math.floor(totalDurationMins / 60);
+                            const mins = totalDurationMins % 60;
+                            const durationText = mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+
+          // Format times; for absent logs show no times
+          const checkInTimeText = log.status === 'ABSENT' ? '' : start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+          const checkOutTimeText = log.status === 'ABSENT' ? '' : (log.clockOut ? new Date(log.clockOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '');
+
+                            const showAllLabels = durationPct > 18;
+                            const showDurationOnly = durationPct > 7 && durationPct <= 18;
                             
                             return (
                               <div 
                                 key={log.id} 
                                 className={`shift-bar ${log.status?.toLowerCase()}`}
-                                style={{ left: `${startPct}%`, width: `${durationPct}%` }}
-                                title={`${emp?.firstName}: ${start.toLocaleTimeString()} - ${end.toLocaleTimeString()}`}
+                                style={{ 
+                                  left: `${startPct}%`, 
+                                  width: `${durationPct}%`,
+                                  display: 'flex',
+                                  justifyContent: showAllLabels ? 'space-between' : 'center',
+                                  alignItems: 'center',
+                                  padding: '0 8px',
+                                  boxSizing: 'border-box',
+                                  minWidth: '35px',
+                                  overflow: 'hidden'
+                                }}
+                                title={`${emp?.firstName}: ${checkInTimeText} - ${checkOutTimeText} (${durationText})`}
                               >
-                                {durationPct > 5 && <span className="bar-label">{Math.round((end.getTime() - start.getTime()) / 3600000)}h</span>}
+                                {showAllLabels && <span style={{ fontSize: '9px', opacity: 0.9, fontWeight: 600 }}>{checkInTimeText}</span>}
+                                {(showAllLabels || showDurationOnly) && <span style={{ fontWeight: 700, fontSize: '11px' }}>{durationText}</span>}
+                                {showAllLabels && <span style={{ fontSize: '9px', opacity: 0.9, fontWeight: 600 }}>{checkOutTimeText}</span>}
                               </div>
                             );
                           })}
@@ -1748,6 +2048,32 @@ const Attendance = () => {
                       </div>
                     );
                   })}
+                </div>
+              </div>
+
+              {/* Color Code Legend */}
+              <div className="timeline-legend" style={{ 
+                display: 'flex', 
+                gap: '24px', 
+                padding: '16px 20px', 
+                background: 'rgba(255,255,255,0.02)', 
+                borderTop: '1px solid var(--border)', 
+                fontSize: '12px', 
+                color: 'var(--text-secondary)',
+                borderBottomLeftRadius: '16px',
+                borderBottomRightRadius: '16px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ width: '12px', height: '12px', borderRadius: '4px', background: '#10b981' }}></div>
+                  <span style={{ fontWeight: 500 }}>Present / Approved (Active or Paid Work Hours)</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ width: '12px', height: '12px', borderRadius: '4px', background: '#ef4444' }}></div>
+                  <span style={{ fontWeight: 500 }}>Absent / Rejected (Missed shift or disallowed clocking)</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ width: '12px', height: '12px', borderRadius: '4px', background: '#f59e0b' }}></div>
+                  <span style={{ fontWeight: 500 }}>Pending Approval (Awaiting verification)</span>
                 </div>
               </div>
             </div>

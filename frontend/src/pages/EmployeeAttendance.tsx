@@ -444,21 +444,33 @@ const EmployeeAttendance = () => {
     
     for (let d = 1; d <= daysInMonth; d++) {
       const dateStr = `${year}-${(month + 1).toString().padStart(2, '0')}-${d.toString().padStart(2, '0')}`;
-      const dayLogs = allLogs.filter(l => l.date.split('T')[0] === dateStr);
+      const dayLogs = allLogs.filter(l => {
+        const dObj = new Date(l.date);
+        const lStr = `${dObj.getFullYear()}-${(dObj.getMonth() + 1).toString().padStart(2, '0')}-${dObj.getDate().toString().padStart(2, '0')}`;
+        return lStr === dateStr;
+      });
       let status: 'approved' | 'pending' | 'absent' | null = null;
       let hours = 0;
       const dateObj = new Date(year, month, d);
       const isPast = dateObj < new Date(new Date().setHours(0,0,0,0));
 
       if (dayLogs.length > 0) {
-        status = dayLogs.some(l => l.status === 'APPROVED' || l.status === 'PRESENT') ? 'approved' : 'pending';
+        if (dayLogs.some(l => l.status === 'ABSENT')) {
+          status = 'absent';
+        } else {
+          status = dayLogs.some(l => l.status === 'APPROVED' || l.status === 'PRESENT') ? 'approved' : 'pending';
+        }
         hours = dayLogs.reduce((acc, l) => l.clockIn && l.clockOut ? acc + (new Date(l.clockOut).getTime() - new Date(l.clockIn).getTime()) / 3600000 : acc, 0);
       } else if (isPast && dateObj.getDay() !== 0 && dateObj.getDay() !== 6) status = 'absent';
       
       cells.push(
         <motion.div key={d} className={`cal-dot-box ${status || ''} ${new Date().toDateString() === dateObj.toDateString() ? 'today' : ''}`} whileHover={{ scale: 1.05 }}>
           <span className="dot-date">{d}</span>
-          {hours > 0 && <span className="dot-hours">{hours.toFixed(1)}h</span>}
+          {status === 'absent' ? (
+            <span className="dot-absent" style={{ color: '#ef4444', fontWeight: 600, fontSize: '0.8rem' }}>Absent</span>
+          ) : (
+            hours > 0 && <span className="dot-hours">{hours.toFixed(1)}h</span>
+          )}
         </motion.div>
       );
     }
@@ -546,12 +558,12 @@ const EmployeeAttendance = () => {
                   <motion.button 
                     whileHover={{ scale: 1.02 }} 
                     whileTap={{ scale: 0.98 }} 
-                    className={`big-btn in ${(isClockedIn || (logs.length >= 2 && !isClockedIn)) ? 'disabled' : ''}`} 
-                    onClick={() => !isClockedIn && logs.length < 2 && handleAction('IN')} 
-                    disabled={isClockedIn || (logs.length >= 2 && !isClockedIn)}
+                    className={`big-btn in ${(isClockedIn || (logs.length >= 5 && !isClockedIn)) ? 'disabled' : ''}`} 
+                    onClick={() => !isClockedIn && logs.length < 5 && handleAction('IN')} 
+                    disabled={isClockedIn || (logs.length >= 5 && !isClockedIn)}
                   >
                     <Clock size={28} /> 
-                    <span>{logs.length >= 2 && !isClockedIn ? 'LIMIT REACHED' : 'CLOCK IN NOW'}</span>
+                    <span>{logs.length >= 5 && !isClockedIn ? 'LIMIT REACHED' : 'CLOCK IN NOW'}</span>
                   </motion.button>
                   
                   <motion.button 

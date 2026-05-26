@@ -290,3 +290,9 @@ h4 {
 .btn-back:active {
   transform: scale(0.95) translateX(-2px) !important;
 }
+
+/* Hide default browser password reveal and clear buttons to prevent double icons */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none;
+}

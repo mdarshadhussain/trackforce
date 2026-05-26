@@ -47,7 +47,12 @@ export const Login = () => {
     try {
       const data = await loginUser(employeeId, password);
       login(data.user, data.token);
-      navigate('/dashboard');
+      // Redirect based on role: managers go to site attendance, others to dashboard
+      if (data.user?.role === 'MANAGER') {
+        navigate('/attendance/manager');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to login. Please check your credentials.');
     } finally {
@@ -72,7 +77,12 @@ export const Login = () => {
     try {
       const data = await loginUser(username, pass);
       login(data.user, data.token);
-      navigate('/dashboard');
+      // Redirect managers to site attendance after quick login
+      if (data.user?.role === 'MANAGER') {
+        navigate('/attendance/manager');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err: any) {
       setError(err.message || 'Quick login failed.');
       setLoading(false);

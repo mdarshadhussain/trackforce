@@ -1896,14 +1896,37 @@
 }
 
 [data-theme='dark'] .shift-bar {
-  background: var(--primary) !important; /* Rose in dark mode */
-  box-shadow: 0 0 15px var(--primary-glow);
-  color: #000 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  color: #ffffff !important;
+}
+
+[data-theme='dark'] .shift-bar.approved,
+[data-theme='dark'] .shift-bar.present,
+[data-theme='dark'] .shift-bar.paid {
+  background: linear-gradient(90deg, #10b981, #059669) !important;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.35);
+}
+
+[data-theme='dark'] .shift-bar.pending {
+  background: linear-gradient(90deg, #f59e0b, #d97706) !important;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.35);
+}
+
+[data-theme='dark'] .shift-bar.rejected {
+  background: linear-gradient(90deg, #ef4444, #dc2626) !important;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.35);
+}
+
+[data-theme='dark'] .shift-bar.absent {
+  background: rgba(239, 68, 68, 0.15) !important;
+  border: 1px dashed rgba(239, 68, 68, 0.4) !important;
+  color: #ef4444 !important;
+  box-shadow: none !important;
 }
 
 [data-theme='dark'] .shift-bar .bar-label {
-  color: #000 !important;
-  font-weight: 800;
+  color: #ffffff !important;
+  font-weight: 700;
 }
 
 [data-theme='dark'] .time-label {

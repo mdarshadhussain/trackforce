@@ -92,9 +92,9 @@ const Sidebar = ({ onClose, collapsed, onToggleCollapse }: SidebarProps) => {
         } else {
           // Admin or Manager: System/Site wide active snapshot of checked-in workers for today
           const stats = await fetchStats();
-          const present = stats.activeNow || 0;
+          const present = stats.presentToday !== undefined ? stats.presentToday : (stats.activeNow || 0);
+          const absent = stats.absentToday !== undefined ? stats.absentToday : 0;
           const total = stats.totalEmployees || 1;
-          const absent = Math.max(0, total - present);
           const percent = Math.min(100, Math.round((present / total) * 100));
           setPulseData({ 
             present, 
@@ -115,10 +115,10 @@ const Sidebar = ({ onClose, collapsed, onToggleCollapse }: SidebarProps) => {
   }, [collapsed, user]);
 
   const menuItems = [
-    { icon: <LayoutDashboard size={20} />, label: t('dashboard'), path: '/dashboard' },
+    ...(isManager ? [{ icon: <UserCheck size={20} />, label: 'Site Attendance', path: '/attendance/manager' }] : []),
+    ...( !isManager ? [{ icon: <LayoutDashboard size={20} />, label: t('dashboard'), path: '/dashboard' }] : [] ),
     ...(isManager ? [{ icon: <Users size={20} />, label: t('employees'), path: '/employees' }] : []),
     { icon: <Calendar size={20} />, label: t('attendance'), path: '/attendance' },
-    ...(isManager ? [{ icon: <UserCheck size={20} />, label: 'Site Attendance', path: '/attendance/manager' }] : []),
     ...(isAdmin ? [{ icon: <MapPin size={20} />, label: t('tracking'), path: '/tracking' }] : []),
     ...((isEmployee || isAdmin) ? [{ icon: <Wallet size={20} />, label: isEmployee ? 'Payroll History' : t('payroll'), path: '/payroll' }] : []),
     { icon: <Building2 size={20} />, label: t('sites'), path: '/sites' },

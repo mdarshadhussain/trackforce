@@ -13,7 +13,8 @@ import {
   X,
   RefreshCw,
   Loader2,
-  Filter
+  Filter,
+  MapPin
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import * as faceapi from 'face-api.js';
@@ -23,6 +24,19 @@ import { useAuth } from '../context/AuthContext';
 import './ManagerAttendance.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+  const R = 6371e3; // meters
+  const φ1 = lat1 * Math.PI / 180;
+  const φ2 = lat2 * Math.PI / 180;
+  const Δφ = (lat2 - lat1) * Math.PI / 180;
+  const Δλ = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+            Math.cos(φ1) * Math.cos(φ2) *
+            Math.sin(Δλ/2) * Math.sin(Δλ/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+};
 
 const base64ToBlob = (base64: string) => {
   const byteString = atob(base64.split(',')[1]);
@@ -160,6 +174,13 @@ const ManagerAttendance: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
+  // Stepper State for Proxy Attendance Log
+  const [step, setStep] = useState<'idle' | 'checking_location' | 'location_success' | 'location_failed' | 'facial_scanning' | 'complete' | 'failed'>('idle');
+  const [statusMessage, setStatusMessage] = useState("");
+  const [errorDetail, setErrorDetail] = useState("");
+  const [coords, setCoords] = useState<{lat: number, lng: number} | null>(null);
+  const [locationName, setLocationName] = useState("");
+
   // Personal Status State
   const [myTodayLogs, setMyTodayLogs] = useState<any[]>([]);
   const isMyClockedIn = myTodayLogs.length > 0 && !myTodayLogs[0].clockOut;
@@ -167,6 +188,28 @@ const ManagerAttendance: React.FC = () => {
     totalHours: 0,
     todayHours: '0h 0m',
   });
+  const [myElapsedTime, setMyElapsedTime] = useState<string>("");
+
+  useEffect(() => {
+    let intervalId: any;
+    if (isMyClockedIn && myTodayLogs[0]?.clockIn) {
+      const updateElapsed = () => {
+        const diff = Date.now() - new Date(myTodayLogs[0].clockIn).getTime();
+        if (diff > 0) {
+          const mins = Math.floor(diff / 60000) % 60;
+          const hrs = Math.floor(diff / 3600000);
+          setMyElapsedTime(`${hrs}h ${mins}m`);
+        } else {
+          setMyElapsedTime("0h 0m");
+        }
+      };
+      updateElapsed();
+      intervalId = setInterval(updateElapsed, 60000);
+    } else {
+      setMyElapsedTime("");
+    }
+    return () => clearInterval(intervalId);
+  }, [isMyClockedIn, myTodayLogs]);
 
   useEffect(() => {
     loadData();
@@ -188,8 +231,20 @@ const ManagerAttendance: React.FC = () => {
     setPhotoPreview(null);
     setVerificationStatus('idle');
     setIsCameraActive(false);
+    setStep('idle');
+    setStatusMessage("");
+    setErrorDetail("");
+    setCoords(null);
+    setLocationName("");
     return () => stopCamera();
   }, [selectedEmployee]);
+
+  // Auto-start verification if manager selects themselves
+  useEffect(() => {
+    if (selectedEmployee && user && selectedEmployee.id === user.id && step === 'idle') {
+      handleStartVerification();
+    }
+  }, [selectedEmployee, user, step]);
 
   const startCamera = async (mode: 'user' | 'environment') => {
     if (streamRef.current) {
@@ -237,6 +292,142 @@ const ManagerAttendance: React.FC = () => {
     return canvas.toDataURL('image/jpeg', 0.6);
   };
 
+  const handleStartVerification = async () => {
+    if (!selectedEmployee || submitting) return;
+    setStep('checking_location');
+    setStatusMessage("Acquiring GPS coordinates...");
+    setErrorDetail("");
+
+    let currentCoords: {lat: number, lng: number} | null = null;
+    
+    if (navigator.geolocation) {
+      try {
+        const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, { 
+            enableHighAccuracy: false, 
+            timeout: 15000, 
+            maximumAge: 60000 
+          });
+        });
+        currentCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setCoords(currentCoords);
+      } catch (e: any) {
+        console.error("Geolocation error", e);
+        let errorMsg = "Unable to acquire GPS location.";
+        if (e.code === 1) {
+          errorMsg = "Location permission denied. Please allow location access in your browser settings.";
+        } else if (e.code === 2) {
+          errorMsg = "Location unavailable. Please make sure your device's location/GPS settings are turned on.";
+        } else if (e.code === 3) {
+          errorMsg = "Location request timed out. Please check your network connection and try again.";
+        }
+        setStep('location_failed');
+        setErrorDetail(errorMsg);
+        return;
+      }
+    } else {
+      setStep('location_failed');
+      setErrorDetail("Your browser does not support geolocation.");
+      return;
+    }
+
+    try {
+      setStatusMessage("Checking operational boundaries...");
+      
+      const employeeSite = sites.find(s => s.id === selectedEmployee.siteId);
+      
+      if (!employeeSite) {
+        setStep('location_failed');
+        setErrorDetail("No operational site assigned to this employee's profile.");
+        return;
+      }
+
+      const distance = getDistance(
+        currentCoords.lat, 
+        currentCoords.lng, 
+        employeeSite.latitude || 0, 
+        employeeSite.longitude || 0
+      );
+      const radius = employeeSite.geofenceRadius || 500;
+
+      if (distance > radius && user?.role === 'MANAGER') {
+        await createSecurityAlert({
+          type: 'GEOFENCE_VIOLATION',
+          message: `Proxy Log Warning: Manager logged ${selectedEmployee.firstName} from ${Math.round(distance)}m away from ${employeeSite.name}.`,
+          severity: 'MEDIUM',
+          employeeId: selectedEmployee.id,
+          siteId: selectedEmployee.siteId
+        });
+        
+        setStep('location_failed');
+        setErrorDetail(`Out of bounds. You are ${Math.round(distance)}m away from site "${employeeSite.name}". Allowed radius is ${radius}m.`);
+        return;
+      }
+
+      setStep('location_success');
+      setStatusMessage(`Within boundary of "${employeeSite.name}"!`);
+      setLocationName(`Zone: ${currentCoords.lat.toFixed(4)}, ${currentCoords.lng.toFixed(4)}`);
+
+      setTimeout(() => {
+        setStep('facial_scanning');
+        setStatusMessage("Initializing camera for biometric verification...");
+        startCamera(facingMode);
+      }, 1500);
+
+    } catch (err: any) {
+      console.error("Verification error", err);
+      setStep('location_failed');
+      setErrorDetail(err.message || "Failed to verify location with operational server.");
+    }
+  };
+
+  const handleSimulateGPS = async () => {
+    if (!selectedEmployee) return;
+    setStep('checking_location');
+    setStatusMessage("Simulating GPS coordinates...");
+    setErrorDetail("");
+    
+    try {
+      const employeeSite = sites.find(s => s.id === selectedEmployee.siteId);
+      if (!employeeSite) {
+        setStep('location_failed');
+        setErrorDetail("No operational site assigned to this employee. Cannot simulate GPS.");
+        return;
+      }
+      
+      const simulatedCoords = {
+        lat: employeeSite.latitude || 10.762,
+        lng: employeeSite.longitude || 106.682
+      };
+      
+      setCoords(simulatedCoords);
+      setStep('location_success');
+      setStatusMessage(`[SIMULATED] Located at "${employeeSite.name}"`);
+      setLocationName(`Zone: ${simulatedCoords.lat.toFixed(4)}, ${simulatedCoords.lng.toFixed(4)} (Simulated)`);
+      
+      setTimeout(() => {
+        setStep('facial_scanning');
+        setStatusMessage("Initializing camera for biometric verification...");
+        startCamera(facingMode);
+      }, 1500);
+      
+    } catch (err: any) {
+      console.error("Simulation error", err);
+      setStep('location_failed');
+      setErrorDetail("Failed to retrieve site coordinates for simulation.");
+    }
+  };
+
+  const resetVerification = () => {
+    stopCamera();
+    setStep('idle');
+    setPhotoPreview(null);
+    setStatusMessage("");
+    setErrorDetail("");
+    setCoords(null);
+    setLocationName("");
+  };
+
   const handleCaptureAndVerify = async () => {
     if (!selectedEmployee) return;
 
@@ -248,22 +439,11 @@ const ManagerAttendance: React.FC = () => {
 
     setPhotoPreview(capturedFrame);
     stopCamera();
-    setVerificationStatus('verifying');
+    setStep('verifying_face');
+    setStatusMessage("Analyzing face biometrics...");
     setSubmitting(true);
 
     try {
-      // Get location
-      let latitude = null, longitude = null;
-      try {
-        const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject);
-        });
-        latitude = pos.coords.latitude;
-        longitude = pos.coords.longitude;
-      } catch (e) {
-        console.warn('Location access denied');
-      }
-
       const proofBlob = base64ToBlob(capturedFrame);
 
       // Verify selected employee
@@ -306,24 +486,25 @@ const ManagerAttendance: React.FC = () => {
       const formData = new FormData();
       formData.append('employeeId', selectedEmployee.id);
       formData.append('type', type);
-      if (latitude) formData.append('latitude', latitude.toString());
-      if (longitude) formData.append('longitude', longitude.toString());
+      if (coords?.lat) formData.append('latitude', coords.lat.toString());
+      if (coords?.lng) formData.append('longitude', coords.lng.toString());
       if (proofBlob) {
         formData.append('biometricProof', proofBlob, `manager-verification-${selectedEmployee.id}-${Date.now()}.jpg`);
       }
 
       await submitManagerLog(formData);
       
-      setVerificationStatus('success');
+      setStep('complete');
+      setStatusMessage(type === 'CLOCK_IN' ? 'Clock In Success!' : 'Clock Out Success!');
       
       // Reset state and reload
-      setSelectedEmployee(null);
-      await loadData();
+      setTimeout(async () => {
+        setSelectedEmployee(null);
+        await loadData();
+      }, 2000);
     } catch (err: any) {
-      setVerificationStatus('failed');
-      alert(err.message || 'Verification and log submission failed.');
-      // Restart camera for retry
-      startCamera(facingMode);
+      setStep('failed');
+      setErrorDetail(err.message || 'Verification and log submission failed.');
     } finally {
       setSubmitting(false);
     }
@@ -342,7 +523,7 @@ const ManagerAttendance: React.FC = () => {
       const siteId = user?.siteId;
       const isAdmin = user?.role === 'ADMIN';
       const filteredEmps = Array.isArray(empList) 
-        ? empList.filter(e => e.role !== 'ADMIN' && (isAdmin || !siteId || e.siteId === siteId))
+        ? empList.filter(e => e.role !== 'ADMIN' && e.id !== user?.id && (isAdmin || !siteId || e.siteId === siteId))
         : [];
         
       setEmployees(filteredEmps);
@@ -377,30 +558,9 @@ const ManagerAttendance: React.FC = () => {
     }
   };
 
-  const handleMyClockAction = async () => {
+  const handleMyClockAction = () => {
     if (!user) return;
-    try {
-      setSubmitting(true);
-      
-      // Managers get direct clock-in (no AI verification required as per user's earlier requirement for direct override)
-      if (isMyClockedIn) {
-        // Clock Out
-        navigator.geolocation.getCurrentPosition(async (pos) => {
-          await clockOut(user.id, pos.coords.latitude, pos.coords.longitude);
-          await loadData();
-        });
-      } else {
-        // Clock In
-        navigator.geolocation.getCurrentPosition(async (pos) => {
-          await clockIn(user.id, pos.coords.latitude, pos.coords.longitude);
-          await loadData();
-        });
-      }
-    } catch (err) {
-      console.error('Personal clock action failed', err);
-    } finally {
-      setSubmitting(false);
-    }
+    setSelectedEmployee(user);
   };
 
   const filteredEmployees = employees.filter(emp => {
@@ -418,8 +578,18 @@ const ManagerAttendance: React.FC = () => {
   const handleRetake = () => {
     setPhotoPreview(null);
     setVerificationStatus('idle');
+    setStep('facial_scanning');
     startCamera(facingMode);
   };
+
+  const selectedEmpLogs = selectedEmployee ? attendance.filter(log => {
+    const dateObj = new Date(log.date || log.clockIn);
+    const logDateStr = `${dateObj.getFullYear()}-${(dateObj.getMonth() + 1).toString().padStart(2, '0')}-${dateObj.getDate().toString().padStart(2, '0')}`;
+    const todayStr = selectedDate;
+    return log.employeeId === selectedEmployee.id && logDateStr === todayStr;
+  }) : [];
+
+  const activeSessionForSelected = selectedEmployee ? selectedEmpLogs.find(l => !l.clockOut) : null;
 
   if (loading) return <div className="manager-att-loader">Initializing Biometric Node...</div>;
 
@@ -429,9 +599,6 @@ const ManagerAttendance: React.FC = () => {
     <div className="enterprise-page manager-att-page">
       <header className="main-header-row">
         <div className="title-section">
-          <button className="btn-back" onClick={() => navigate('/attendance')}>
-            <ArrowLeft size={20} />
-          </button>
           <div>
             <h1>Site Attendance</h1>
             <p>Proxy logging & workforce control</p>
@@ -439,49 +606,26 @@ const ManagerAttendance: React.FC = () => {
         </div>
 
         <div className="filter-controls">
-          <div className="search-hub-premium">
+          
+
+          
+
+          {/* Date picker button removed */}
+        </div>
+      </header>
+
+      <div className={`manager-att-grid ${selectedEmployee ? 'has-selected' : ''}`}>
+        <div className="emp-selection-card glass-card">
+          <div className="search-employee">
             <Search size={18} />
-            <input 
-              type="text" 
-              placeholder="Search personnel..." 
+            <input
+              type="text"
+              placeholder="Search employees..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="matrix-search-input"
             />
           </div>
-
-          {user?.role === 'ADMIN' ? (
-            <div className="filter-hub-premium">
-              <SearchableSiteDropdown 
-                sites={sites} 
-                selectedSiteId={selectedSite} 
-                onSelectSite={setSelectedSite} 
-              />
-            </div>
-          ) : (
-            <div className="filter-hub-premium">
-              <User size={18} />
-              <div className="site-select-premium-static">
-                {user?.site?.name || 'All Sites'} ({filteredEmployees.length})
-              </div>
-            </div>
-          )}
-
-          <div className="date-picker-button daily-filter" style={{ position: 'relative' }}>
-            <Clock size={16} />
-            <span>{new Date(selectedDate).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-            <input 
-              type="date" 
-              value={selectedDate}
-              onChange={e => setSelectedDate(e.target.value)}
-              style={{ position: 'absolute', opacity: 0, width: '100%', height: '100%', cursor: 'pointer', left: 0, top: 0 }}
-            />
-          </div>
-        </div>
-      </header>
-
-      <div className="manager-att-grid">
-        <div className="emp-selection-card glass-card">
           <div className="emp-list">
             {filteredEmployees.map(emp => {
               const active = getActiveSession(emp.id);
@@ -517,109 +661,286 @@ const ManagerAttendance: React.FC = () => {
               >
                 <div className="selected-header">
                   <UserCheck size={24} color="var(--primary)" />
-                  <h3>Log Attendance for {selectedEmployee.firstName}</h3>
+                  <h3>Attendance for {selectedEmployee.firstName}</h3>
                 </div>
 
-                <div className="photo-capture-section">
-                  <div className="photo-preview-box">
-                    {isCameraActive ? (
-                      <div className="camera-viewport">
-                        <video 
-                          ref={videoRef} 
-                          autoPlay 
-                          playsInline 
-                          muted 
-                          className="camera-video"
-                          style={{ transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }}
-                        />
-                        <div className="scanner-line"></div>
+                {step === 'idle' ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', flex: 1, height: '100%', gap: '16px' }}>
+                    {/* Today's Shift Record Summary */}
+                    <div className="selected-employee-status-box" style={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      gap: '8px', 
+                      background: 'var(--highlight)', 
+                      padding: '16px', 
+                      borderRadius: '12px',
+                      border: '1px solid var(--border)',
+                      width: '100%'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-secondary)', letterSpacing: '0.05em' }}>
+                          {selectedDate === new Date().toISOString().split('T')[0] 
+                            ? "TODAY'S SHIFT RECORD" 
+                            : `${new Date(selectedDate).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }).toUpperCase()}'S SHIFT RECORD`
+                          }
+                        </span>
+                        <span className={`status-badge-premium ${activeSessionForSelected ? 'online' : 'offline'}`} style={{ 
+                          fontSize: '10px', 
+                          padding: '2px 8px', 
+                          borderRadius: '12px',
+                          background: activeSessionForSelected ? 'var(--success-bg)' : 'var(--border)',
+                          color: activeSessionForSelected ? 'var(--success)' : 'var(--text-tertiary)',
+                          fontWeight: 700
+                        }}>
+                          {activeSessionForSelected ? 'ON DUTY' : 'OFF DUTY'}
+                        </span>
                       </div>
-                    ) : photoPreview ? (
-                      <div className="captured-preview">
-                        <img src={photoPreview} alt="Preview" />
-                        {verificationStatus === 'verifying' && (
-                          <div className="verification-overlay">
-                            <Loader2 size={36} className="spinner" />
-                            <span>Verifying Identity...</span>
-                          </div>
-                        )}
-                        {verificationStatus === 'success' && (
-                          <div className="verification-overlay success">
-                            <CheckCircle size={36} />
-                            <span>Verified!</span>
-                          </div>
-                        )}
-                        {verificationStatus === 'failed' && (
-                          <div className="verification-overlay failed">
-                            <AlertCircle size={36} />
-                            <span>Verification Failed</span>
-                          </div>
-                        )}
+                      
+                      <div style={{ display: 'flex', gap: '16px', marginTop: '4px' }}>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-tertiary)' }}>Clock In</label>
+                          <strong style={{ fontSize: '14px', color: 'var(--text-primary)' }}>
+                            {selectedEmpLogs.length > 0 && selectedEmpLogs[selectedEmpLogs.length - 1].clockIn 
+                              ? new Date(selectedEmpLogs[selectedEmpLogs.length - 1].clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                              : '--:--'}
+                          </strong>
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-tertiary)' }}>Clock Out</label>
+                          <strong style={{ fontSize: '14px', color: 'var(--text-primary)' }}>
+                            {selectedEmpLogs.length > 0 && selectedEmpLogs[0].clockOut
+                              ? new Date(selectedEmpLogs[0].clockOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                              : activeSessionForSelected 
+                              ? 'Active Session' 
+                              : '--:--'}
+                          </strong>
+                        </div>
                       </div>
-                    ) : (
-                      <div className="empty-photo">
-                        <Camera size={40} />
-                        <span>Visual Verification Required</span>
-                      </div>
-                    )}
-                  </div>
+                    </div>
 
-                  <div className="camera-controls-row">
-                    {!isCameraActive && !photoPreview && (
+                    {/* Today's Clocking Logs History */}
+                    <div style={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      gap: '8px', 
+                      background: 'var(--highlight)', 
+                      padding: '16px', 
+                      borderRadius: '12px',
+                      border: '1px solid var(--border)',
+                      width: '100%',
+                      maxHeight: '160px',
+                      overflowY: 'auto'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                        <Clock size={14} color="var(--primary)" />
+                        <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-secondary)', letterSpacing: '0.05em' }}>
+                          {selectedDate === new Date().toISOString().split('T')[0] 
+                            ? "TODAY'S CLOCKING LOGS" 
+                            : `${new Date(selectedDate).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }).toUpperCase()}'S CLOCKING LOGS`
+                          }
+                        </span>
+                        <span style={{ 
+                          fontSize: '10px', 
+                          background: 'rgba(255,255,255,0.04)', 
+                          padding: '2px 8px', 
+                          borderRadius: '8px', 
+                          marginLeft: 'auto', 
+                          color: 'var(--text-secondary)', 
+                          fontWeight: 700 
+                        }}>
+                          {selectedEmpLogs.length} / 5 limit
+                        </span>
+                      </div>
+
+                      {selectedEmpLogs.length === 0 ? (
+                        <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', textAlign: 'center', padding: '12px 0' }}>
+                          No attendance logs recorded for today.
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          {selectedEmpLogs.map((log, idx) => (
+                            <div key={log.id || idx} style={{ 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              justifyContent: 'space-between', 
+                              padding: '8px 12px', 
+                              background: 'rgba(255, 255, 255, 0.02)', 
+                              border: '1px solid var(--border)', 
+                              borderRadius: '8px',
+                              fontSize: '12px'
+                            }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ color: 'var(--text-tertiary)', fontWeight: 700 }}>#{selectedEmpLogs.length - idx}</span>
+                                <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
+                                  {log.clockIn ? new Date(log.clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                                </span>
+                                <span style={{ color: 'var(--text-tertiary)' }}>→</span>
+                                <span style={{ color: log.clockOut ? 'var(--text-primary)' : '#10b981', fontWeight: 600 }}>
+                                  {log.clockOut ? new Date(log.clockOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Active Session'}
+                                </span>
+                              </div>
+                              {log.verified && (
+                                <span style={{ fontSize: '10px', color: '#10b981', background: 'rgba(16, 185, 129, 0.08)', padding: '2px 6px', borderRadius: '6px', fontWeight: 700 }}>
+                                  VERIFIED
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Workplace details */}
+                    <div style={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      gap: '8px', 
+                      background: 'var(--highlight)', 
+                      padding: '16px', 
+                      borderRadius: '12px',
+                      border: '1px solid var(--border)',
+                      width: '100%'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <MapPin size={14} color="var(--primary)" />
+                        <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-secondary)', letterSpacing: '0.05em' }}>ASSIGNED WORKPLACE</span>
+                      </div>
+                      <div style={{ marginTop: '2px' }}>
+                        <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                          {sites.find(s => s.id === selectedEmployee.siteId)?.name || 'No Site Assigned'}
+                        </div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px', display: 'flex', gap: '8px' }}>
+                          <span>Geofence: {sites.find(s => s.id === selectedEmployee.siteId)?.geofenceRadius || 500}m</span>
+                          <span>•</span>
+                          <span>Lat: {sites.find(s => s.id === selectedEmployee.siteId)?.latitude || '0.00'}, Lng: {sites.find(s => s.id === selectedEmployee.siteId)?.longitude || '0.00'}</span>
+                        </div>
+                      </div>
+                    </div>
+
+
+
+                    <div style={{ width: '100%', marginTop: 'auto', paddingTop: '10px' }}>
                       <button 
                         className="btn-start-camera" 
-                        onClick={() => startCamera(facingMode)}
+                        onClick={handleStartVerification}
                         disabled={submitting}
+                        style={{ width: '100%', height: '52px', fontSize: '15px' }}
                       >
-                        <Camera size={18} />
-                        <span>Start Camera & Verify</span>
+                        <MapPin size={18} />
+                        <span>Verify Location & Start Log</span>
                       </button>
-                    )}
-
-                    {isCameraActive && (
-                      <>
-                        <button 
-                          className="btn-capture-verify" 
-                          onClick={handleCaptureAndVerify}
-                          disabled={submitting}
-                        >
-                          {submitting ? (
-                            <>
-                              <Loader2 size={18} className="spinner" />
-                              <span>Processing...</span>
-                            </>
-                          ) : (
-                            <>
-                              <Camera size={18} />
-                              <span>Capture & Verify {getActiveSession(selectedEmployee.id) ? 'Clock-Out' : 'Clock-In'}</span>
-                            </>
-                          )}
-                        </button>
-                        <button 
-                          className="btn-flip" 
-                          onClick={handleFlipCamera}
-                          title="Flip Camera"
-                          disabled={submitting}
-                        >
-                          <RefreshCw size={18} />
-                        </button>
-                      </>
-                    )}
-
-                    {photoPreview && verificationStatus !== 'verifying' && (
-                      <button 
-                        className="btn-retake" 
-                        onClick={handleRetake}
-                        disabled={submitting}
-                      >
-                        <RefreshCw size={18} />
-                        <span>Retake Photo</span>
-                      </button>
-                    )}
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="inline-verification-stepper">
+                    <div className="stepper-header">
+                      <span className="stepper-title">VERIFICATION: CLOCK-{activeSessionForSelected ? 'OUT' : 'IN'}</span>
+                      <button className="stepper-cancel-btn" onClick={resetVerification}>Cancel</button>
+                    </div>
 
-                {!selectedEmployee.avatar && (
+                    <div className="stepper-progress">
+                      <div className={`step-dot ${step !== 'checking_location' && step !== 'location_failed' ? 'active' : 'current'}`}>
+                        1
+                      </div>
+                      <div className="step-line"></div>
+                      <div className={`step-dot ${step === 'facial_scanning' || step === 'complete' || (step === 'failed' && errorDetail.toLowerCase().includes('camera')) ? 'current' : ''} ${step === 'complete' ? 'active' : ''}`}>
+                        2
+                      </div>
+                    </div>
+
+                    <div className="stepper-content" style={{ minHeight: '260px' }}>
+                      {step === 'checking_location' && (
+                        <div className="step-body location-checking-flow">
+                          <div className="radar-animation">
+                            <div className="radar-circle"></div>
+                            <MapPin size={24} className="radar-pin" />
+                          </div>
+                          <p className="step-status">{statusMessage}</p>
+                        </div>
+                      )}
+
+                      {step === 'location_success' && (
+                        <div className="step-body success-flow animate-fade-in">
+                          <div className="pulse-success-ring">
+                            <UserCheck size={24} />
+                          </div>
+                          <p className="step-status success-txt">{statusMessage}</p>
+                        </div>
+                      )}
+
+                      {step === 'location_failed' && (
+                        <div className="step-body error-flow animate-fade-in">
+                          <div className="error-triangle-icon">⚠️</div>
+                          <p className="step-status error-txt">Location Check Failed</p>
+                          <p className="step-detail">{errorDetail}</p>
+                          <div className="stepper-actions">
+                            <button className="btn-stepper-retry" onClick={handleStartVerification}>Retry GPS Check</button>
+                            {(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (
+                              <button className="btn-stepper-simulate" onClick={handleSimulateGPS}>Simulate GPS</button>
+                            )}
+                            <button className="btn-stepper-cancel" onClick={resetVerification}>Cancel</button>
+                          </div>
+                        </div>
+                      )}
+
+                      {step === 'facial_scanning' && (
+                        <div className="step-body camera-inline-flow">
+                          <div className="camera-inline-frame" style={{ width: '150px', height: '150px' }}>
+                            <video 
+                              ref={videoRef} 
+                              autoPlay 
+                              playsInline 
+                              muted 
+                              style={{ transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }}
+                            />
+                            <div className="camera-laser-scanner"></div>
+                          </div>
+                          <p className="step-status" style={{ fontSize: '13px', margin: '4px 0' }}>{statusMessage}</p>
+                          <div className="stepper-actions" style={{ gap: '8px' }}>
+                            <button className="btn-stepper-retry" onClick={handleCaptureAndVerify} disabled={submitting}>
+                              {submitting ? 'Verifying...' : `Capture & Verify`}
+                            </button>
+                            <button className="btn-stepper-cancel" onClick={handleFlipCamera}>Flip Camera</button>
+                          </div>
+                        </div>
+                      )}
+
+                      {step === 'verifying_face' && (
+                        <div className="step-body success-flow animate-fade-in">
+                          <Loader2 size={36} className="spinner" />
+                          <p className="step-status">{statusMessage}</p>
+                        </div>
+                      )}
+
+                      {step === 'complete' && (
+                        <div className="step-body success-flow animate-fade-in">
+                          <div className="pulse-success-ring">
+                            <UserCheck size={24} />
+                          </div>
+                          <p className="step-status success-txt">{statusMessage}</p>
+                        </div>
+                      )}
+
+                      {step === 'failed' && (
+                        <div className="step-body error-flow animate-fade-in">
+                          <div className="error-triangle-icon">❌</div>
+                          <p className="step-status error-txt">Verification Failed</p>
+                          <p className="step-detail">{errorDetail}</p>
+                          <div className="stepper-actions">
+                            <button className="btn-stepper-retry" onClick={() => {
+                              setStep('facial_scanning');
+                              setStatusMessage("Initializing biometric camera...");
+                              startCamera(facingMode);
+                            }}>Retry Scan</button>
+                            <button className="btn-stepper-cancel" onClick={resetVerification}>Cancel</button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {!selectedEmployee.avatar && step === 'facial_scanning' && (
                   <p className="warning-text">
                     <AlertCircle size={14} />
                     No reference photo enrolled for this employee. Clocking will bypass facial verification.
@@ -648,14 +969,16 @@ const ManagerAttendance: React.FC = () => {
               />
               <span className="status-badge">{user?.role || 'Staff'}</span>
             </div>
-            <h3>{user?.firstName} {user?.lastName}</h3>
-            <p className="role-text">{user?.jobTitle || 'System Administrator'}</p>
-            {user?.isBiometricEnrolled && (
-              <div className="biometric-verified-badge">
-                <Shield size={14} className="verified-icon" />
-                <span>BIOMETRIC SECURED</span>
-              </div>
-            )}
+            <div className="profile-details-mini">
+              <h3>{user?.firstName} {user?.lastName}</h3>
+              <p className="role-text">{user?.jobTitle || 'System Administrator'}</p>
+              {user?.isBiometricEnrolled && (
+                <div className="biometric-verified-badge">
+                  <Shield size={14} className="verified-icon" />
+                  <span>BIOMETRIC SECURED</span>
+                </div>
+              )}
+            </div>
           </div>
 
           {user?.role !== 'ADMIN' ? (
@@ -674,6 +997,33 @@ const ManagerAttendance: React.FC = () => {
                   {isMyClockedIn ? <X size={18} /> : <Clock size={18} />}
                   <span>{isMyClockedIn ? 'Clock Out Now' : 'Clock In Now'}</span>
                 </button>
+
+                {isMyClockedIn && myTodayLogs[0] && (
+                  <div className="manager-duty-info" style={{
+                    width: '100%',
+                    background: 'var(--surface)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '16px',
+                    padding: '16px',
+                    marginTop: '12px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>CLOCKED IN TIME</span>
+                      <strong style={{ fontSize: '13px', color: 'var(--text-primary)' }}>
+                        {new Date(myTodayLogs[0].clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border)', paddingTop: '10px' }}>
+                      <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>CURRENT SHIFT TIME</span>
+                      <strong style={{ fontSize: '13px', color: 'var(--primary)' }}>
+                        {myElapsedTime || "0h 0m"}
+                      </strong>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="hours-summary-mini">

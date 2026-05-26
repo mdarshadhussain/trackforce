@@ -33,10 +33,18 @@ const Sidebar = ({ onClose, collapsed, onToggleCollapse }: SidebarProps) => {
   const { t } = useTranslation();
   const isManager = user?.role === 'MANAGER' || isAdmin;
 
-  const [pulseData, setPulseData] = useState<{ present: number; absent: number; percent: number }>({
+  const [pulseData, setPulseData] = useState<{ 
+    present: number; 
+    absent: number; 
+    percent: number;
+    totalHours: number;
+    overtimeHours: number;
+  }>({
     present: 24,
     absent: 2,
-    percent: 92
+    percent: 92,
+    totalHours: 0,
+    overtimeHours: 0
   });
 
   useEffect(() => {
@@ -45,35 +53,42 @@ const Sidebar = ({ onClose, collapsed, onToggleCollapse }: SidebarProps) => {
     const loadPulseData = async () => {
       try {
         if (user?.role === 'EMPLOYEE') {
-          // Regular Employee: Calculate monthly metrics (number of days present & absent this month)
+          // Regular Employee: Calculate monthly metrics (working hours & overtime)
           const logs = await fetchAllLogs();
+          const myLogs = logs.filter((l: any) => l.employeeId === user.id);
           const now = new Date();
-          const year = now.getFullYear();
-          const month = now.getMonth();
-          const today = now.getDate();
-          
-          let present = 0;
-          let absent = 0;
-          
-          for (let d = 1; d <= today; d++) {
-            const dateObj = new Date(year, month, d);
-            const dateStr = `${year}-${(month + 1).toString().padStart(2, '0')}-${d.toString().padStart(2, '0')}`;
-            const dayLogs = logs.filter((l: any) => l.date && l.date.split('T')[0] === dateStr);
-            
-            if (dayLogs.length > 0) {
-              present++;
-            } else {
-              // Exclude weekends from absence metrics to ensure fairness
-              if (dateObj.getDay() !== 0 && dateObj.getDay() !== 6) {
-                absent++;
-              }
+          const currentMonthLogs = myLogs.filter((l: any) => {
+            const d = new Date(l.date || l.clockIn);
+            return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+          });
+
+          let totalWorkingHours = 0;
+          let totalOvertimeHours = 0;
+
+          // Group by day to compute daily overtime (shift threshold = 8h)
+          const dailyHours: { [key: string]: number } = {};
+          currentMonthLogs.forEach((l: any) => {
+            if (l.clockIn && l.clockOut) {
+              const dateStr = new Date(l.date || l.clockIn).toDateString();
+              const durationHrs = (new Date(l.clockOut).getTime() - new Date(l.clockIn).getTime()) / 3600000;
+              dailyHours[dateStr] = (dailyHours[dateStr] || 0) + durationHrs;
             }
-          }
-          
-          const total = present + absent;
-          const percent = total > 0 ? Math.round((present / total) * 100) : 100;
-          
-          setPulseData({ present, absent, percent });
+          });
+
+          Object.values(dailyHours).forEach((hrs) => {
+            totalWorkingHours += hrs;
+            if (hrs > 8) {
+              totalOvertimeHours += (hrs - 8);
+            }
+          });
+
+          setPulseData({
+            present: 0,
+            absent: 0,
+            percent: 0,
+            totalHours: totalWorkingHours,
+            overtimeHours: totalOvertimeHours
+          });
         } else {
           // Admin or Manager: System/Site wide active snapshot of checked-in workers for today
           const stats = await fetchStats();
@@ -81,7 +96,13 @@ const Sidebar = ({ onClose, collapsed, onToggleCollapse }: SidebarProps) => {
           const total = stats.totalEmployees || 1;
           const absent = Math.max(0, total - present);
           const percent = Math.min(100, Math.round((present / total) * 100));
-          setPulseData({ present, absent, percent });
+          setPulseData({ 
+            present, 
+            absent, 
+            percent, 
+            totalHours: 0, 
+            overtimeHours: 0 
+          });
         }
       } catch (err) {
         console.error('Failed to sync sidebar daily pulse metrics:', err);
@@ -99,7 +120,7 @@ const Sidebar = ({ onClose, collapsed, onToggleCollapse }: SidebarProps) => {
     { icon: <Calendar size={20} />, label: t('attendance'), path: '/attendance' },
     ...(isManager ? [{ icon: <UserCheck size={20} />, label: 'Site Attendance', path: '/attendance/manager' }] : []),
     ...(isAdmin ? [{ icon: <MapPin size={20} />, label: t('tracking'), path: '/tracking' }] : []),
-    { icon: <Wallet size={20} />, label: isEmployee ? 'Payroll History' : t('payroll'), path: '/payroll' },
+    ...((isEmployee || isAdmin) ? [{ icon: <Wallet size={20} />, label: isEmployee ? 'Payroll History' : t('payroll'), path: '/payroll' }] : []),
     { icon: <Building2 size={20} />, label: t('sites'), path: '/sites' },
     { icon: <User size={20} />, label: 'Profile', path: '/profile' },
   ];
@@ -147,21 +168,39 @@ const Sidebar = ({ onClose, collapsed, onToggleCollapse }: SidebarProps) => {
           <>
             <div className="pulse-card">
               <div className="pulse-header">
-                <span className="pulse-label">{user?.role === 'EMPLOYEE' ? 'Monthly Pulse' : 'Daily Pulse'}</span>
+                <span className="pulse-label">{isEmployee ? 'Monthly Pulse' : 'Daily Pulse'}</span>
                 <div className="pulse-dot"></div>
               </div>
               <div className="pulse-stats">
-                <div className="pulse-stat">
-                  <span className="pulse-value">{pulseData.present}</span>
-                  <span className="pulse-desc">Present</span>
-                </div>
-                <div className="pulse-stat">
-                  <span className="pulse-value accent">{pulseData.absent}</span>
-                  <span className="pulse-desc">Absent</span>
-                </div>
+                {isEmployee ? (
+                  <>
+                    <div className="pulse-stat">
+                      <span className="pulse-value">{pulseData.totalHours.toFixed(1)}h</span>
+                      <span className="pulse-desc">Working Hours</span>
+                    </div>
+                    <div className="pulse-stat">
+                      <span className="pulse-value accent">{pulseData.overtimeHours.toFixed(1)}h</span>
+                      <span className="pulse-desc">Overtime</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="pulse-stat">
+                      <span className="pulse-value">{pulseData.present}</span>
+                      <span className="pulse-desc">Present</span>
+                    </div>
+                    <div className="pulse-stat">
+                      <span className="pulse-value accent">{pulseData.absent}</span>
+                      <span className="pulse-desc">Absent</span>
+                    </div>
+                  </>
+                )}
               </div>
               <div className="pulse-progress-bg">
-                <div className="pulse-progress-fill" style={{ width: `${pulseData.percent}%` }}></div>
+                <div 
+                  className="pulse-progress-fill" 
+                  style={{ width: `${isEmployee ? Math.min(100, (pulseData.totalHours / 160) * 100) : pulseData.percent}%` }}
+                ></div>
               </div>
             </div>
 

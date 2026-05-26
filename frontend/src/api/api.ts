@@ -56,8 +56,14 @@ export const loginUser = async (employeeId: string, password: string) => {
   });
   
   if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.error || 'Login failed');
+    let errorMessage = 'Login failed';
+    try {
+      const errorData = await response.json();
+      errorMessage = errorData.error || errorMessage;
+    } catch (err) {
+      errorMessage = `Server error (${response.status}): The server returned an invalid response.`;
+    }
+    throw new Error(errorMessage);
   }
   return response.json();
 };

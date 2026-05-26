@@ -12,12 +12,13 @@ import {
   Shield,
   X,
   RefreshCw,
-  Loader2
+  Loader2,
+  Filter
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import * as faceapi from 'face-api.js';
 import { loadFaceApiModels, areModelsLoaded } from '../utils/aiModels';
-import { fetchEmployees, fetchAllLogs, submitManagerLog, fetchTodayLogs, clockIn, clockOut, createSecurityAlert } from '../api/api';
+import { fetchEmployees, fetchAllLogs, submitManagerLog, fetchTodayLogs, clockIn, clockOut, createSecurityAlert, fetchSites } from '../api/api';
 import { useAuth } from '../context/AuthContext';
 import './ManagerAttendance.css';
 
@@ -34,12 +35,118 @@ const base64ToBlob = (base64: string) => {
   return new Blob([ab], { type: mimeString });
 };
 
+const SearchableSiteDropdown = ({ 
+  sites, 
+  selectedSiteId, 
+  onSelectSite 
+}: { 
+  sites: any[]; 
+  selectedSiteId: string; 
+  onSelectSite: (id: string) => void; 
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectedSite = selectedSiteId === 'all' 
+    ? { id: 'all', name: 'All Sites' } 
+    : sites.find(s => s.id === selectedSiteId) || { id: 'all', name: 'All Sites' };
+
+  const filteredSites = sites.filter(s => 
+    s.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  return (
+    <div className="searchable-dropdown" ref={dropdownRef}>
+      <button 
+        type="button" 
+        className={"dropdown-trigger-btn " + (isOpen ? "active" : "")}
+        onClick={() => setIsOpen(!isOpen)}
+        style={{ border: 'none', background: 'transparent' }}
+      >
+        <Filter size={14} className="trigger-icon" />
+        <span>{selectedSite.name}</span>
+        <span className="dropdown-arrow">▼</span>
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            className="dropdown-overlay-deck"
+          >
+            <div className="dropdown-search-box" onClick={(e) => e.stopPropagation()}>
+              <Search size={14} className="search-icon-inside" />
+              <input 
+                type="text" 
+                placeholder="Search sites..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                autoFocus
+              />
+            </div>
+
+            <div className="dropdown-list-scroller">
+              <button 
+                type="button"
+                className={"dropdown-list-item " + (selectedSiteId === 'all' ? 'active' : '')}
+                onClick={() => {
+                  onSelectSite('all');
+                  setIsOpen(false);
+                  setSearchQuery('');
+                }}
+              >
+                All Sites ({sites.length})
+              </button>
+              
+              {filteredSites.length > 0 ? (
+                filteredSites.map(site => (
+                  <button 
+                    key={site.id}
+                    type="button"
+                    className={"dropdown-list-item " + (selectedSiteId === site.id ? 'active' : '')}
+                    onClick={() => {
+                      onSelectSite(site.id);
+                      setIsOpen(false);
+                      setSearchQuery('');
+                    }}
+                  >
+                    {site.name}
+                  </button>
+                ))
+              ) : (
+                <div className="dropdown-no-results">No sites found</div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
 const ManagerAttendance: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [employees, setEmployees] = useState<any[]>([]);
   const [attendance, setAttendance] = useState<any[]>([]);
+  const [sites, setSites] = useState<any[]>([]);
+  const [selectedSite, setSelectedSite] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -225,18 +332,21 @@ const ManagerAttendance: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [empList, attList] = await Promise.all([
+      const [empList, attList, sitesList] = await Promise.all([
         fetchEmployees(),
-        fetchAllLogs()
+        fetchAllLogs(),
+        fetchSites()
       ]);
       
       // Filter for employees in manager's site (if manager)
       const siteId = user?.siteId;
+      const isAdmin = user?.role === 'ADMIN';
       const filteredEmps = Array.isArray(empList) 
-        ? empList.filter(e => e.role !== 'ADMIN' && (!siteId || e.siteId === siteId))
+        ? empList.filter(e => e.role !== 'ADMIN' && (isAdmin || !siteId || e.siteId === siteId))
         : [];
         
       setEmployees(filteredEmps);
+      setSites(Array.isArray(sitesList) ? sitesList : []);
       setAttendance(Array.isArray(attList) ? attList : []);
 
       // Load personal data
@@ -295,8 +405,10 @@ const ManagerAttendance: React.FC = () => {
 
   const filteredEmployees = employees.filter(emp => {
     const s = searchTerm.toLowerCase();
-    return `${emp.firstName} ${emp.lastName}`.toLowerCase().includes(s) || 
+    const matchesSearch = `${emp.firstName} ${emp.lastName}`.toLowerCase().includes(s) || 
            emp.employeeId?.toLowerCase().includes(s);
+    const matchesSite = selectedSite === 'all' || emp.siteId === selectedSite;
+    return matchesSearch && matchesSite;
   });
 
   const getActiveSession = (empId: string) => {
@@ -338,16 +450,32 @@ const ManagerAttendance: React.FC = () => {
             />
           </div>
 
-          <div className="filter-hub-premium">
-            <User size={18} />
-            <div className="site-select-premium-static">
-              {user?.site?.name || 'All Sites'} ({filteredEmployees.length})
+          {user?.role === 'ADMIN' ? (
+            <div className="filter-hub-premium">
+              <SearchableSiteDropdown 
+                sites={sites} 
+                selectedSiteId={selectedSite} 
+                onSelectSite={setSelectedSite} 
+              />
             </div>
-          </div>
+          ) : (
+            <div className="filter-hub-premium">
+              <User size={18} />
+              <div className="site-select-premium-static">
+                {user?.site?.name || 'All Sites'} ({filteredEmployees.length})
+              </div>
+            </div>
+          )}
 
-          <div className="date-picker-button daily-filter">
+          <div className="date-picker-button daily-filter" style={{ position: 'relative' }}>
             <Clock size={16} />
-            <span>{new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+            <span>{new Date(selectedDate).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+            <input 
+              type="date" 
+              value={selectedDate}
+              onChange={e => setSelectedDate(e.target.value)}
+              style={{ position: 'absolute', opacity: 0, width: '100%', height: '100%', cursor: 'pointer', left: 0, top: 0 }}
+            />
           </div>
         </div>
       </header>
@@ -364,7 +492,7 @@ const ManagerAttendance: React.FC = () => {
                   onClick={() => setSelectedEmployee(emp)}
                 >
                   <div className="emp-avatar">
-                    {emp.avatar ? <img src={emp.avatar} alt="" /> : <User size={20} />}
+                    {emp.avatar ? <img src={emp.avatar.startsWith('http') ? emp.avatar : `${API_URL}${emp.avatar}`} alt="" /> : <User size={20} />}
                   </div>
                   <div className="emp-info">
                     <span className="name">{emp.firstName} {emp.lastName}</span>

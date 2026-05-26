@@ -344,12 +344,14 @@ const EmployeeDetails = () => {
                       )}
                     </div>
                     <div className="location-row" style={{ display: 'flex', gap: '1rem', marginTop: '4px' }}>
-                      <span className="location-tag-premium">
-                        <MapPin size={12} /> {log.clockInLat.toFixed(4)}, {log.clockInLong.toFixed(4)} (Check-in)
-                      </span>
-                      {log.clockOutLat && (
+                      {log.clockInLat != null && log.clockInLong != null && (
                         <span className="location-tag-premium">
-                          <MapPin size={12} /> {log.clockOutLat.toFixed(4)}, {log.clockOutLong.toFixed(4)} (Check-out)
+                          <MapPin size={12} /> {Number(log.clockInLat).toFixed(4)}, {Number(log.clockInLong).toFixed(4)} (Check-in)
+                        </span>
+                      )}
+                      {log.clockOutLat != null && log.clockOutLong != null && (
+                        <span className="location-tag-premium">
+                          <MapPin size={12} /> {Number(log.clockOutLat).toFixed(4)}, {Number(log.clockOutLong).toFixed(4)} (Check-out)
                         </span>
                       )}
                     </div>

@@ -252,6 +252,31 @@ const Dashboard = () => {
   const [sites, setSites] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
   const [allLogs, setAllLogs] = useState<any[]>([]);
+  const [showAttendancePrompt, setShowAttendancePrompt] = useState(false);
+
+  useEffect(() => {
+    if (user && (user.role === 'EMPLOYEE' || user.role === 'MANAGER')) {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const popupKey = `attendance_prompt_${user.id}_${todayStr}`;
+      if (!localStorage.getItem(popupKey)) {
+        setShowAttendancePrompt(true);
+      }
+    }
+  }, [user]);
+
+  const handleGoToAttendance = () => {
+    if (user) {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const popupKey = `attendance_prompt_${user.id}_${todayStr}`;
+      localStorage.setItem(popupKey, 'shown');
+      setShowAttendancePrompt(false);
+      if (user.role === 'EMPLOYEE') {
+        navigate('/attendance');
+      } else if (user.role === 'MANAGER') {
+        navigate('/attendance/manager');
+      }
+    }
+  };
 
   // Filter States
   const [selectedSiteId, setSelectedSiteId] = useState<string>('ALL');
@@ -838,6 +863,20 @@ const Dashboard = () => {
         </div>
       </header>
 
+      {/* Attendance Quick Banner */}
+      {user && (user.role === 'EMPLOYEE' || user.role === 'MANAGER') && (
+        <div className="attendance-prompt-banner" onClick={() => setShowAttendancePrompt(true)}>
+          <div className="banner-left">
+            <Clock className="banner-icon-pulse" size={20} />
+            <div className="banner-text">
+              <h3>Verify Your Shift Attendance</h3>
+              <p>Click here to clock in or clock out for your daily shift log.</p>
+            </div>
+          </div>
+          <button className="banner-btn">Record Attendance</button>
+        </div>
+      )}
+
       {/* Stats Cards */}
       <section className="stats-grid-watt">
         <StatCard
@@ -1031,6 +1070,45 @@ const Dashboard = () => {
           )}
         </div>
       </div>
+
+      <AnimatePresence>
+        {showAttendancePrompt && (
+          <div className="attendance-modal-backdrop" onClick={() => setShowAttendancePrompt(false)}>
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="attendance-modal-box"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="modal-header-accent"></div>
+              <div className="modal-inner-content">
+                <div className="modal-icon-circle">
+                  <Clock size={32} />
+                </div>
+                <h2>Shift Attendance Reminder</h2>
+                <p>Ensure your hours are logged correctly. Please submit your clock-in or clock-out session today to record your working logs accurately.</p>
+                
+                <div className="modal-actions-deck">
+                  <button className="modal-btn-confirm" onClick={handleGoToAttendance}>
+                    Go to Attendance Page
+                  </button>
+                  <button className="modal-btn-cancel" onClick={() => {
+                    if (user) {
+                      const todayStr = new Date().toISOString().split('T')[0];
+                      const popupKey = `attendance_prompt_${user.id}_${todayStr}`;
+                      localStorage.setItem(popupKey, 'shown');
+                    }
+                    setShowAttendancePrompt(false);
+                  }}>
+                    Remind Me Later
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

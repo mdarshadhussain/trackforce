@@ -6,20 +6,29 @@ import {
   MapPin, 
   Calendar as CalIcon, 
   History, 
-  Shield, 
-  Activity,
   UserCheck,
-  BarChart3,
-  Award,
   Timer,
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
 import * as faceapi from 'face-api.js';
 import { useAuth } from '../context/AuthContext';
-import { clockIn, clockOut, fetchTodayLogs, fetchAllLogs, createSecurityAlert } from '../api/api';
+import { clockIn, clockOut, fetchTodayLogs, fetchAllLogs, createSecurityAlert, fetchEmployeeById } from '../api/api';
 import { loadFaceApiModels, areModelsLoaded } from '../utils/aiModels';
 import './EmployeeAttendance.css';
+
+const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+  const R = 6371e3; // meters
+  const φ1 = lat1 * Math.PI / 180;
+  const φ2 = lat2 * Math.PI / 180;
+  const Δφ = (lat2 - lat1) * Math.PI / 180;
+  const Δλ = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+            Math.cos(φ1) * Math.cos(φ2) *
+            Math.sin(Δλ/2) * Math.sin(Δλ/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+};
 
 const base64ToBlob = (base64: string) => {
   const byteString = atob(base64.split(',')[1]);
@@ -39,9 +48,12 @@ const EmployeeAttendance = () => {
   const [allLogs, setAllLogs] = useState<any[]>([]);
   const [isClockedIn, setIsClockedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [showScanner, setShowScanner] = useState(false);
-  const [scanStatus, setScanStatus] = useState<'idle' | 'scanning' | 'success' | 'error'>('idle');
   const [locationName, setLocationName] = useState("");
+
+  const [activeAction, setActiveAction] = useState<'IN' | 'OUT' | null>(null);
+  const [step, setStep] = useState<'idle' | 'checking_location' | 'location_success' | 'location_failed' | 'facial_scanning' | 'complete' | 'failed'>('idle');
+  const [statusMessage, setStatusMessage] = useState("");
+  const [errorDetail, setErrorDetail] = useState("");
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [coords, setCoords] = useState<{lat: number, lng: number} | null>(null);
@@ -50,6 +62,51 @@ const EmployeeAttendance = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [viewDate, setViewDate] = useState(new Date());
+
+  const [elapsedTime, setElapsedTime] = useState<string>("");
+  const [geoPermission, setGeoPermission] = useState<PermissionState | 'unknown'>('unknown');
+  const [cameraPermission, setCameraPermission] = useState<PermissionState | 'unknown'>('unknown');
+  const [showPermissionsHelp, setShowPermissionsHelp] = useState(false);
+
+  useEffect(() => {
+    if (navigator.permissions) {
+      navigator.permissions.query({ name: 'geolocation' })
+        .then(result => {
+          setGeoPermission(result.state);
+          result.onchange = () => setGeoPermission(result.state);
+        }).catch(err => console.warn("Geo permission query not supported", err));
+
+      navigator.permissions.query({ name: 'camera' as any })
+        .then(result => {
+          setCameraPermission(result.state);
+          result.onchange = () => setCameraPermission(result.state);
+        }).catch(err => console.warn("Camera permission query not supported", err));
+    }
+  }, []);
+
+  useEffect(() => {
+    let intervalId: any;
+    if (isClockedIn && logs[0]?.clockIn) {
+      const updateElapsed = () => {
+        const diff = Date.now() - new Date(logs[0].clockIn).getTime();
+        if (diff > 0) {
+          const secs = Math.floor(diff / 1000) % 60;
+          const mins = Math.floor(diff / 60000) % 60;
+          const hrs = Math.floor(diff / 3600000);
+          setElapsedTime(
+            `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+          );
+        } else {
+          setElapsedTime("00:00:00");
+        }
+      };
+      updateElapsed();
+      intervalId = setInterval(updateElapsed, 1000);
+    } else {
+      setElapsedTime("");
+    }
+    return () => clearInterval(intervalId);
+  }, [isClockedIn, logs]);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -107,8 +164,10 @@ const EmployeeAttendance = () => {
         videoRef.current.srcObject = s;
         await videoRef.current.play();
       }
+      return true;
     } catch (err) {
-      setScanStatus('error');
+      console.error("Camera access failed", err);
+      return false;
     }
   };
 
@@ -123,34 +182,160 @@ const EmployeeAttendance = () => {
   const handleAction = async (type: 'IN' | 'OUT') => {
     if (!user || isProcessing) return;
     setIsProcessing(true);
-    setShowScanner(true);
-    setScanStatus('scanning');
+    setActiveAction(type);
+    setStep('checking_location');
+    setStatusMessage("Acquiring GPS coordinates...");
+    setErrorDetail("");
+
+    let currentCoords: {lat: number, lng: number} | null = null;
     
-    let currentCoords = coords;
-    if (!currentCoords && navigator.geolocation) {
+    // Get geolocation
+    if (navigator.geolocation) {
       try {
         const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 });
+          navigator.geolocation.getCurrentPosition(resolve, reject, { 
+            enableHighAccuracy: false, 
+            timeout: 15000, 
+            maximumAge: 60000 
+          });
         });
         currentCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setCoords(currentCoords);
-        setLocationName(`Zone: ${pos.coords.latitude.toFixed(2)}, ${pos.coords.longitude.toFixed(2)}`);
-      } catch (e) {
+      } catch (e: any) {
         console.error("Geolocation error", e);
+        let errorMsg = "Unable to acquire your GPS location.";
+        if (e.code === 1) {
+          errorMsg = "Location permission denied. Please allow location access in your browser settings.";
+        } else if (e.code === 2) {
+          errorMsg = "Location unavailable. Please make sure your device's location/GPS settings are turned on.";
+        } else if (e.code === 3) {
+          errorMsg = "Location request timed out. Please check your network connection and try again.";
+        }
+        setStep('location_failed');
+        setErrorDetail(errorMsg);
+        setIsProcessing(false);
+        return;
       }
+    } else {
+      setStep('location_failed');
+      setErrorDetail("Your browser does not support geolocation.");
+      setIsProcessing(false);
+      return;
     }
+
+    // Check boundaries
+    try {
+      setStatusMessage("Checking operational boundaries...");
+      const emp = await fetchEmployeeById(user.id);
+      
+      if (!emp || !emp.site) {
+        setStep('location_failed');
+        setErrorDetail("No operational site assigned to your profile. Please contact admin.");
+        setIsProcessing(false);
+        return;
+      }
+
+      const distance = getDistance(
+        currentCoords.lat, 
+        currentCoords.lng, 
+        emp.site.latitude || 0, 
+        emp.site.longitude || 0
+      );
+      const radius = emp.site.geofenceRadius || 500;
+
+      if (distance > radius && user.role === 'EMPLOYEE' && type === 'IN') {
+        await createSecurityAlert({
+          type: 'GEOFENCE_VIOLATION',
+          message: `${user.firstName} tried to clock in from ${Math.round(distance)}m away from ${emp.site.name}.`,
+          severity: 'MEDIUM',
+          employeeId: user.id,
+          siteId: emp.siteId
+        });
+        
+        setStep('location_failed');
+        setErrorDetail(`Out of bounds. You are ${Math.round(distance)}m away from site "${emp.site.name}". Allowed radius is ${radius}m.`);
+        setIsProcessing(false);
+        return;
+      }
+
+      setStep('location_success');
+      setStatusMessage(`Within boundary of "${emp.site.name}"!`);
+      setLocationName(`Zone: ${currentCoords.lat.toFixed(2)}, ${currentCoords.lng.toFixed(2)}`);
+
+      setTimeout(() => {
+        setStep('facial_scanning');
+        setStatusMessage("Initializing camera for biometric verification...");
+        triggerBiometricVerification(type, currentCoords);
+      }, 1500);
+
+    } catch (err: any) {
+      console.error("Verification error", err);
+      setStep('location_failed');
+      setErrorDetail(err.message || "Failed to verify location with operational server.");
+      setIsProcessing(false);
+    }
+  };
+
+  const handleSimulateGPS = async () => {
+    if (!user || !activeAction) return;
+    setIsProcessing(true);
+    setStep('checking_location');
+    setStatusMessage("Simulating GPS coordinates...");
+    setErrorDetail("");
     
     try {
-      await startCamera();
+      const emp = await fetchEmployeeById(user.id);
+      if (!emp || !emp.site) {
+        setStep('location_failed');
+        setErrorDetail("No operational site assigned to your profile. Cannot simulate GPS.");
+        setIsProcessing(false);
+        return;
+      }
       
-      // Verification Simulation
+      const simulatedCoords = {
+        lat: emp.site.latitude || 37.7749,
+        lng: emp.site.longitude || -122.4194
+      };
+      
+      setCoords(simulatedCoords);
+      setStep('location_success');
+      setStatusMessage(`[SIMULATED] Located at "${emp.site.name}"`);
+      setLocationName(`Zone: ${simulatedCoords.lat.toFixed(2)}, ${simulatedCoords.lng.toFixed(2)} (Simulated)`);
+      
+      setTimeout(() => {
+        setStep('facial_scanning');
+        setStatusMessage("Initializing camera for biometric verification...");
+        triggerBiometricVerification(activeAction, simulatedCoords);
+      }, 1500);
+      
+    } catch (err: any) {
+      console.error("Simulation error", err);
+      setStep('location_failed');
+      setErrorDetail("Failed to retrieve site coordinates for simulation.");
+      setIsProcessing(false);
+    }
+  };
+
+  const triggerBiometricVerification = async (type: 'IN' | 'OUT', currentCoords: {lat: number, lng: number} | null) => {
+    try {
+      const cameraStarted = await startCamera();
+      if (!cameraStarted) {
+        setStep('failed');
+        setErrorDetail("Could not access camera. Please check webcam permissions.");
+        setIsProcessing(false);
+        return;
+      }
+
+      // Allow stabilization, then capture and process face
       setTimeout(async () => {
         try {
           const biometricProof = captureFrame();
-          if (!biometricProof) throw new Error("Capture failed");
+          if (!biometricProof) {
+            throw new Error("Failed to capture image frame.");
+          }
 
-          // FACE MATCHING LOGIC
-          let isMatch = true; // Default to true if models or avatar missing for bypass (optional)
+          setStatusMessage("Analyzing face biometrics...");
+          let isMatch = true;
           const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
           if (modelsLoaded && user?.avatar) {
@@ -164,7 +349,7 @@ const EmployeeAttendance = () => {
 
               if (refDetection?.descriptor && capDetection?.descriptor) {
                 const distance = faceapi.euclideanDistance(refDetection.descriptor, capDetection.descriptor);
-                isMatch = distance < 0.6; // Industry standard threshold
+                isMatch = distance < 0.6;
               }
             } catch (err) {
               console.error("Biometric matching error:", err);
@@ -179,15 +364,14 @@ const EmployeeAttendance = () => {
               employeeId: user.id,
               siteId: user.siteId
             });
-            setScanStatus('error');
-            setTimeout(() => {
-              setShowScanner(false);
-              setIsProcessing(false);
-              stopCamera();
-            }, 2000);
+            stopCamera();
+            setStep('failed');
+            setErrorDetail("Identity verification failed. Facial biometrics do not match profile.");
+            setIsProcessing(false);
             return;
           }
 
+          setStatusMessage("Logging attendance details...");
           const formData = new FormData();
           formData.append('fullName', `${user.firstName} ${user.lastName}`);
           formData.append('latitude', (currentCoords?.lat || 0).toString());
@@ -199,38 +383,46 @@ const EmployeeAttendance = () => {
           }
 
           if (type === 'IN') {
-            const res = await clockIn(user.id, currentCoords?.lat || 0, currentCoords?.lng || 0, formData);
-            console.log("Clock In Success:", res);
+            await clockIn(user.id, currentCoords?.lat || 0, currentCoords?.lng || 0, formData);
           } else {
-            const res = await clockOut(user.id, currentCoords?.lat || 0, currentCoords?.lng || 0, formData);
-            console.log("Clock Out Success:", res);
+            await clockOut(user.id, currentCoords?.lat || 0, currentCoords?.lng || 0, formData);
           }
+
+          stopCamera();
+          setStep('complete');
+          setStatusMessage(type === 'IN' ? "Clock In Success!" : "Clock Out Success!");
+          setIsProcessing(false);
           
-          setScanStatus('success');
           setTimeout(() => {
-            stopCamera();
-            setShowScanner(false);
-            setScanStatus('idle');
-            setIsProcessing(false);
+            resetVerification();
             loadData();
-          }, 1500);
+          }, 2000);
+
         } catch (err: any) {
           console.error("Attendance API Error:", err);
-          setScanStatus('error');
-          setTimeout(() => { 
-            stopCamera(); 
-            setShowScanner(false); 
-            setScanStatus('idle');
-            setIsProcessing(false);
-          }, 2000);
+          stopCamera();
+          setStep('failed');
+          setErrorDetail(err.message || "Failed to log attendance details.");
+          setIsProcessing(false);
         }
-      }, 2500);
+      }, 3000);
+
     } catch (err) {
-      console.error("Camera/Verification Error:", err);
-      setScanStatus('error');
+      console.error("Biometric startup error:", err);
+      stopCamera();
+      setStep('failed');
+      setErrorDetail("Failed to initiate face scanning camera.");
       setIsProcessing(false);
-      setTimeout(() => { setShowScanner(false); setScanStatus('idle'); }, 2000);
     }
+  };
+
+  const resetVerification = () => {
+    stopCamera();
+    setActiveAction(null);
+    setStep('idle');
+    setStatusMessage("");
+    setErrorDetail("");
+    setIsProcessing(false);
   };
 
   const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
@@ -280,108 +472,289 @@ const EmployeeAttendance = () => {
 
   return (
     <div className="employee-att-container">
-      {/* Hero Section */}
-      <section className="att-hero-section">
-        <div className="hero-content">
-          <div className="hero-badge"><Activity size={14} /> <span>{t('workforceIntelligence')}</span></div>
-          <h1>{t('welcomeBack')}, {user?.firstName}</h1>
-          <div className="hero-stats-overlay">
-            <div className="h-stat"><span className="h-val">{allLogs.reduce((acc, l) => l.clockIn && l.clockOut ? acc + (new Date(l.clockOut).getTime() - new Date(l.clockIn).getTime()) / 3600000 : acc, 0).toFixed(1)}h</span><span className="h-lab">Total Hours</span></div>
-            <div className="h-stat"><span className="h-val">{locationName ? locationName.split(',')[0].replace('Zone: ', '') : 'Primary'}</span><span className="h-lab">Zone</span></div>
+      {/* Sleek Profile & Clock Header */}
+      <header className="att-header-premium">
+        <div className="employee-profile-summary">
+          <div className="avatar-frame">
+            <img src={user?.avatar || "https://api.dicebear.com/7.x/avataaars/svg?seed=Staff"} alt="Avatar" />
+            <div className="avatar-ring"></div>
+          </div>
+          <div className="name-stack">
+            <h1>{t('welcomeBack')}, {user?.firstName}</h1>
+            <div className="profile-details-row">
+              <span className="p-role">{user?.jobTitle || 'Field Personnel'}</span>
+              <span className="details-dot">•</span>
+              <span className="p-id">#TF-{user?.id.slice(-4).toUpperCase()}</span>
+              <span className="details-dot">•</span>
+              <div className={`status-badge-inline ${isClockedIn ? 'online' : 'offline'}`}>
+                <span className="status-dot"></span>
+                <span>{isClockedIn ? 'ACTIVE' : 'OFF DUTY'}</span>
+              </div>
+            </div>
           </div>
         </div>
-        <div className="live-clock-card-premium">
+
+        <div className="live-clock-widget-glass">
           <div className="clock-wrapper">
              <span className="live-time">{currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
              <span className="live-seconds">{currentTime.getSeconds().toString().padStart(2, '0')}</span>
           </div>
           <span className="live-date">{currentTime.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase()}</span>
         </div>
-      </section>
+      </header>
 
-      {/* Top Cards */}
-      <div className="att-top-row-grid">
-        <div className="action-card-premium">
-          <div className="action-header">
-            <h2 className="card-title">ATTENDANCE HUB</h2>
-            <div className={`status-pill ${isClockedIn ? 'online' : 'offline'}`}>
-              <div className="status-dot"></div> {isClockedIn ? 'ACTIVE' : 'OFF DUTY'}
+      {/* Main Grid Layout */}
+      <div className="att-dashboard-grid">
+        
+        {/* Left Column: Actions & Analytics */}
+        <div className="att-left-column">
+          {/* Clock In/Out Actions */}
+          <div className="attendance-card-premium">
+            <div className="action-header">
+              <h2 className="card-title">ATTENDANCE HUB</h2>
+              {isClockedIn && elapsedTime && (
+                <div className="elapsed-timer-badge">
+                  <Timer size={14} className="timer-icon-spin" />
+                  <span>SHIFT TIME: {elapsedTime}</span>
+                </div>
+              )}
             </div>
+
+            {(geoPermission === 'denied' || cameraPermission === 'denied') && (
+              <div className="permissions-alert-banner">
+                <span className="alert-icon">⚠️</span>
+                <div className="alert-text">
+                  <strong>Access Blocked</strong>
+                  <p>
+                    {geoPermission === 'denied' && cameraPermission === 'denied'
+                      ? 'GPS location & Camera access are blocked. '
+                      : geoPermission === 'denied'
+                      ? 'GPS location access is blocked. '
+                      : 'Camera access is blocked. '}
+                    Please enable permissions in your browser settings to allow clocking.
+                  </p>
+                  <button className="btn-alert-help" onClick={() => setShowPermissionsHelp(true)}>
+                    How to enable permissions?
+                  </button>
+                </div>
+              </div>
+            )}
+            
+            {step === 'idle' ? (
+              <>
+                <div className="action-buttons-group">
+                  <motion.button 
+                    whileHover={{ scale: 1.02 }} 
+                    whileTap={{ scale: 0.98 }} 
+                    className={`big-btn in ${(isClockedIn || (logs.length >= 2 && !isClockedIn)) ? 'disabled' : ''}`} 
+                    onClick={() => !isClockedIn && logs.length < 2 && handleAction('IN')} 
+                    disabled={isClockedIn || (logs.length >= 2 && !isClockedIn)}
+                  >
+                    <Clock size={28} /> 
+                    <span>{logs.length >= 2 && !isClockedIn ? 'LIMIT REACHED' : 'CLOCK IN NOW'}</span>
+                  </motion.button>
+                  
+                  <motion.button 
+                    whileHover={{ scale: 1.02 }} 
+                    whileTap={{ scale: 0.98 }} 
+                    className={`big-btn out ${!isClockedIn ? 'disabled' : ''}`} 
+                    onClick={() => isClockedIn && handleAction('OUT')} 
+                    disabled={!isClockedIn}
+                  >
+                    <History size={28} /> 
+                    <span>CLOCK OUT</span>
+                  </motion.button>
+                </div>
+
+                {isClockedIn && logs[0] && (
+                  <div className="shift-info-footer">
+                    <div className="footer-item">
+                      <Clock size={14} /> 
+                      <span>Started: <strong>{new Date(logs[0].clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong></span>
+                    </div>
+                    <div className="footer-item">
+                      <MapPin size={14} /> 
+                      <span>Location: <strong>{logs[0].site?.name || user?.site?.name || logs[0].location || 'Main Site'}</strong></span>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="inline-verification-stepper">
+                <div className="stepper-header">
+                  <span className="stepper-title">VERIFICATION: CLOCK-{activeAction}</span>
+                  <button className="stepper-cancel-btn" onClick={resetVerification}>Cancel</button>
+                </div>
+
+                <div className="stepper-progress">
+                  <div className={`step-dot ${step !== 'checking_location' && step !== 'location_failed' ? 'active' : 'current'}`}>
+                    1
+                  </div>
+                  <div className="step-line"></div>
+                  <div className={`step-dot ${step === 'facial_scanning' || step === 'complete' || (step === 'failed' && errorDetail.toLowerCase().includes('camera')) ? 'current' : ''} ${step === 'complete' ? 'active' : ''}`}>
+                    2
+                  </div>
+                </div>
+
+                <div className="stepper-content">
+                  {step === 'checking_location' && (
+                    <div className="step-body location-checking-flow">
+                      <div className="radar-animation">
+                        <div className="radar-circle"></div>
+                        <MapPin size={24} className="radar-pin" />
+                      </div>
+                      <p className="step-status">{statusMessage}</p>
+                    </div>
+                  )}
+
+                  {step === 'location_success' && (
+                    <div className="step-body success-flow animate-fade-in">
+                      <div className="pulse-success-ring">
+                        <UserCheck size={24} />
+                      </div>
+                      <p className="step-status success-txt">{statusMessage}</p>
+                    </div>
+                  )}
+
+                  {step === 'location_failed' && (
+                    <div className="step-body error-flow animate-fade-in">
+                      <div className="error-triangle-icon">⚠️</div>
+                      <p className="step-status error-txt">Location Check Failed</p>
+                      <p className="step-detail">{errorDetail}</p>
+                      <div className="stepper-actions">
+                        <button className="btn-stepper-retry" onClick={() => handleAction(activeAction!)}>Retry GPS Check</button>
+                        {(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (
+                          <button className="btn-stepper-simulate" onClick={handleSimulateGPS}>Simulate GPS</button>
+                        )}
+                        <button className="btn-stepper-cancel" onClick={resetVerification}>Cancel</button>
+                      </div>
+                    </div>
+                  )}
+
+                  {step === 'facial_scanning' && (
+                    <div className="step-body camera-inline-flow">
+                      <div className="camera-inline-frame">
+                        <video ref={videoRef} autoPlay playsInline muted />
+                        <div className="camera-laser-scanner"></div>
+                      </div>
+                      <p className="step-status">{statusMessage}</p>
+                    </div>
+                  )}
+
+                  {step === 'complete' && (
+                    <div className="step-body success-flow animate-fade-in">
+                      <div className="pulse-success-ring">
+                        <UserCheck size={24} />
+                      </div>
+                      <p className="step-status success-txt">{statusMessage}</p>
+                    </div>
+                  )}
+
+                  {step === 'failed' && (
+                    <div className="step-body error-flow animate-fade-in">
+                      <div className="error-triangle-icon">❌</div>
+                      <p className="step-status error-txt">Verification Failed</p>
+                      <p className="step-detail">{errorDetail}</p>
+                      <div className="stepper-actions">
+                        <button className="btn-stepper-retry" onClick={() => {
+                          setStep('facial_scanning');
+                          setStatusMessage("Initializing biometric camera...");
+                          triggerBiometricVerification(activeAction!, coords);
+                        }}>Retry Scan</button>
+                        <button className="btn-stepper-cancel" onClick={resetVerification}>Cancel</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
-          <div className="action-buttons-group">
-            <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className={`big-btn in ${isClockedIn ? 'disabled' : ''}`} onClick={() => !isClockedIn && handleAction('IN')} disabled={isClockedIn}>
-              <Clock size={28} /> <span>CLOCK IN NOW</span>
-            </motion.button>
-            <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className={`big-btn out ${!isClockedIn ? 'disabled' : ''}`} onClick={() => isClockedIn && handleAction('OUT')} disabled={!isClockedIn}>
-              <History size={28} /> <span>CLOCK OUT</span>
-            </motion.button>
-          </div>
-          {isClockedIn && logs[0] && (
-            <div className="shift-info-footer">
-              <div className="footer-item"><Clock size={14} /> <span>Started: <strong>{new Date(logs[0].clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong></span></div>
-              <div className="footer-item"><MapPin size={14} /> <span>Location: <strong>{logs[0].location || 'Main Site'}</strong></span></div>
-            </div>
-          )}
+
+          {/* Left Column content is just the Attendance Hub card now */}
         </div>
 
-        <div className="compact-id-hero">
-          <div className="profile-main-stack">
-            <div className="avatar-frame">
-              <img src={user?.avatar || "https://api.dicebear.com/7.x/avataaars/svg?seed=Staff"} alt="Avatar" />
-              <div className="avatar-ring"></div>
-            </div>
-            <div className="name-stack">
-              <span className="p-name">{user?.firstName} {user?.lastName}</span>
-              <span className="p-role">{user?.jobTitle || 'Field Personnel'}</span>
-              <div className="secured-badge"><Shield size={12} /> <span>SECURED IDENTITY</span></div>
-            </div>
-          </div>
-          <div className="id-metadata-grid">
-             <div className="meta-item"><span className="m-label">EMPLOYEE ID</span><span className="m-value">#TF-{user?.id.slice(-4).toUpperCase()}</span></div>
-             <div className="meta-item"><span className="m-label">ACCOUNT STATUS</span><span className="m-value success">ACTIVE</span></div>
-          </div>
-        </div>
-      </div>
-
-      {/* Bottom Layout */}
-      <div className="bottom-layout-grid">
-        <div className="performance-sidebar">
-          <div className="stats-card-premium">
-            <h3 className="card-title-sm"><BarChart3 size={18} /> MONTHLY INSIGHTS</h3>
-            <div className="insights-list">
-              <div className="insight-row"><div className="i-icon"><Timer size={16} /></div><div className="i-text"><span className="i-lab">MONTHLY HOURS</span><span className="i-val">{totalMonthlyHours.toFixed(1)}h</span></div></div>
-              <div className="insight-row"><div className="i-icon"><Award size={16} /></div><div className="i-text"><span className="i-lab">RELIABILITY</span><span className="i-val">98.4%</span></div></div>
-            </div>
-            <div className="goal-meter">
-               <div className="meter-label"><span>SHIFT GOAL</span> <span>{Math.min(100, (totalMonthlyHours / 160) * 100).toFixed(0)}%</span></div>
-               <div className="meter-bar"><motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(100, (totalMonthlyHours / 160) * 100)}%` }} className="meter-fill"></motion.div></div>
-            </div>
-          </div>
-        </div>
-
+        {/* Right Column: Calendar History */}
         <div className="calendar-main-card">
           <div className="cal-header-flex">
-            <div className="cal-label"><CalIcon size={18} /> <span>{viewDate.toLocaleString('default', { month: 'long', year: 'numeric' }).toUpperCase()}</span></div>
-            <div className="cal-nav-btns"><button onClick={() => changeMonth(-1)}><ChevronLeft size={16} /></button><button onClick={() => changeMonth(1)}><ChevronRight size={16} /></button></div>
+            <div className="cal-label">
+              <CalIcon size={18} /> 
+              <span>{viewDate.toLocaleString('default', { month: 'long', year: 'numeric' }).toUpperCase()}</span>
+            </div>
+            <div className="cal-nav-btns">
+              <button onClick={() => changeMonth(-1)}><ChevronLeft size={16} /></button>
+              <button onClick={() => changeMonth(1)}><ChevronRight size={16} /></button>
+            </div>
           </div>
           <div className="calendar-matrix-grid">
             {renderMatrixCalendar()}
           </div>
         </div>
+
       </div>
 
       <AnimatePresence>
-        {showScanner && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="scanner-overlay">
-            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="scanner-unit">
-              <div className="video-circle">
-                <video ref={videoRef} autoPlay playsInline muted />
-                <div className={`scan-border ${scanStatus}`}></div>
-                {scanStatus === 'success' && <div className="success-icon"><UserCheck size={60} /></div>}
+        {showPermissionsHelp && (
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }} 
+            className="permissions-help-backdrop"
+            onClick={() => setShowPermissionsHelp(false)}
+          >
+            <motion.div 
+              initial={{ scale: 0.95 }} 
+              animate={{ scale: 1 }} 
+              exit={{ scale: 0.95 }} 
+              className="permissions-help-modal"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="help-modal-header">
+                <h3>Enable Site Permissions</h3>
+                <button className="close-help-btn" onClick={() => setShowPermissionsHelp(false)}>×</button>
               </div>
-              <div className="scanner-status-text">
-                {scanStatus === 'scanning' ? <h3>VERIFYING IDENTITY...</h3> : scanStatus === 'success' ? <h3 className="success-txt">ACCESS GRANTED</h3> : <h3 className="error-txt">FAILED</h3>}
-                <p>{locationName}</p>
+
+              <div className="help-modal-body">
+                <p className="help-intro-text">
+                  To complete clocking, this app requires access to your <strong>GPS Location</strong> (to verify your operational site) and <strong>Web Camera</strong> (for facial matching).
+                </p>
+
+                <div className="help-guide-steps">
+                  <div className="guide-step-row">
+                    <span className="step-num">1</span>
+                    <div className="step-text">
+                      <strong>Check Address Bar Settings:</strong>
+                      <p>Click the <strong>Settings/Lock icon</strong> (🔒 or 🎛️) on the left side of your browser URL bar at the top of the screen.</p>
+                    </div>
+                  </div>
+
+                  <div className="guide-step-row">
+                    <span className="step-num">2</span>
+                    <div className="step-text">
+                      <strong>Toggle Permissions:</strong>
+                      <p>Look for <strong>Location</strong> and <strong>Camera</strong> in the dropdown menu, and switch their settings to <strong>"Allow"</strong>.</p>
+                    </div>
+                  </div>
+
+                  <div className="guide-step-row">
+                    <span className="step-num">3</span>
+                    <div className="step-text">
+                      <strong>Reload & Try Again:</strong>
+                      <p>Refresh the page, and try clocking in/out again. If the issue persists, clear your browser settings for this site.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="help-modal-footer">
+                <button className="btn-modal-reload" onClick={() => {
+                  setShowPermissionsHelp(false);
+                  window.location.reload();
+                }}>
+                  Reload Page
+                </button>
+                <button className="btn-modal-close" onClick={() => setShowPermissionsHelp(false)}>
+                  Close Guide
+                </button>
               </div>
             </motion.div>
           </motion.div>

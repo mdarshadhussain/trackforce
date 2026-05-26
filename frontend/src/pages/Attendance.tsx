@@ -183,6 +183,17 @@ const Attendance = () => {
   const [toasts, setToasts] = useState<any[]>([]);
   const [showPurgeConfirm, setShowPurgeConfirm] = useState(false);
   const [logToPurge, setLogToPurge] = useState<string | null>(null);
+  // New state for reason modals
+  const [showAbsentReasonModal, setShowAbsentReasonModal] = useState(false);
+  const [absentLogId, setAbsentLogId] = useState<string | null>(null);
+  const [absentReason, setAbsentReason] = useState('');
+  const [showPurgeReasonModal, setShowPurgeReasonModal] = useState(false);
+  const [purgeLogId, setPurgeLogId] = useState<string | null>(null);
+  const [purgeReason, setPurgeReason] = useState('');
+  // New state for reject reason modal
+  const [showRejectReasonModal, setShowRejectReasonModal] = useState(false);
+  const [rejectLogId, setRejectLogId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
   const isClockedIn = logs.length > 0 && !logs[0].clockOut;
 
   const [employees, setEmployees] = useState<any[]>([]);
@@ -372,6 +383,10 @@ const Attendance = () => {
 
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isAdmin) {
+      addToast("Unauthorized: Only administrators can edit attendance times.", 'error');
+      return;
+    }
     if (!editingLog) return;
     try {
       const dateStr = new Date(editingLog.date).toISOString().split('T')[0];
@@ -1088,30 +1103,137 @@ const Attendance = () => {
             className="proof-modal-overlay"
             onClick={() => setShowPurgeConfirm(false)}
           >
-            <motion.div 
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 20 }}
-              className="glass-card scanner-modal-obsidian confirm-purge-modal"
-              onClick={e => e.stopPropagation()}
-              style={{ maxWidth: '400px' }}
-            >
-              <div className="modal-icon-header warning" style={{ textAlign: 'center', padding: '2rem 0', color: 'var(--error)' }}>
-                <Trash2 size={64} />
-              </div>
-              <h3 style={{ textAlign: 'center', marginBottom: '1rem' }}>Confirm Data Purge</h3>
-              <p style={{ textAlign: 'center', color: 'var(--text-tertiary)', marginBottom: '2rem', lineHeight: '1.6' }}>
-                Are you sure you want to permanently delete this attendance record? This action will also remove all associated break data and cannot be undone.
-              </p>
-              <div className="modal-actions-premium" style={{ flexDirection: 'column', gap: '0.5rem' }}>
-                <button className="btn btn-primary btn-block btn-lg" style={{ backgroundColor: 'var(--error)' }} onClick={confirmPurge}>
-                  Purge Record Permanently
-                </button>
-                <button className="btn btn-ghost btn-block" onClick={() => setShowPurgeConfirm(false)}>
-                  Cancel
-                </button>
-              </div>
-            </motion.div>
+            <AnimatePresence>
+              {showPurgeConfirm && (
+                <motion.div 
+                  initial={{ scale: 0.9, y: 20 }}
+                  animate={{ scale: 1, y: 0 }}
+                  exit={{ scale: 0.9, y: 20 }}
+                  className="glass-card scanner-modal-obsidian confirm-purge-modal"
+                  onClick={e => e.stopPropagation()}
+                  style={{ maxWidth: '400px' }}
+                >
+                  <div className="modal-icon-header warning" style={{ textAlign: 'center', padding: '2rem 0', color: 'var(--error)' }}>
+                    <Trash2 size={64} />
+                  </div>
+                  <h3 style={{ textAlign: 'center', marginBottom: '1rem' }}>Confirm Data Purge</h3>
+                  <p style={{ textAlign: 'center', color: 'var(--text-tertiary)', marginBottom: '2rem', lineHeight: '1.6' }}>
+                    Are you sure you want to permanently delete this attendance record? This action will also remove all associated break data and cannot be undone.
+                  </p>
+                  <div className="modal-actions-premium" style={{ flexDirection: 'column', gap: '0.5rem' }}>
+                    <button className="btn btn-primary btn-block btn-lg" style={{ backgroundColor: 'var(--error)' }} onClick={confirmPurge}>
+                      Purge Record Permanently
+                    </button>
+                    <button className="btn btn-ghost btn-block" onClick={() => setShowPurgeConfirm(false)}>
+                      Cancel
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+              {/* Reason Modal for Absent */}
+              {showAbsentReasonModal && (
+                <motion.div 
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.9, opacity: 0 }}
+                  className="glass-card scanner-modal-obsidian"
+                  style={{ maxWidth: '500px' }}
+                >
+                  <div className="modal-header-premium">
+                    <h3>Reason for Marking Absent</h3>
+                    <button className="close-btn-premium" onClick={() => setShowAbsentReasonModal(false)}><X size={20} /></button>
+                  </div>
+                  <div className="modal-body-premium" style={{ padding: '20px' }}>
+                    <textarea className="premium-input" placeholder="Enter reason..." value={absentReason} onChange={e => setAbsentReason(e.target.value)} rows={4} style={{ width: '100%' }} />
+                  </div>
+                  <div className="modal-actions-premium" style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                    <button className="btn btn-primary" onClick={() => {
+                      if (!absentReason.trim()) { addToast('Reason required.', 'warning'); return; }
+                      handleStatusUpdate(absentLogId!, 'ABSENT');
+                      createSecurityAlert({
+                        type: 'ABSENCE_REASON',
+                        message: `Absent reason: ${absentReason}`,
+                        severity: 'LOW',
+                        employeeId: purgeLogId || '',
+                        siteId: ''
+                      });
+                      setAbsentReason('');
+                      setShowAbsentReasonModal(false);
+                    }}>Submit Reason</button>
+                    <button className="btn btn-ghost" onClick={() => setShowAbsentReasonModal(false)}>Cancel</button>
+                  </div>
+                </motion.div>
+              )}
+              {/* Reason Modal for Purge */}
+              {showPurgeReasonModal && (
+                <motion.div 
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.9, opacity: 0 }}
+                  className="glass-card scanner-modal-obsidian"
+                  style={{ maxWidth: '500px' }}
+                >
+                  <div className="modal-header-premium">
+                    <h3>Reason for Deleting Attendance Record</h3>
+                    <button className="close-btn-premium" onClick={() => setShowPurgeReasonModal(false)}><X size={20} /></button>
+                  </div>
+                  <div className="modal-body-premium" style={{ padding: '20px' }}>
+                    <textarea className="premium-input" placeholder="Enter reason..." value={purgeReason} onChange={e => setPurgeReason(e.target.value)} rows={4} style={{ width: '100%' }} />
+                  </div>
+                  <div className="modal-actions-premium" style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                    <button className="btn btn-primary" onClick={() => {
+                      if (!purgeReason.trim()) { addToast('Reason required.', 'warning'); return; }
+                      // Perform actual purge
+                      confirmPurge();
+                      createSecurityAlert({
+                        type: 'PURGE_REASON',
+                        message: `Purge reason: ${purgeReason}`,
+                        severity: 'LOW',
+                        employeeId: purgeLogId || '',
+                        siteId: ''
+                      });
+                      setPurgeReason('');
+                      setShowPurgeReasonModal(false);
+                    }}>Submit Reason & Delete</button>
+                    <button className="btn btn-ghost" onClick={() => setShowPurgeReasonModal(false)}>Cancel</button>
+                  </div>
+                </motion.div>
+              )}
+              {/* Reason Modal for Reject */}
+              {showRejectReasonModal && (
+                <motion.div 
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.9, opacity: 0 }}
+                  className="glass-card scanner-modal-obsidian"
+                  style={{ maxWidth: '500px' }}
+                >
+                  <div className="modal-header-premium">
+                    <h3>Reason for Rejecting Attendance</h3>
+                    <button className="close-btn-premium" onClick={() => setShowRejectReasonModal(false)}><X size={20} /></button>
+                  </div>
+                  <div className="modal-body-premium" style={{ padding: '20px' }}>
+                    <textarea className="premium-input" placeholder="Enter reason..." value={rejectReason} onChange={e => setRejectReason(e.target.value)} rows={4} style={{ width: '100%' }} />
+                  </div>
+                  <div className="modal-actions-premium" style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                    <button className="btn btn-primary" onClick={() => {
+                      if (!rejectReason.trim()) { addToast('Reason required.', 'warning'); return; }
+                      handleStatusUpdate(rejectLogId!, 'REJECTED');
+                      createSecurityAlert({
+                        type: 'REJECTION_REASON',
+                        message: `Reject reason: ${rejectReason}`,
+                        severity: 'LOW',
+                        employeeId: rejectLogId || '',
+                        siteId: ''
+                      });
+                      setRejectReason('');
+                      setShowRejectReasonModal(false);
+                    }}>Submit Reason</button>
+                    <button className="btn btn-ghost" onClick={() => setShowRejectReasonModal(false)}>Cancel</button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
         )}
       </AnimatePresence>
@@ -1393,11 +1515,13 @@ const Attendance = () => {
                 />
               </div>
 
-              <SearchableSiteDropdown 
-                sites={sites} 
-                selectedSiteId={selectedSite} 
-                onSelectSite={setSelectedSite} 
-              />
+              {isAdmin && (
+                  <SearchableSiteDropdown 
+                    sites={sites} 
+                    selectedSiteId={selectedSite} 
+                    onSelectSite={setSelectedSite} 
+                  />
+                )}
 
               {activeView === 'grid' ? (
                 <div 
@@ -1469,9 +1593,11 @@ const Attendance = () => {
                 <LayoutGrid size={16} /> Monthly Grid
               </button>
               <button className="btn-outline" onClick={handleExport}>{t('exportReport')}</button>
-              <button className="btn btn-primary" onClick={() => navigate('/attendance/manager')}>
-                <UserPlus size={16} /> Log Manual Entry
-              </button>
+              {isAdmin && (
+                  <button className="btn btn-primary" onClick={() => navigate('/attendance/manager')}>
+                    <UserPlus size={16} /> Log Manual Entry
+                  </button>
+                )}
             </div>
           </div>
 
@@ -1519,35 +1645,55 @@ const Attendance = () => {
                       </td>
                       <td data-label={t('action')}>
                         <div className="approval-actions">
-                          <button 
-                            className="status-btn edit" 
-                            onClick={() => {
-                              setEditingLog(log);
-                              setEditForm({
-                                clockIn: log.clockIn ? new Date(log.clockIn).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit' }) : '',
-                                clockOut: log.clockOut ? new Date(log.clockOut).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit' }) : ''
-                              });
-                              setShowEditModal(true);
-                            }}
-                            title="Edit Times"
-                          >
-                            <Pencil size={14} />
-                          </button>
-                          <button className="status-btn approve" onClick={() => handleStatusUpdate(log.id, 'PRESENT')} title="Mark Present" style={{ color: '#10b981' }}>
-                            <CheckCircle size={14} />
-                          </button>
-                          <button className="status-btn reject" onClick={() => handleStatusUpdate(log.id, 'ABSENT')} title="Mark Absent" style={{ color: '#ef4444' }}>
-                            <XCircle size={14} />
-                          </button>
+                          {isAdmin && (
+                            <button 
+                              className="status-btn edit" 
+                              onClick={() => {
+                                setEditingLog(log);
+                                setEditForm({
+                                  clockIn: log.clockIn ? new Date(log.clockIn).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit' }) : '',
+                                  clockOut: log.clockOut ? new Date(log.clockOut).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit' }) : ''
+                                });
+                                setShowEditModal(true);
+                              }}
+                              title="Edit Times"
+                            >
+                              <Pencil size={14} />
+                            </button>
+                          )}
+                          <button className="status-btn approve" onClick={() => {
+                              if (isManager && (!log.clockIn || !log.clockOut)) {
+                                addToast('Cannot mark present without full check‑in/out.', 'warning');
+                                return;
+                              }
+                              handleStatusUpdate(log.id, 'PRESENT');
+                            }} title="Mark Present" style={{ color: '#10b981' }}>
+                              <CheckCircle size={14} />
+                            </button>
+                          <button className="status-btn reject" onClick={() => {
+                              setAbsentLogId(log.id);
+                              setShowAbsentReasonModal(true);
+                            }} title="Mark Absent" style={{ color: '#ef4444' }}>
+                              <XCircle size={14} />
+                            </button>
                           {log.status === 'PENDING' && (
                             <>
-                              <button className="status-btn approve" onClick={() => handleStatusUpdate(log.id, 'APPROVED')} title="Approve"><Check size={14} /></button>
-                              <button className="status-btn reject" onClick={() => handleStatusUpdate(log.id, 'REJECTED')} title="Reject"><X size={14} /></button>
+                              <button className="status-btn approve" onClick={() => {
+                              if (isManager && (!log.clockIn || !log.clockOut)) {
+                                addToast('Cannot approve without full check‑in/out.', 'warning');
+                                return;
+                              }
+                              handleStatusUpdate(log.id, 'APPROVED');
+                            }} title="Approve"><Check size={14} /></button>
+                              <button className="status-btn reject" onClick={() => { setRejectLogId(log.id); setShowRejectReasonModal(true); }} title="Reject"><X size={14} /></button>
                             </>
                           )}
-                          <button className="status-btn delete" onClick={() => handleDeleteLog(log.id)} title="Purge Log" style={{ color: 'var(--error)' }}>
-                            <Trash2 size={14} />
-                          </button>
+                          <button className="status-btn delete" onClick={() => {
+                              setPurgeLogId(log.id);
+                              setShowPurgeReasonModal(true);
+                            }} title="Purge Log" style={{ color: 'var(--error)' }}>
+                              <Trash2 size={14} />
+                            </button>
                         </div>
                       </td>
                     </tr>

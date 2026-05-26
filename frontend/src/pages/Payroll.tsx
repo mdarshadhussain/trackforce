@@ -151,6 +151,15 @@ const Payroll = () => {
 
   if (loading) return <div className="loading-state">Synchronizing Financial Nodes...</div>;
 
+  if (!isAdmin && !isEmployee) {
+    return (
+      <div className="payroll-page unauthorized-state" style={{ padding: '60px 40px', textAlign: 'center', background: 'var(--surface)', borderRadius: '24px', border: '1px solid var(--border)', margin: '24px' }}>
+        <h2 style={{ color: 'var(--text-primary)', marginBottom: '12px' }}>Access Restricted</h2>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '15px' }}>You do not have administrative permissions to view financial metrics and payroll registries.</p>
+      </div>
+    );
+  }
+
 
 
   const CustomTooltip = ({ active, payload, label }: any) => {

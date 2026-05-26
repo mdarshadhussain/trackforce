@@ -578,6 +578,20 @@ app.post('/api/attendance/clock-in/:id', authenticateToken, upload.single('biome
     });
     if (!employee) return res.status(404).json({ error: 'Employee not found' });
     if (!employee.site) return res.status(400).json({ error: 'No operational site assigned to your profile. Please contact admin.' });
+
+    // Restrict to max 2 clock-ins per day
+    const todayStr = new Date().toISOString().split('T')[0];
+    const todayLogsCount = await prisma.attendance.count({
+      where: {
+        employeeId: employee.id,
+        date: {
+          gte: new Date(todayStr)
+        }
+      }
+    });
+    if (todayLogsCount >= 2) {
+      return res.status(400).json({ error: 'Daily clock-in limit reached. You can only clock in up to two times per day.' });
+    }
     
     const distance = getDistance(parseFloat(latitude), parseFloat(longitude), employee.site.latitude || 0, employee.site.longitude || 0);
     const radius = employee.site.geofenceRadius || 500;

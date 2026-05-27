@@ -18,10 +18,12 @@ import { motion } from 'framer-motion';
 import { useNavigate, useParams } from 'react-router-dom';
 import { fetchEmployeeFullProfile, updateEmployee, enrollBiometric } from '../api/api';
 import './CompleteProfile.css';
+import { useTranslation } from 'react-i18next';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const CompleteProfile = () => {
+  const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -82,7 +84,7 @@ const CompleteProfile = () => {
         setEnrollmentComplete(employee.isBiometricEnrolled);
       } catch (err) {
         console.error("Load failed:", err);
-        setError("Failed to synchronize workforce intelligence.");
+        setError(t('failedLoadWorkforce'));
       } finally {
         setIsLoading(false);
       }
@@ -123,7 +125,7 @@ const CompleteProfile = () => {
       setSuccess(true);
       setTimeout(() => navigate(`/employees/${id}`), 2000);
     } catch (err: any) {
-      setError(err.message || "Failed to finalize manifest.");
+      setError(err.message || t('actionFailed'));
     } finally {
       setIsSubmitting(false);
     }
@@ -140,14 +142,14 @@ const CompleteProfile = () => {
       setEnrollmentComplete(true);
       setError(null);
     } catch (err: any) {
-      setError(err.message || "Biometric enrollment failed.");
+      setError(err.message || t('actionFailed'));
     } finally {
       setIsEnrolling(false);
     }
   };
 
   if (isLoading) {
-    return <div className="loading-state-premium"><div className="spinner-obsidian"></div><p>Synchronizing Identity...</p></div>;
+    return <div className="loading-state-premium"><div className="spinner-obsidian"></div><p>{t('processing')}</p></div>;
   }
 
   return (
@@ -159,11 +161,11 @@ const CompleteProfile = () => {
       <header className="page-header">
         <div className="header-main">
           <div>
-            <h1>Workforce Identity Manifest</h1>
-            <p>Configure legal documentation and high-fidelity biometric access.</p>
+            <h1>{t('editProfile')}</h1>
+            <p>{t('updateWorkforceDetails')}</p>
           </div>
           <button className="back-link-premium" onClick={() => navigate(-1)}>
-            Back <ChevronLeft size={20} />
+            {t('cancel')} <ChevronLeft size={20} />
           </button>
         </div>
       </header>
@@ -171,8 +173,7 @@ const CompleteProfile = () => {
       {success ? (
         <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="success-overlay">
           <CheckCircle size={64} color="var(--primary)" />
-          <h2>Identity Synchronized</h2>
-          <p>The workforce manifest has been updated successfully. Redirecting...</p>
+          <h2>{t('siteConfigUpdated')}</h2>
         </motion.div>
       ) : (
         <div className="form-grid-layout">
@@ -183,7 +184,7 @@ const CompleteProfile = () => {
                 {error && <div className="error-banner"><AlertCircle size={18} /><span>{error}</span></div>}
 
                 <div className="form-section">
-                  <div className="section-header"><User size={20} /><h3>Core Identity</h3></div>
+                  <div className="section-header"><User size={20} /><h3>{t('coreIdentityAccess')}</h3></div>
                   <div className="avatar-edit-site">
                     <div className="avatar-preview-lg">
                       {formData.avatar ? <img src={formData.avatar} alt="" /> : <User size={48} />}
@@ -194,32 +195,32 @@ const CompleteProfile = () => {
 
                   <div className="form-grid-2">
                     <div className="form-group">
-                      <label>Employee ID</label>
+                      <label>{t('employeeID')}</label>
                       <input type="text" value={formData.employeeId} readOnly className="read-only-input" />
                     </div>
                     <div className="form-group">
-                      <label>Full Name</label>
+                      <label>{t('fullName')}</label>
                       <input type="text" value={formData.fullName} onChange={(e) => setFormData({...formData, fullName: e.target.value})} />
                     </div>
                   </div>
 
                   <div className="form-grid-2">
                     <div className="form-group">
-                      <label>Date of Birth</label>
+                      <label>{t('dobLabel')}</label>
                       <input type="date" value={formData.dob} onChange={(e) => setFormData({...formData, dob: e.target.value})} />
                     </div>
                     <div className="form-group">
-                      <label>Phone Number</label>
+                      <label>{t('phoneNum')}</label>
                       <input type="tel" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} />
                     </div>
                   </div>
                 </div>
 
                 <div className="form-section">
-                  <div className="section-header"><CreditCard size={20} /><h3>Professional Parameters</h3></div>
+                  <div className="section-header"><CreditCard size={20} /><h3>{t('payrollProjectAssignment')}</h3></div>
                   <div className="form-grid-2">
                     <div className="form-group">
-                      <label>Designation</label>
+                      <label>{t('designation')}</label>
                       <select 
                         value={formData.designation} 
                         onChange={(e) => setFormData({...formData, designation: e.target.value})}
@@ -227,22 +228,22 @@ const CompleteProfile = () => {
                         className="premium-select-native"
                         style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', outline: 'none' }}
                       >
-                        <option value="" disabled>Select Designation</option>
-                        <option value="Supervisor">Supervisor</option>
-                        <option value="Foreman">Foreman</option>
-                        <option value="Experience Worker">Experience Worker</option>
-                        <option value="Engineer">Engineer</option>
-                        <option value="Fresh Worker">Fresh Worker</option>
-                        <option value="Safety">Safety</option>
-                        <option value="Drawing">Drawing</option>
-                        <option value="QA/QC">QA/QC</option>
-                        <option value="QS">QS</option>
-                        <option value="Store keeper">Store keeper</option>
-                        <option value="Sr. Foreman">Sr. Foreman</option>
+                        <option value="" disabled>{t('selectDesignationOption')}</option>
+                        <option value="Supervisor">{t('supervisor')}</option>
+                        <option value="Foreman">{t('foreman')}</option>
+                        <option value="Experience Worker">{t('experienceWorker')}</option>
+                        <option value="Engineer">{t('engineer')}</option>
+                        <option value="Fresh Worker">{t('freshWorker')}</option>
+                        <option value="Safety">{t('safety')}</option>
+                        <option value="Drawing">{t('drawing')}</option>
+                        <option value="QA/QC">{t('qaqc')}</option>
+                        <option value="QS">{t('qs')}</option>
+                        <option value="Store keeper">{t('storeKeeper')}</option>
+                        <option value="Sr. Foreman">{t('srForeman')}</option>
                       </select>
                     </div>
                     <div className="form-group">
-                      <label>Hourly Rate (₫)</label>
+                      <label>{t('salaryPerHour')}</label>
                       <input 
                         type="number" 
                         value={formData.hourlyRate || ''} 
@@ -254,7 +255,7 @@ const CompleteProfile = () => {
 
                 <div className="form-actions-compact">
                   <button type="submit" className="btn btn-primary w-full" disabled={isSubmitting}>
-                    {isSubmitting ? "Processing..." : "Save Profile Details"}
+                    {isSubmitting ? t('processing') : t('saveChanges')}
                     <Save size={18} />
                   </button>
 
@@ -267,7 +268,7 @@ const CompleteProfile = () => {
           <div className="form-column side-data">
             {/* Biometric Enrollment Card */}
             <div className="glass-card form-section-card biometric-card">
-              <div className="section-header"><ShieldCheck size={20} /><h3>Biometric Access</h3></div>
+              <div className="section-header"><ShieldCheck size={20} /><h3>{t('biometricIdentity')}</h3></div>
               <div className="biometric-site">
                 <div className={`biometric-visual ${enrollmentComplete ? 'active' : ''} ${isEnrolling ? 'scanning' : ''}`}>
                   {isEnrolling ? (
@@ -283,8 +284,8 @@ const CompleteProfile = () => {
                 </div>
                 
                 <div className="biometric-details">
-                  <h4>Facial ID Node</h4>
-                  <p>{enrollmentComplete ? "Biometric signature synchronized." : "Requires 3D facial scan for secure site authentication."}</p>
+                  <h4>{t('biometricIdentity')}</h4>
+                  <p>{enrollmentComplete ? t('verified') : t('notEnrolled')}</p>
                   
                   {!enrollmentComplete && (
                     <button 
@@ -292,13 +293,13 @@ const CompleteProfile = () => {
                       onClick={handleEnrollBiometric}
                       disabled={isEnrolling}
                     >
-                      {isEnrolling ? "Synchronizing Face Map..." : "Initialize 3D Scan"}
+                      {isEnrolling ? t('processing') : t('beginEnrollment')}
                     </button>
                   )}
                   
                   {enrollmentComplete && (
                     <div className="verified-badge-premium">
-                      <CheckCircle size={14} /> Verified Signature
+                      <CheckCircle size={14} /> {t('verified')}
                     </div>
                   )}
                 </div>
@@ -307,23 +308,23 @@ const CompleteProfile = () => {
 
             {/* Document Card */}
             <div className="glass-card form-section-card document-card" style={{ marginTop: '1.5rem' }}>
-              <div className="section-header"><FileText size={20} /><h3>Legal Documents</h3></div>
+              <div className="section-header"><FileText size={20} /><h3>{t('identificationDocs')}</h3></div>
               <div className="document-upload-grid">
                 <div className="upload-node">
-                  <label>Resume / Professional CV</label>
+                  <label>{t('resumeCv')}</label>
 
                   <div className="upload-box-premium">
                     <Upload size={20} />
-                    <span>{files.cv ? files.cv.name : (formData.cvPath ? 'CV.pdf' : 'Upload CV')}</span>
+                    <span>{files.cv ? files.cv.name : (formData.cvPath ? 'CV.pdf' : t('uploadResume'))}</span>
                     <input type="file" onChange={(e) => handleFileChange(e, 'cv')} />
                   </div>
                 </div>
                 <div className="upload-node" style={{ marginTop: '1rem' }}>
-                  <label>ID Proof / Passport Copy</label>
+                  <label>{t('idProofDoc')}</label>
 
                   <div className="upload-box-premium">
                     <Upload size={20} />
-                    <span>{files.idDoc ? files.idDoc.name : (formData.idDocPath ? 'ID_DOC.jpg' : 'Upload ID')}</span>
+                    <span>{files.idDoc ? files.idDoc.name : (formData.idDocPath ? 'ID_DOC.jpg' : t('uploadIdProof'))}</span>
                     <input type="file" onChange={(e) => handleFileChange(e, 'idDoc')} />
                   </div>
                 </div>

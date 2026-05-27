@@ -38,6 +38,7 @@ const SearchableProjectDropdown = ({
   selectedSiteId: string; 
   onSelectSite: (id: string) => void; 
 }) => {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -53,8 +54,8 @@ const SearchableProjectDropdown = ({
   }, []);
 
   const selectedSite = selectedSiteId === 'ALL' 
-    ? { id: 'ALL', name: 'All Projects' } 
-    : sites.find(s => s.id === selectedSiteId) || { id: 'ALL', name: 'All Projects' };
+    ? { id: 'ALL', name: t('allProjects') } 
+    : sites.find(s => s.id === selectedSiteId) || { id: 'ALL', name: t('allProjects') };
 
   const filteredSites = sites.filter(s => 
     s.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -85,7 +86,7 @@ const SearchableProjectDropdown = ({
               <Search size={14} className="search-icon-inside" />
               <input 
                 type="text" 
-                placeholder="Search projects..." 
+                placeholder={t('searchProjects')} 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 autoFocus
@@ -102,7 +103,7 @@ const SearchableProjectDropdown = ({
                   setSearchQuery('');
                 }}
               >
-                All Projects
+                {t('allProjects')}
               </button>
               
               {filteredSites.length > 0 ? (
@@ -121,7 +122,7 @@ const SearchableProjectDropdown = ({
                   </button>
                 ))
               ) : (
-                <div className="dropdown-no-results">No projects found</div>
+                <div className="dropdown-no-results">{t('noProjectsFound')}</div>
               )}
             </div>
           </motion.div>
@@ -139,6 +140,7 @@ const CustomDateDropdown = ({
   value: string;
   onChange: (val: any) => void;
 }) => {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -153,10 +155,10 @@ const CustomDateDropdown = ({
   }, []);
 
   const options = [
-    { value: 'TODAY', label: 'Today' },
-    { value: '7_DAYS', label: 'Last 7 Days' },
-    { value: 'MONTH', label: 'This Month' },
-    { value: 'CUSTOM', label: 'Custom Date' }
+    { value: 'TODAY', label: t('filterToday') },
+    { value: '7_DAYS', label: t('filter7Days') },
+    { value: 'MONTH', label: t('filterThisMonth') },
+    { value: 'CUSTOM', label: t('filterCustomDate') }
   ];
 
   const selectedOption = options.find(o => o.value === value) || options[1];
@@ -241,7 +243,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const Dashboard = () => {
   const { user } = useAuth();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
 
   const isManagement = user?.role === 'ADMIN' || user?.role === 'MANAGER';
@@ -504,11 +506,8 @@ const Dashboard = () => {
     }
   });
 
-  const isVnd = estimatedPayrollVndSum > 50000;
-  const formattedPayrollValue = isVnd 
-    ? (estimatedPayrollVndSum / 1000000).toFixed(1) 
-    : (estimatedPayrollVndSum / 1000).toFixed(1);
-  const formattedPayrollDesc = isVnd ? "M ₫" : "k $";
+  const formattedPayrollValue = (estimatedPayrollVndSum / 1000000).toFixed(1);
+  const formattedPayrollDesc = "M ₫";
 
   // 3. Compute Chart Activity Trend
   const getChartData = () => {
@@ -708,11 +707,11 @@ const Dashboard = () => {
               <h1 className="page-title">{t('welcomeBack')}, {user?.firstName}</h1>
               <div className="role-chip-watt">
                 <Activity size={12} />
-                <span>{user?.role} STATUS: OPTIMIZED</span>
+                <span>{user?.role} {t('optimizedStatus')}</span>
               </div>
             </div>
           </div>
-          <p className="page-subtitle">Real-time intelligence from your workforce grid.</p>
+          <p className="page-subtitle">{t('realtimeGridIntel')}</p>
         </div>
 
         {/* Filters and Controls */}
@@ -730,7 +729,7 @@ const Dashboard = () => {
                       setSearchVal('');
                     }}
                   >
-                    <span>Dropdown</span>
+                    <span>{i18n.language === 'vi' ? 'Danh sách' : 'Dropdown'}</span>
                   </button>
                   <button 
                     type="button"
@@ -740,7 +739,7 @@ const Dashboard = () => {
                       setSelectedSiteId('ALL');
                     }}
                   >
-                    <span>Search</span>
+                    <span>{i18n.language === 'vi' ? 'Tìm kiếm' : 'Search'}</span>
                   </button>
                 </div>
               )}
@@ -759,7 +758,7 @@ const Dashboard = () => {
                   <Search size={14} className="search-icon-global" />
                   <input 
                     type="text" 
-                    placeholder="Search in all projects..." 
+                    placeholder={i18n.language === 'vi' ? 'Tìm kiếm trong tất cả dự án...' : 'Search in all projects...'} 
                     value={searchVal}
                     onChange={(e) => setSearchVal(e.target.value)}
                     className="global-search-input"
@@ -791,21 +790,21 @@ const Dashboard = () => {
                       className={"sub-pill-btn " + (customDateType === 'SINGLE' ? 'active' : '')}
                       onClick={() => setCustomDateType('SINGLE')}
                     >
-                      Day
+                      {t('filterSubDay')}
                     </button>
                     <button 
                       type="button"
                       className={"sub-pill-btn " + (customDateType === 'RANGE' ? 'active' : '')}
                       onClick={() => setCustomDateType('RANGE')}
                     >
-                      Range
+                      {t('filterSubRange')}
                     </button>
                     <button 
                       type="button"
                       className={"sub-pill-btn " + (customDateType === 'MONTH' ? 'active' : '')}
                       onClick={() => setCustomDateType('MONTH')}
                     >
-                      Month
+                      {t('filterSubMonth')}
                     </button>
                   </div>
 
@@ -827,7 +826,7 @@ const Dashboard = () => {
                           onChange={(e) => setCustomRangeStart(e.target.value)}
                           className="filter-date-input range-input"
                         />
-                        <span className="range-separator">to</span>
+                        <span className="range-separator">{t('filterSeparatorTo')}</span>
                         <input 
                           type="date" 
                           value={customRangeEnd} 
@@ -857,7 +856,7 @@ const Dashboard = () => {
               onClick={() => exportToCSV(isManagement ? computedTableLogs : (stats?.recentLogs || []), 'Dashboard_Stats')}
             >
               <CheckCircle2 size={18} />
-              <span>Export Data</span>
+              <span>{t('exportData')}</span>
             </button>
           </div>
         </div>
@@ -869,11 +868,11 @@ const Dashboard = () => {
           <div className="banner-left">
             <Clock className="banner-icon-pulse" size={20} />
             <div className="banner-text">
-              <h3>Verify Your Shift Attendance</h3>
-              <p>Click here to clock in or clock out for your daily shift log.</p>
+              <h3>{t('verifyShiftAttendance')}</h3>
+              <p>{t('verifyShiftAttendanceDesc')}</p>
             </div>
           </div>
-          <button className="banner-btn">Record Attendance</button>
+          <button className="banner-btn">{t('recordAttendanceBtn')}</button>
         </div>
       )}
 
@@ -881,35 +880,35 @@ const Dashboard = () => {
       <section className="stats-grid-watt">
         <StatCard
           icon={<Users size={20} />}
-          label={isManagement ? "Total Workforce" : "Weekly Hours"}
+          label={isManagement ? t('totalWorkforce') : t('weeklyHoursLabel')}
           value={isManagement ? computedTotalWorkforce : (stats?.weeklyHours ?? "0.0")}
           trend={isManagement ? undefined : 4.2}
           color="#3B82F6"
-          description={isManagement ? "workers" : "hours"}
+          description={isManagement ? t('workersUnit') : t('hoursUnit')}
         />
         <StatCard
           icon={<Activity size={20} />}
-          label={isManagement ? "Active Now" : "Efficiency"}
+          label={isManagement ? t('activeNow') : t('efficiencyLabel')}
           value={isManagement ? computedActiveNow : `${stats?.efficiency ?? 0}%`}
           trend={isManagement ? undefined : 1.8}
           color="#10B981"
-          description={isManagement ? "active" : ""}
+          description={isManagement ? t('activeUnit') : ""}
         />
         <StatCard
           icon={<TrendingUp size={20} />}
-          label={isManagement ? "Operational Efficiency" : "Monthly Hours"}
+          label={isManagement ? t('globalEfficiency') : t('monthlyHoursLabel')}
           value={isManagement ? computedEfficiency : (stats?.monthlyHours ?? "0.0")}
           color="#F59E0B"
-          description={isManagement ? "%" : "hours"}
-          trendLabel={isManagement ? "Optimal" : "This Month"}
+          description={isManagement ? "%" : t('hoursUnit')}
+          trendLabel={isManagement ? t('optimalLabel') : t('filterThisMonth')}
         />
         <StatCard
           icon={<Wallet size={20} />}
-          label={isManagement ? "Est. Payroll" : "Total Earnings"}
+          label={isManagement ? t('estPayroll') : t('totalEarnings')}
           value={isManagement ? formattedPayrollValue : (stats?.earnings ?? 0).toLocaleString()}
           color="#8B5CF6"
-          description={isManagement ? formattedPayrollDesc : (stats?.currencySymbol || "$")}
-          trendLabel={isManagement ? "Calculated" : `Rate: $${stats?.hourlyRate || '25'}/hr`}
+          description={isManagement ? formattedPayrollDesc : (stats?.currencySymbol || "₫")}
+          trendLabel={isManagement ? t('calculatedLabel') : `${i18n.language === 'vi' ? 'Đơn giá: ' : 'Rate: '}${stats?.hourlyRate?.toLocaleString() || '50,000'} ₫/hr`}
         />
       </section>
 
@@ -917,10 +916,10 @@ const Dashboard = () => {
       <div className="main-charts-grid">
         <div className="watt-card chart-main">
           <div className="card-header-watt">
-            <h3 className="card-title">{isManagement ? "Workforce Activity Over Time" : "Personal Performance Trend"}</h3>
+            <h3 className="card-title">{isManagement ? t('workforceActivityTime') : t('personalPerformanceTrend')}</h3>
             <div className="chart-legend-watt">
-              <span className="legend-item"><span className="dot active"></span> {isManagement ? "Active Load" : "Efficiency"}</span>
-              <span className="legend-item"><span className="dot baseline"></span> Baseload</span>
+              <span className="legend-item"><span className="dot active"></span> {isManagement ? t('activeLoad') : t('efficiencyLabel')}</span>
+              <span className="legend-item"><span className="dot baseline"></span> {t('baseload')}</span>
             </div>
           </div>
           <div className="chart-wrapper-watt" style={{ minHeight: '320px' }}>
@@ -965,14 +964,14 @@ const Dashboard = () => {
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
-              <div className="empty-chart-state">No trend data available for this period.</div>
+              <div className="empty-chart-state">{t('noTrendData')}</div>
             )}
           </div>
         </div>
 
         <div className="watt-card asset-distribution">
           <div className="card-header-watt">
-            <h3 className="card-title">{isManagement ? "Activity by Site" : "Recent Activity Feed"}</h3>
+            <h3 className="card-title">{isManagement ? t('activityBySite') : t('recentActivityFeed')}</h3>
           </div>
           <div className="asset-list">
             {isManagement ? (
@@ -980,7 +979,7 @@ const Dashboard = () => {
                 <div key={idx} className="asset-item">
                   <div className="asset-info">
                     <span className="asset-name">{site.name}</span>
-                    <span className="asset-value">{site.count} ACTIVE</span>
+                    <span className="asset-value">{site.count} {i18n.language === 'vi' ? 'HOẠT ĐỘNG' : 'ACTIVE'}</span>
                   </div>
                   <div className="asset-progress-bg">
                     <motion.div 
@@ -1002,7 +1001,7 @@ const Dashboard = () => {
                   )}
                 </div>
               )) : (
-                <div className="empty-asset-state">No active site sessions detected.</div>
+                <div className="empty-asset-state">{t('noActiveSiteSessions')}</div>
               )
             ) : (
               <div className="notifications-list-watt">
@@ -1020,7 +1019,7 @@ const Dashboard = () => {
                     </div>
                   ))
                 ) : (
-                  <div className="empty-state-watt">No recent activity detected</div>
+                  <div className="empty-state-watt">{i18n.language === 'vi' ? 'Không phát hiện hoạt động gần đây' : 'No recent activity detected'}</div>
                 )}
               </div>
             )}
@@ -1031,34 +1030,34 @@ const Dashboard = () => {
       {/* Recent Activity Table */}
       <div className="watt-card recent-events">
         <div className="card-header-watt">
-          <h3 className="card-title">Recent Activity Logs</h3>
+          <h3 className="card-title">{t('recentActivityLogs')}</h3>
         </div>
         <div className="events-table-wrapper">
           {(isManagement ? computedTableLogs : (stats?.recentLogs || [])).length > 0 ? (
           <table className="events-table">
             <thead>
               <tr>
-                <th>TIMESTAMP</th>
-                <th>ENTITY</th>
-                <th>EVENT TYPE</th>
-                <th>STATUS</th>
-                <th>ACTION</th>
+                <th>{t('timestampHeader')}</th>
+                <th>{t('entityHeader')}</th>
+                <th>{t('eventTypeHeader')}</th>
+                <th>{t('statusHeader')}</th>
+                <th>{t('actionHeader')}</th>
               </tr>
             </thead>
             <tbody>
               {(isManagement ? computedTableLogs : (stats?.recentLogs || [])).map((log: any, idx: number) => (
                 <tr key={idx}>
-                  <td className="timestamp" data-label="TIMESTAMP">{formatTime(log.time)}</td>
-                  <td className="entity" data-label="ENTITY">{log.title}</td>
-                  <td className="event-type" data-label="EVENT TYPE">{log.type}</td>
-                  <td data-label="STATUS">
+                  <td className="timestamp" data-label={t('timestampHeader')}>{formatTime(log.time)}</td>
+                  <td className="entity" data-label={t('entityHeader')}>{log.title}</td>
+                  <td className="event-type" data-label={t('eventTypeHeader')}>{log.type}</td>
+                  <td data-label={t('statusHeader')}>
                     <span className={`status-pill ${log.type === 'ALERT' || log.status === 'PENDING' ? 'warning' : 'success'}`}>
-                      {log.type === 'ALERT' || log.status === 'PENDING' ? 'Pending' : 'Verified'}
+                      {log.type === 'ALERT' || log.status === 'PENDING' ? t('pendingLabel') : t('verifiedLabel')}
                     </span>
                   </td>
-                  <td data-label="ACTION">
+                  <td data-label={t('actionHeader')}>
                     {user?.role === 'ADMIN' && (
-                      <button className="table-action-btn" onClick={() => navigate(`/employees/${log.entityId || ''}`)}>View Details</button>
+                      <button className="table-action-btn" onClick={() => navigate(`/employees/${log.entityId || ''}`)}>{t('viewDetailsBtn')}</button>
                     )}
                   </td>
                 </tr>
@@ -1066,7 +1065,7 @@ const Dashboard = () => {
             </tbody>
           </table>
           ) : (
-            <div className="empty-table-state">No recent activity logged in the system.</div>
+            <div className="empty-table-state">{t('noRecentActivityLogged')}</div>
           )}
         </div>
       </div>
@@ -1086,12 +1085,12 @@ const Dashboard = () => {
                 <div className="modal-icon-circle">
                   <Clock size={32} />
                 </div>
-                <h2>Shift Attendance Reminder</h2>
-                <p>Ensure your hours are logged correctly. Please submit your clock-in or clock-out session today to record your working logs accurately.</p>
+                <h2>{t('shiftAttendanceReminder')}</h2>
+                <p>{t('shiftReminderDesc')}</p>
                 
                 <div className="modal-actions-deck">
                   <button className="modal-btn-confirm" onClick={handleGoToAttendance}>
-                    Go to Attendance Page
+                    {t('goToAttendanceBtn')}
                   </button>
                   <button className="modal-btn-cancel" onClick={() => {
                     if (user) {
@@ -1101,7 +1100,7 @@ const Dashboard = () => {
                     }
                     setShowAttendancePrompt(false);
                   }}>
-                    Remind Me Later
+                    {t('remindMeLaterBtn')}
                   </button>
                 </div>
               </div>

@@ -438,3 +438,35 @@ export const updateAttendanceTimes = async (id: string, clockIn: string, clockOu
   await handleResponse(response);
   return response.json();
 };
+
+export const fetchHolidays = async () => {
+  const response = await fetch(`${BASE_URL}/holidays`, {
+    headers: getAuthHeaders()
+  });
+  await handleResponse(response);
+  if (!response.ok) throw new Error('Failed to fetch holidays');
+  return response.json();
+};
+
+export const createHoliday = async (holidayData: { date: string; name?: string }) => {
+  const response = await fetch(`${BASE_URL}/holidays`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(holidayData)
+  });
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || 'Failed to create holiday');
+  }
+  return response.json();
+};
+
+export const deleteHoliday = async (id: string) => {
+  const response = await fetch(`${BASE_URL}/holidays/${id}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders()
+  });
+  if (!response.ok) throw new Error('Failed to delete holiday');
+  return response.json();
+};
+

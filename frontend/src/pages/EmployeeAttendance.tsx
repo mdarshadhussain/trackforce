@@ -42,13 +42,13 @@ const base64ToBlob = (base64: string) => {
 };
 const EmployeeAttendance = () => {
   const { user } = useAuth();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [logs, setLogs] = useState<any[]>([]);
   const [allLogs, setAllLogs] = useState<any[]>([]);
   const [isClockedIn, setIsClockedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [locationName, setLocationName] = useState("");
+
 
   const [activeAction, setActiveAction] = useState<'IN' | 'OUT' | null>(null);
   const [step, setStep] = useState<'idle' | 'checking_location' | 'location_success' | 'location_failed' | 'facial_scanning' | 'complete' | 'failed'>('idle');
@@ -141,7 +141,6 @@ const EmployeeAttendance = () => {
 
   useEffect(() => {
     loadData();
-    setLocationName("");
     return () => stopCamera();
   }, [user]);
 
@@ -260,7 +259,6 @@ const EmployeeAttendance = () => {
 
       setStep('location_success');
       setStatusMessage(`Within boundary of "${emp.site.name}"!`);
-      setLocationName(`Zone: ${currentCoords.lat.toFixed(2)}, ${currentCoords.lng.toFixed(2)}`);
 
       setTimeout(() => {
         setStep('facial_scanning');
@@ -300,7 +298,6 @@ const EmployeeAttendance = () => {
       setCoords(simulatedCoords);
       setStep('location_success');
       setStatusMessage(`[SIMULATED] Located at "${emp.site.name}"`);
-      setLocationName(`Zone: ${simulatedCoords.lat.toFixed(2)}, ${simulatedCoords.lng.toFixed(2)} (Simulated)`);
       
       setTimeout(() => {
         setStep('facial_scanning');
@@ -317,6 +314,7 @@ const EmployeeAttendance = () => {
   };
 
   const triggerBiometricVerification = async (type: 'IN' | 'OUT', currentCoords: {lat: number, lng: number} | null) => {
+    if (!user) return;
     try {
       const cameraStarted = await startCamera();
       if (!cameraStarted) {
@@ -477,10 +475,8 @@ const EmployeeAttendance = () => {
     return cells;
   };
 
-  const currentMonthLogs = allLogs.filter(l => new Date(l.date).getMonth() === viewDate.getMonth() && new Date(l.date).getFullYear() === viewDate.getFullYear());
-  const totalMonthlyHours = currentMonthLogs.reduce((acc, l) => l.clockIn && l.clockOut ? acc + (new Date(l.clockOut).getTime() - new Date(l.clockIn).getTime()) / 3600000 : acc, 0);
 
-  if (isLoading) return <div className="dashboard-loading"><div className="loading-spinner-watt"></div><span>Syncing Intelligence...</span></div>;
+  if (isLoading) return <div className="dashboard-loading"><div className="loading-spinner-watt"></div><span>{t('processing')}</span></div>;
 
   return (
     <div className="employee-att-container">
@@ -492,15 +488,15 @@ const EmployeeAttendance = () => {
             <div className="avatar-ring"></div>
           </div>
           <div className="name-stack">
-            <h1>{t('welcomeBack')}, {user?.firstName}</h1>
+            <h1>{t('hi')}, {user?.firstName}</h1>
             <div className="profile-details-row">
-              <span className="p-role">{user?.jobTitle || 'Field Personnel'}</span>
+              <span className="p-role">{t('employee')}</span>
               <span className="details-dot">•</span>
               <span className="p-id">#TF-{user?.id.slice(-4).toUpperCase()}</span>
               <span className="details-dot">•</span>
               <div className={`status-badge-inline ${isClockedIn ? 'online' : 'offline'}`}>
                 <span className="status-dot"></span>
-                <span>{isClockedIn ? 'ACTIVE' : 'OFF DUTY'}</span>
+                <span>{isClockedIn ? t('active').toUpperCase() : t('offline').toUpperCase()}</span>
               </div>
             </div>
           </div>
@@ -511,7 +507,7 @@ const EmployeeAttendance = () => {
              <span className="live-time">{currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
              <span className="live-seconds">{currentTime.getSeconds().toString().padStart(2, '0')}</span>
           </div>
-          <span className="live-date">{currentTime.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase()}</span>
+          <span className="live-date">{currentTime.toLocaleDateString(i18n.language === 'vi' ? 'vi-VN' : [], { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase()}</span>
         </div>
       </header>
 
@@ -523,11 +519,11 @@ const EmployeeAttendance = () => {
           {/* Clock In/Out Actions */}
           <div className="attendance-card-premium">
             <div className="action-header">
-              <h2 className="card-title">ATTENDANCE HUB</h2>
+              <h2 className="card-title">{t('attendance').toUpperCase()}</h2>
               {isClockedIn && elapsedTime && (
                 <div className="elapsed-timer-badge">
                   <Timer size={14} className="timer-icon-spin" />
-                  <span>SHIFT TIME: {elapsedTime}</span>
+                  <span>{t('workingHours').toUpperCase()}: {elapsedTime}</span>
                 </div>
               )}
             </div>
@@ -536,7 +532,7 @@ const EmployeeAttendance = () => {
               <div className="permissions-alert-banner">
                 <span className="alert-icon">⚠️</span>
                 <div className="alert-text">
-                  <strong>Access Blocked</strong>
+                  <strong>{t('accessRestricted')}</strong>
                   <p>
                     {geoPermission === 'denied' && cameraPermission === 'denied'
                       ? 'GPS location & Camera access are blocked. '
@@ -563,7 +559,7 @@ const EmployeeAttendance = () => {
                     disabled={isClockedIn || (logs.length >= 5 && !isClockedIn)}
                   >
                     <Clock size={28} /> 
-                    <span>{logs.length >= 5 && !isClockedIn ? 'LIMIT REACHED' : 'CLOCK IN NOW'}</span>
+                    <span>{logs.length >= 5 && !isClockedIn ? t('target').toUpperCase() : t('clockIn').toUpperCase()}</span>
                   </motion.button>
                   
                   <motion.button 
@@ -574,7 +570,7 @@ const EmployeeAttendance = () => {
                     disabled={!isClockedIn}
                   >
                     <History size={28} /> 
-                    <span>CLOCK OUT</span>
+                    <span>{t('clockOut').toUpperCase()}</span>
                   </motion.button>
                 </div>
 
@@ -582,11 +578,11 @@ const EmployeeAttendance = () => {
                   <div className="shift-info-footer">
                     <div className="footer-item">
                       <Clock size={14} /> 
-                      <span>Started: <strong>{new Date(logs[0].clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong></span>
+                      <span>{t('checkin')}: <strong>{new Date(logs[0].clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong></span>
                     </div>
                     <div className="footer-item">
                       <MapPin size={14} /> 
-                      <span>Location: <strong>{logs[0].site?.name || user?.site?.name || logs[0].location || 'Main Site'}</strong></span>
+                      <span>{t('site')}: <strong>{logs[0].site?.name || user?.site?.name || logs[0].location || 'Main Site'}</strong></span>
                     </div>
                   </div>
                 )}
@@ -594,8 +590,8 @@ const EmployeeAttendance = () => {
             ) : (
               <div className="inline-verification-stepper">
                 <div className="stepper-header">
-                  <span className="stepper-title">VERIFICATION: CLOCK-{activeAction}</span>
-                  <button className="stepper-cancel-btn" onClick={resetVerification}>Cancel</button>
+                  <span className="stepper-title">{t('verification').toUpperCase()}: CLOCK-{activeAction}</span>
+                  <button className="stepper-cancel-btn" onClick={resetVerification}>{t('cancel')}</button>
                 </div>
 
                 <div className="stepper-progress">
@@ -638,7 +634,7 @@ const EmployeeAttendance = () => {
                         {(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (
                           <button className="btn-stepper-simulate" onClick={handleSimulateGPS}>Simulate GPS</button>
                         )}
-                        <button className="btn-stepper-cancel" onClick={resetVerification}>Cancel</button>
+                        <button className="btn-stepper-cancel" onClick={resetVerification}>{t('cancel')}</button>
                       </div>
                     </div>
                   )}
@@ -673,7 +669,7 @@ const EmployeeAttendance = () => {
                           setStatusMessage("Initializing biometric camera...");
                           triggerBiometricVerification(activeAction!, coords);
                         }}>Retry Scan</button>
-                        <button className="btn-stepper-cancel" onClick={resetVerification}>Cancel</button>
+                        <button className="btn-stepper-cancel" onClick={resetVerification}>{t('cancel')}</button>
                       </div>
                     </div>
                   )}
@@ -690,7 +686,7 @@ const EmployeeAttendance = () => {
           <div className="cal-header-flex">
             <div className="cal-label">
               <CalIcon size={18} /> 
-              <span>{viewDate.toLocaleString('default', { month: 'long', year: 'numeric' }).toUpperCase()}</span>
+              <span>{viewDate.toLocaleString(i18n.language === 'vi' ? 'vi-VN' : 'default', { month: 'long', year: 'numeric' }).toUpperCase()}</span>
             </div>
             <div className="cal-nav-btns">
               <button onClick={() => changeMonth(-1)}><ChevronLeft size={16} /></button>

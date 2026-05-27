@@ -1,19 +1,19 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   MapPin, 
-  Plus, 
-  Search, 
   Activity, 
   Shield, 
   Edit2,
   Trash2,
   Users,
   Loader2,
-  Navigation
+  Navigation,
+  Clock
 } from 'lucide-react';
 import './Sites.css';
 
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MapContainer, TileLayer, Circle, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -56,12 +56,13 @@ const ChangeView = ({ center, zoom }: { center: [number, number], zoom: number }
 
 const Sites = () => {
   const { user } = useAuth();
+  const { t, i18n } = useTranslation();
 
   const isAdmin = user?.role === 'ADMIN';
   const isManager = user?.role === 'MANAGER' || isAdmin;
 
   const [sites, setSites] = useState<any[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -107,7 +108,7 @@ const Sites = () => {
         setMapCenter([filteredSites[0].latitude || 20.5937, filteredSites[0].longitude || 78.9629]);
       }
     } catch (err) {
-      addToast('Failed to load operational sites', 'error');
+      addToast(t('failedLoadSites'), 'error');
     } finally {
       setLoading(false);
     }
@@ -123,7 +124,7 @@ const Sites = () => {
     if (!siteToDelete) return;
     try {
       await deleteSite(siteToDelete);
-      addToast('Site deleted successfully', 'success');
+      addToast(t('siteDeletedSuccess'), 'success');
       loadSites();
     } catch (err: any) {
       addToast(err.message, 'error');
@@ -137,14 +138,14 @@ const Sites = () => {
     try {
       if (editingSite) {
         await updateSite(editingSite.id, siteData);
-        addToast('Site Configuration Updated', 'success');
+        addToast(t('siteConfigUpdated'), 'success');
       } else {
         await createSite(siteData);
-        addToast('Site Node Initialized Successfully!', 'success');
+        addToast(t('siteNodeInitialized'), 'success');
       }
       loadSites();
     } catch (err: any) {
-      addToast(err.message || 'Action failed', 'error');
+      addToast(err.message || t('actionFailed'), 'error');
       throw err;
     }
   };
@@ -170,7 +171,7 @@ const Sites = () => {
             {loading ? (
               <div className="loading-state-site">
                 <Loader2 className="spin" size={40} color="var(--primary)" />
-                <p>Synchronizing Site Data...</p>
+                <p>{i18n.language === 'vi' ? 'Đang đồng bộ hóa dữ liệu địa điểm...' : 'Synchronizing Site Data...'}</p>
               </div>
             ) : (
               sites.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase())).map((site) => {
@@ -201,7 +202,7 @@ const Sites = () => {
                       
                       {isPrimarySite && (
                         <div className="assigned-badge-on-border">
-                          ASSIGNED
+                          {t('assigned')}
                         </div>
                       )}
 
@@ -232,14 +233,21 @@ const Sites = () => {
                           <Users size={16} />
                           <div className="intel-text">
                             <span className="intel-value">{site._count?.employees || 0}</span>
-                            <span className="intel-label">Employees</span>
+                            <span className="intel-label">{t('employeesLabel')}</span>
                           </div>
                         </div>
                         <div className="intel-item-premium">
                           <Shield size={16} />
                           <div className="intel-text">
                             <span className="intel-value">{site.geofenceRadius || 500}m</span>
-                            <span className="intel-label">Geofence</span>
+                            <span className="intel-label">{t('geofenceLabel')}</span>
+                          </div>
+                        </div>
+                        <div className="intel-item-premium">
+                          <Clock size={16} />
+                          <div className="intel-text">
+                            <span className="intel-value">{site.workingStartTime || '07:00'}</span>
+                            <span className="intel-label">{t('startTimeLabel')}</span>
                           </div>
                         </div>
                       </div>
@@ -251,7 +259,7 @@ const Sites = () => {
                         setMapZoom(16);
                       }}>
                         <Navigation size={14} /> 
-                        Center on Map
+                        {t('centerOnMap')}
                       </button>
                     </div>
                   </motion.div>
@@ -264,10 +272,10 @@ const Sites = () => {
         <div className="map-preview-section">
           <div className="glass-card map-preview-card">
             <div className="map-header">
-              <h3>Geofence Visualization</h3>
+              <h3>{t('geofenceVisualization')}</h3>
               <div className="map-legend">
-                <span className="legend-item active">Operational</span>
-                <span className="legend-item fence">Geofence</span>
+                <span className="legend-item active">{t('operational')}</span>
+                <span className="legend-item fence">{t('geofenceLabel')}</span>
               </div>
             </div>
             <div className="map-visual-real">
@@ -298,7 +306,7 @@ const Sites = () => {
             </div>
             <div className="map-footer-info">
               <Activity size={16} color="var(--primary)" />
-              <span>Real-time GPS data streaming active for all sites</span>
+              <span>{t('realtimeGpsStreaming')}</span>
             </div>
           </div>
         </div>
@@ -318,11 +326,11 @@ const Sites = () => {
 
       <ConfirmModal
         isOpen={isConfirmOpen}
-        title="Delete Operational Site"
-        message="CRITICAL ACTION: Deleting this site will unassign all employees from their current station. This action cannot be undone."
+        title={t('deleteOperationalSite')}
+        message={t('deleteSiteWarning')}
         onConfirm={confirmDelete}
         onCancel={() => setIsConfirmOpen(false)}
-        confirmText="Confirm Delete"
+        confirmText={t('confirmDeleteBtn')}
         variant="danger"
       />
     </div>

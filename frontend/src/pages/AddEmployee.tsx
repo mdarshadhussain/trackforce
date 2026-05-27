@@ -18,10 +18,12 @@ import { useAuth } from '../context/AuthContext';
 import { fetchSites, createEmployee, fetchEmployeeById, updateEmployee } from '../api/api';
 import PremiumSelect from '../components/PremiumSelect';
 import './AddEmployee.css';
+import { useTranslation } from 'react-i18next';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const AddEmployee = () => {
+  const { t } = useTranslation();
   const { id } = useParams();
   const isEditMode = !!id;
   const { isAdmin } = useAuth();
@@ -98,7 +100,7 @@ const AddEmployee = () => {
         }
       } catch (err) {
         console.error("Initialization error:", err);
-        setError("Failed to load workforce intelligence");
+        setError(t('failedLoadWorkforce'));
       } finally {
         setIsLoading(false);
       }
@@ -124,7 +126,7 @@ const AddEmployee = () => {
     e.preventDefault();
     
     if (!formData.avatar) {
-      alert("Profile picture is mandatory. Please upload a photo.");
+      alert(t('profilePicMandatory'));
       return;
     }
 
@@ -150,13 +152,13 @@ const AddEmployee = () => {
         await updateEmployee(id!, formDataToSend);
       } else {
         if (!files.avatar) {
-          throw new Error("Profile picture is mandatory for new nodes.");
+          throw new Error(t('profilePicMandatoryNew'));
         }
         await createEmployee(formDataToSend);
       }
       navigate('/employees');
     } catch (err: any) {
-      setError(err.message || 'Mission failed. Please check network protocols.');
+      setError(err.message || t('missionFailedNetwork'));
     } finally {
       setIsSubmitting(false);
     }
@@ -166,7 +168,7 @@ const AddEmployee = () => {
     return (
       <div className="loading-state-premium">
         <div className="spinner-obsidian"></div>
-        <p>Synchronizing Workforce Data...</p>
+        <p>{t('processing')}</p>
       </div>
     );
   }
@@ -184,16 +186,16 @@ const AddEmployee = () => {
               <ChevronLeft size={20} />
             </button>
             <div>
-              <h1>{isEditMode ? "Edit Profile" : "Add Workforce Member"}</h1>
-              <p>{isEditMode ? "Update workforce details and permissions." : "Create a new profile with biometric and payroll details."}</p>
+              <h1>{isEditMode ? t('editProfile') : t('addWorkforceMember')}</h1>
+              <p>{isEditMode ? t('updateWorkforceDetails') : t('createNewProfileBiometric')}</p>
             </div>
           </div>
           <div className="header-actions">
             <button type="button" onClick={() => navigate('/employees')} className="btn btn-ghost">
-              Cancel
+              {t('cancel')}
             </button>
             <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
-              {isSubmitting ? "Processing..." : (isEditMode ? "Save Changes" : "Create Profile")}
+              {isSubmitting ? t('processing') : (isEditMode ? t('saveChanges') : t('createProfile'))}
               {isEditMode ? <Save size={16} /> : <UserPlus size={16} />}
             </button>
           </div>
@@ -209,7 +211,7 @@ const AddEmployee = () => {
         <div className="add-employee-layout-split">
           {/* Core & Security Card */}
           <div className="compact-section card-1">
-              <h3 className="section-title-compact">1. Core Identity & Access</h3>
+              <h3 className="section-title-compact">{t('coreIdentityAccess')}</h3>
               <div className="core-security-header-row">
                 <div className="avatar-field-compact">
                   <div className="avatar-preview-wrapper-compact">
@@ -235,7 +237,7 @@ const AddEmployee = () => {
                 
                 <div className="fields-grid">
                   <div className="form-field required">
-                    <label>Full Name</label>
+                    <label>{t('fullName')}</label>
                     <input 
                       type="text" 
                       required 
@@ -245,7 +247,7 @@ const AddEmployee = () => {
                     />
                   </div>
                   <div className="form-field required">
-                    <label>Employee ID</label>
+                    <label>{t('employeeID')}</label>
                     <input 
                       type="text" 
                       required 
@@ -255,7 +257,7 @@ const AddEmployee = () => {
                     />
                   </div>
                   <div className="form-field required">
-                    <label>{isEditMode ? "New Password" : "Initial Password"}</label>
+                    <label>{isEditMode ? t('newPassword') : t('initialPasswordLabel')}</label>
                     <div className="password-input-wrapper-modern">
                       <input 
                         type={showPassword ? "text" : "password"} 
@@ -278,7 +280,7 @@ const AddEmployee = () => {
 
               <div className="form-row-grid grid-2" style={{ marginTop: '12px' }}>
                 <div className="form-field">
-                  <label>Date of Birth</label>
+                  <label>{t('dobLabel')}</label>
                   <input 
                     type="date" 
                     value={formData.dob}
@@ -287,7 +289,7 @@ const AddEmployee = () => {
                 </div>
 
                 <div className="form-field required">
-                  <label>Phone Number</label>
+                  <label>{t('phoneNumRequired')}</label>
                   <input 
                     type="tel" 
                     required 
@@ -301,17 +303,17 @@ const AddEmployee = () => {
               {!isEditMode && (
                 <div className="enrollment-notice-compact" style={{ marginTop: '12px' }}>
                   <CheckCircle2 size={14} />
-                  <span>Requires face scan during first login.</span>
+                  <span>{t('firstLoginNotice')}</span>
                 </div>
               )}
             </div>
 
             {/* Payroll & Project Card */}
             <div className="compact-section card-2">
-              <h3 className="section-title-compact">2. Payroll & Project Assignment</h3>
+              <h3 className="section-title-compact">{t('payrollProjectAssignment')}</h3>
               <div className="form-row-grid grid-3">
                 <div className="form-field required">
-                  <label>Salary (Per Hour)</label>
+                  <label>{t('salaryPerHour')}</label>
                   <div className="input-with-prefix-modern">
                     <span className="prefix-addon">₫</span>
                     <input 
@@ -327,15 +329,15 @@ const AddEmployee = () => {
                 </div>
 
                 <div className="form-field required" style={{ gridColumn: 'span 2' }}>
-                  <label>Overtime Protocol</label>
+                  <label>{t('overtimeProtocol')}</label>
                   <div className="overtime-protocol-group-modern">
                     <PremiumSelect 
                       required
                       value={formData.overtimeType}
                       onChange={(val: string) => setFormData({...formData, overtimeType: val})}
                       options={[
-                        { label: 'Multiplier', value: 'MULTIPLIER' },
-                        { label: 'Fixed Amount', value: 'FIXED' }
+                        { label: t('multiplier'), value: 'MULTIPLIER' },
+                        { label: t('fixedAmount'), value: 'FIXED' }
                       ]}
                     />
                     <div className="input-with-prefix-modern">
@@ -356,7 +358,7 @@ const AddEmployee = () => {
 
               <div className={`form-row-grid ${formData.role === 'EMPLOYEE' ? 'grid-3' : (formData.role === 'MANAGER' ? 'grid-2' : '')}`} style={{ marginTop: '12px' }}>
                 <div className="form-field required">
-                  <label>Access Level</label>
+                  <label>{t('accessLevel')}</label>
                   <PremiumSelect 
                     required
                     disabled={!isAdmin}
@@ -370,22 +372,22 @@ const AddEmployee = () => {
                       }));
                     }}
                     options={[
-                      { label: 'Employee', value: 'EMPLOYEE' },
-                      { label: 'Manager', value: 'MANAGER' },
-                      { label: 'Admin', value: 'ADMIN' }
+                      { label: t('employee'), value: 'EMPLOYEE' },
+                      { label: t('manager'), value: 'MANAGER' },
+                      { label: t('admin'), value: 'ADMIN' }
                     ]}
                   />
                 </div>
 
                 {formData.role !== 'ADMIN' && (
                   <div className="form-field required">
-                    <label>Project Site</label>
+                    <label>{t('assignedSite')}</label>
                     <PremiumSelect 
                       required
                       value={formData.siteId}
                       onChange={(val: string) => setFormData({...formData, siteId: val})}
                       options={[
-                        { label: 'Select Site...', value: '' },
+                        { label: t('selectSiteOption'), value: '' },
                         ...sites.map(site => ({ label: site.name, value: site.id }))
                       ]}
                     />
@@ -394,24 +396,24 @@ const AddEmployee = () => {
 
                 {formData.role === 'EMPLOYEE' && (
                   <div className="form-field required">
-                    <label>Designation</label>
+                    <label>{t('designation')}</label>
                     <PremiumSelect 
                       required
                       value={formData.designation}
                       onChange={(val: string) => setFormData({...formData, designation: val})}
                       options={[
-                        { label: 'Select Designation...', value: '' },
-                        { label: 'Supervisor', value: 'Supervisor' },
-                        { label: 'Foreman', value: 'Foreman' },
-                        { label: 'Experience Worker', value: 'Experience Worker' },
-                        { label: 'Engineer', value: 'Engineer' },
-                        { label: 'Fresh Worker', value: 'Fresh Worker' },
-                        { label: 'Safety', value: 'Safety' },
-                        { label: 'Drawing', value: 'Drawing' },
-                        { label: 'QA/QC', value: 'QA/QC' },
-                        { label: 'QS', value: 'QS' },
-                        { label: 'Store keeper', value: 'Store keeper' },
-                        { label: 'Sr. Foreman', value: 'Sr. Foreman' }
+                        { label: t('selectDesignationOption'), value: '' },
+                        { label: t('supervisor'), value: 'Supervisor' },
+                        { label: t('foreman'), value: 'Foreman' },
+                        { label: t('experienceWorker'), value: 'Experience Worker' },
+                        { label: t('engineer'), value: 'Engineer' },
+                        { label: t('freshWorker'), value: 'Fresh Worker' },
+                        { label: t('safety'), value: 'Safety' },
+                        { label: t('drawing'), value: 'Drawing' },
+                        { label: t('qaqc'), value: 'QA/QC' },
+                        { label: t('qs'), value: 'QS' },
+                        { label: t('storeKeeper'), value: 'Store keeper' },
+                        { label: t('srForeman'), value: 'Sr. Foreman' }
                       ]}
                     />
                   </div>
@@ -421,10 +423,10 @@ const AddEmployee = () => {
 
           {/* Financial Card */}
           <div className="compact-section card-4">
-              <h3 className="section-title-compact">4. Bank Accounts</h3>
+              <h3 className="section-title-compact">{t('bankAccounts')}</h3>
               <div className="form-row-grid grid-2">
                 <div className="form-field">
-                  <label>Bank Name</label>
+                  <label>{t('bankNameLabel')}</label>
                   <input 
                     type="text" 
                     value={formData.bankName}
@@ -434,7 +436,7 @@ const AddEmployee = () => {
                 </div>
 
                 <div className="form-field">
-                  <label>Account Number</label>
+                  <label>{t('accountNumberLabel')}</label>
                   <input 
                     type="text" 
                     value={formData.accountNumber}
@@ -446,7 +448,7 @@ const AddEmployee = () => {
 
               <div style={{ marginTop: '12px' }}>
                 <div className="form-field">
-                  <label>Account Holder Name</label>
+                  <label>{t('accountHolderNameLabel')}</label>
                   <input 
                     type="text" 
                     value={formData.accountHolderName}
@@ -459,10 +461,10 @@ const AddEmployee = () => {
 
             {/* Official Identification Card */}
             <div className="compact-section card-3">
-              <h3 className="section-title-compact">3. Identification & Documents</h3>
+              <h3 className="section-title-compact">{t('identificationDocs')}</h3>
               <div className="form-row-grid grid-3">
                 <div className="form-field">
-                  <label>Passport / ID Number</label>
+                  <label>{t('passportIdNumber')}</label>
                   <input 
                     type="text" 
                     value={formData.passportNumber}
@@ -472,7 +474,7 @@ const AddEmployee = () => {
                 </div>
 
                 <div className="form-field">
-                  <label>Passport Issue</label>
+                  <label>{t('passportIssueLabel')}</label>
                   <input 
                     type="date" 
                     value={formData.passportIssue}
@@ -481,7 +483,7 @@ const AddEmployee = () => {
                 </div>
 
                 <div className="form-field">
-                  <label>Passport Expiry</label>
+                  <label>{t('passportExpiryLabel')}</label>
                   <input 
                     type="date" 
                     value={formData.passportExpiry}
@@ -492,12 +494,12 @@ const AddEmployee = () => {
 
               <div className="form-row-grid grid-2" style={{ marginTop: '12px' }}>
                 <div className="form-field">
-                  <label>Resume / CV</label>
+                  <label>{t('resumeCv')}</label>
                   <div className={`file-upload-zone-modern ${files.cv || formData.cvPath ? 'uploaded' : ''}`}>
                     <Upload size={16} className="upload-icon" />
                     <div className="upload-text">
                       <span className="file-name-display">
-                        {files.cv ? files.cv.name : (formData.cvPath ? 'Resume_CV_Uploaded.pdf' : 'Upload Resume')}
+                        {files.cv ? files.cv.name : (formData.cvPath ? 'Resume_CV_Uploaded.pdf' : t('uploadResume'))}
                       </span>
                     </div>
                     <input type="file" accept=".pdf,.doc,.docx" onChange={(e) => handleFileChange(e, 'cv')} />
@@ -505,12 +507,12 @@ const AddEmployee = () => {
                 </div>
 
                 <div className="form-field">
-                  <label>ID Proof Document</label>
+                  <label>{t('idProofDoc')}</label>
                   <div className={`file-upload-zone-modern ${files.idDoc || formData.idDocPath ? 'uploaded' : ''}`}>
                     <Upload size={16} className="upload-icon" />
                     <div className="upload-text">
                       <span className="file-name-display">
-                        {files.idDoc ? files.idDoc.name : (formData.idDocPath ? 'ID_Proof_Uploaded.jpg' : 'Upload ID Proof')}
+                        {files.idDoc ? files.idDoc.name : (formData.idDocPath ? 'ID_Proof_Uploaded.jpg' : t('uploadIdProof'))}
                       </span>
                     </div>
                     <input type="file" accept="image/*,.pdf" onChange={(e) => handleFileChange(e, 'idDoc')} />

@@ -33,8 +33,8 @@ import './Profile.css';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const Profile = () => {
-  const { user, updateUser } = useAuth();
-  const { i18n } = useTranslation();
+  const { user } = useAuth();
+  const { t, i18n } = useTranslation();
   const { theme, toggleTheme } = useTheme();
 
   const [loading, setLoading] = useState(true);
@@ -69,7 +69,7 @@ const Profile = () => {
       }
     } catch (err) {
       console.error('Failed to load profile', err);
-      addToast('Failed to load profile data', 'error');
+      addToast(t('failedLoadWorkforce'), 'error');
     } finally {
       setLoading(false);
     }
@@ -80,33 +80,45 @@ const Profile = () => {
       addToast('Password must be at least 6 characters long.', 'error');
       return;
     }
+    if (!user) return;
     try {
       await updateEmployee(user.id, { password: newPassword });
-      addToast('Password updated successfully', 'success');
+      addToast(t('siteConfigUpdated'), 'success');
       setIsEditingPassword(false);
       setNewPassword('');
       loadProfileData();
     } catch (error) {
-      addToast('Failed to update password', 'error');
+      addToast(t('actionFailed'), 'error');
     }
   };
 
-  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file && user) {
-      try {
-        const formData = new FormData();
-        formData.append('avatar', file);
-        formData.append('employeeId', user.employeeId);
-        formData.append('fullName', `${user.firstName} ${user.lastName}`);
-        
-        const updated = await updateEmployee(user.id, formData);
-        updateUser(updated);
-        addToast('Profile Picture Updated Successfully!', 'success');
-      } catch (err) {
-        addToast('Failed to update profile avatar', 'error');
-      }
-    }
+  // const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  //   const file = e.target.files?.[0];
+  //   if (file && user) {
+  //     try {
+  //       const formData = new FormData();
+  //       formData.append('avatar', file);
+  //       formData.append('employeeId', user.employeeId);
+  //       formData.append('fullName', `${user.firstName} ${user.lastName}`);
+  //       
+  //       const updated = await updateEmployee(user.id, formData);
+  //       updateUser(updated);
+  //       addToast(t('siteConfigUpdated'), 'success');
+  //     } catch (err) {
+  //       addToast(t('actionFailed'), 'error');
+  //     }
+  //   }
+  // };
+
+  const getDesignationLabel = (title: string) => {
+    if (!title) return t('specialist');
+    const normalized = title.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (normalized === 'experienceworker') return t('experienceWorker');
+    if (normalized === 'freshworker') return t('freshWorker');
+    if (normalized === 'storekeeper') return t('storeKeeper');
+    if (normalized === 'srforeman') return t('srForeman');
+    if (normalized === 'qaqc') return t('qaqc');
+    return t(normalized) || title;
   };
 
   if (loading) return (
@@ -134,7 +146,7 @@ const Profile = () => {
             {/* Left: Identity Details */}
             <div className="hero-identity-text">
               <div className="badge-row" style={{ marginBottom: '8px' }}>
-                <span className="badge-premium role">{fullProfile?.employee?.role || user?.role}</span>
+                <span className="badge-premium role">{t(fullProfile?.employee?.role?.toLowerCase() || user?.role?.toLowerCase())}</span>
                 <span className="badge-premium id">ID: #{fullProfile?.employee?.employeeId || user?.employeeId}</span>
               </div>
               <h1 style={{ margin: 0 }}>{fullProfile?.employee?.firstName || user?.firstName} {fullProfile?.employee?.lastName || user?.lastName}</h1>
@@ -143,21 +155,21 @@ const Profile = () => {
             {/* Middle: Work Metrics Indicators */}
             <div className="hero-quick-indicators">
               <div className="hero-indicator-card">
-                <label>Assigned Work Site</label>
-                <span>{fullProfile?.employee?.site?.name || 'Mobile Force'}</span>
+                <label>{t('assignedSite')}</label>
+                <span>{fullProfile?.employee?.site?.name || t('unassigned')}</span>
               </div>
               <div className="hero-indicator-card">
-                <label>Biometric Enrollment</label>
+                <label>{t('biometricStatus')}</label>
                 <span className={`status-indicator-badge ${(fullProfile?.employee?.isBiometricEnrolled ?? user?.isBiometricEnrolled) ? 'verified' : 'pending'}`}>
-                  {(fullProfile?.employee?.isBiometricEnrolled ?? user?.isBiometricEnrolled) ? 'Verified' : 'Pending'}
+                  {(fullProfile?.employee?.isBiometricEnrolled ?? user?.isBiometricEnrolled) ? t('verified') : t('pendingLabel')}
                 </span>
               </div>
               <div className="hero-indicator-card manager-card">
                 <div className="manager-header">
                   <User size={11} />
-                  <label>{(fullProfile?.employee?.role || user?.role) === 'MANAGER' ? 'Appointed By' : 'Assigned Manager'}</label>
+                  <label>{t('roleStatus')}</label>
                 </div>
-                <span>{(fullProfile?.employee?.role || user?.role) === 'MANAGER' ? 'System Admin' : (fullProfile?.employee?.site?.managerName || 'System Admin')}</span>
+                <span>{fullProfile?.employee?.site?.managerName || t('admin')}</span>
               </div>
             </div>
 
@@ -182,26 +194,26 @@ const Profile = () => {
           <section className="profile-section">
           <div className="section-header">
             <Fingerprint size={20} />
-            <h3>Personal details</h3>
+            <h3>{t('profile')}</h3>
           </div>
           <div className="info-grid-creative" style={{ marginTop: '16px' }}>
-            <DetailsRow icon={<User size={16} />} label="Login Username" value={fullProfile?.employee?.employeeId || user?.employeeId} />
-            <DetailsRow icon={<Smartphone size={16} />} label="Phone Number" value={fullProfile?.employee?.phone || 'Not Linked'} />
-            <DetailsRow icon={<Calendar size={16} />} label="Date of Birth" value={fullProfile?.employee?.dob ? new Date(fullProfile?.employee?.dob).toLocaleDateString() : 'Classified'} />
-            <DetailsRow icon={<Briefcase size={16} />} label="Job Designation" value={fullProfile?.employee?.designation || 'Specialist'} />
+            <DetailsRow icon={<User size={16} />} label={t('employeeID')} value={fullProfile?.employee?.employeeId || user?.employeeId} />
+            <DetailsRow icon={<Smartphone size={16} />} label={t('phoneNum')} value={fullProfile?.employee?.phone || t('noCustomHolidays')} />
+            <DetailsRow icon={<Calendar size={16} />} label={t('dobLabel')} value={fullProfile?.employee?.dob ? new Date(fullProfile?.employee?.dob).toLocaleDateString(i18n.language === 'vi' ? 'vi-VN' : undefined) : t('noCustomHolidays')} />
+            <DetailsRow icon={<Briefcase size={16} />} label={t('designation')} value={getDesignationLabel(fullProfile?.employee?.designation)} />
           </div>
           </section>
 
           <section className="profile-section">
             <div className="section-header">
               <Landmark size={20} />
-              <h3>Payout Settlement</h3>
+              <h3>{t('bankAccounts')}</h3>
             </div>
             <div className="info-grid-creative" style={{ marginTop: '16px' }}>
-              <DetailsRow icon={<Landmark size={16} />} label="Settlement Bank" value={fullProfile?.employee?.bankName || 'Awaiting Link'} />
-              <DetailsRow icon={<CreditCard size={16} />} label="Account Number" value={fullProfile?.employee?.accountNumber || 'X-XXXX-XXXX'} />
-              <DetailsRow icon={<User size={16} />} label="Beneficiary Holder" value={fullProfile?.employee?.accountHolderName || 'N/A'} />
-              <DetailsRow icon={<DollarSign size={16} />} label="Payment Per Hour" value={fullProfile?.employee?.hourlyRate ? `$${fullProfile.employee.hourlyRate.toFixed(2)} / hr` : '$0.00 / hr'} />
+              <DetailsRow icon={<Landmark size={16} />} label={t('bankNameLabel')} value={fullProfile?.employee?.bankName || t('noCustomHolidays')} />
+              <DetailsRow icon={<CreditCard size={16} />} label={t('accountNumberLabel')} value={fullProfile?.employee?.accountNumber || t('noCustomHolidays')} />
+              <DetailsRow icon={<User size={16} />} label={t('accountHolderNameLabel')} value={fullProfile?.employee?.accountHolderName || 'N/A'} />
+              <DetailsRow icon={<DollarSign size={16} />} label={t('salaryPerHour')} value={fullProfile?.employee?.hourlyRate ? `${fullProfile.employee.hourlyRate.toLocaleString()} ₫ / hr` : '0 ₫ / hr'} />
             </div>
           </section>
         </div>
@@ -211,14 +223,14 @@ const Profile = () => {
       <section className="profile-section settings-wide">
         <div className="section-header">
           <Shield size={20} />
-          <h3>Security & Preferences</h3>
+          <h3>{t('systemParameters')}</h3>
         </div>
         
         <div className="settings-list-creative">
           <div className="settings-item-node">
             <div className="item-label">
               <Lock size={16} />
-              <span>Shift Account Password</span>
+              <span>{t('passwordLabel')}</span>
             </div>
             {isEditingPassword ? (
               <div style={{ display: 'flex', gap: '8px' }}>
@@ -227,7 +239,7 @@ const Profile = () => {
                     type={showPassword ? "text" : "password"} 
                     value={newPassword} 
                     onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="New password" 
+                    placeholder={t('newPassword')} 
                     autoFocus
                   />
                   <button onClick={() => setShowPassword(!showPassword)}>
@@ -235,10 +247,10 @@ const Profile = () => {
                   </button>
                 </div>
                 <button className="btn btn-primary" style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '12px' }} onClick={handleSavePassword}>
-                  Save
+                  {t('saveChanges')}
                 </button>
                 <button className="btn btn-ghost" style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '12px', border: '1px solid var(--border)' }} onClick={() => setIsEditingPassword(false)}>
-                  Cancel
+                  {t('cancel')}
                 </button>
               </div>
             ) : (
@@ -250,7 +262,7 @@ const Profile = () => {
                   </button>
                 </div>
                 <button className="btn btn-primary" style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '12px', background: 'var(--surface-hover)', border: '1px solid var(--border)', color: 'var(--text-primary)' }} onClick={() => setIsEditingPassword(true)}>
-                  Change
+                  {t('editProfile')}
                 </button>
               </div>
             )}
@@ -259,7 +271,7 @@ const Profile = () => {
           <div className="settings-item-node">
             <div className="item-label">
               <Globe size={16} />
-              <span>Portal Display Language</span>
+              <span>{t('languageNode')}</span>
             </div>
             <select className="creative-select" value={i18n.language} onChange={(e) => i18n.changeLanguage(e.target.value)}>
               <option value="en">English (UK)</option>
@@ -270,7 +282,7 @@ const Profile = () => {
           <div className="settings-item-node">
             <div className="item-label">
               {theme === 'dark' ? <Moon size={16} /> : <Sun size={16} />}
-              <span>Visual Comfort Dark Theme</span>
+              <span>{t('darkMode')}</span>
             </div>
             <button className={`creative-toggle ${theme === 'dark' ? 'active' : ''}`} onClick={toggleTheme}>
               <div className="toggle-knob"></div>

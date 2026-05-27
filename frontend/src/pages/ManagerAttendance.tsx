@@ -1,25 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Camera, 
   User, 
   Search, 
-  CheckCircle, 
   Clock, 
-  ArrowLeft,
   UserCheck,
-  AlertCircle,
   Shield,
   X,
-  RefreshCw,
   Loader2,
-  Filter,
   MapPin
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import * as faceapi from 'face-api.js';
 import { loadFaceApiModels, areModelsLoaded } from '../utils/aiModels';
-import { fetchEmployees, fetchAllLogs, submitManagerLog, fetchTodayLogs, clockIn, clockOut, createSecurityAlert, fetchSites } from '../api/api';
+import { fetchEmployees, fetchAllLogs, submitManagerLog, fetchTodayLogs, createSecurityAlert, fetchSites } from '../api/api';
 import { useAuth } from '../context/AuthContext';
 import './ManagerAttendance.css';
 
@@ -49,137 +43,28 @@ const base64ToBlob = (base64: string) => {
   return new Blob([ab], { type: mimeString });
 };
 
-const SearchableSiteDropdown = ({ 
-  sites, 
-  selectedSiteId, 
-  onSelectSite 
-}: { 
-  sites: any[]; 
-  selectedSiteId: string; 
-  onSelectSite: (id: string) => void; 
-}) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const selectedSite = selectedSiteId === 'all' 
-    ? { id: 'all', name: 'All Sites' } 
-    : sites.find(s => s.id === selectedSiteId) || { id: 'all', name: 'All Sites' };
-
-  const filteredSites = sites.filter(s => 
-    s.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  return (
-    <div className="searchable-dropdown" ref={dropdownRef}>
-      <button 
-        type="button" 
-        className={"dropdown-trigger-btn " + (isOpen ? "active" : "")}
-        onClick={() => setIsOpen(!isOpen)}
-        style={{ border: 'none', background: 'transparent' }}
-      >
-        <Filter size={14} className="trigger-icon" />
-        <span>{selectedSite.name}</span>
-        <span className="dropdown-arrow">▼</span>
-      </button>
-
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div 
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className="dropdown-overlay-deck"
-          >
-            <div className="dropdown-search-box" onClick={(e) => e.stopPropagation()}>
-              <Search size={14} className="search-icon-inside" />
-              <input 
-                type="text" 
-                placeholder="Search sites..." 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                autoFocus
-              />
-            </div>
-
-            <div className="dropdown-list-scroller">
-              <button 
-                type="button"
-                className={"dropdown-list-item " + (selectedSiteId === 'all' ? 'active' : '')}
-                onClick={() => {
-                  onSelectSite('all');
-                  setIsOpen(false);
-                  setSearchQuery('');
-                }}
-              >
-                All Sites ({sites.length})
-              </button>
-              
-              {filteredSites.length > 0 ? (
-                filteredSites.map(site => (
-                  <button 
-                    key={site.id}
-                    type="button"
-                    className={"dropdown-list-item " + (selectedSiteId === site.id ? 'active' : '')}
-                    onClick={() => {
-                      onSelectSite(site.id);
-                      setIsOpen(false);
-                      setSearchQuery('');
-                    }}
-                  >
-                    {site.name}
-                  </button>
-                ))
-              ) : (
-                <div className="dropdown-no-results">No sites found</div>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-};
-
 const ManagerAttendance: React.FC = () => {
-  const navigate = useNavigate();
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [employees, setEmployees] = useState<any[]>([]);
   const [attendance, setAttendance] = useState<any[]>([]);
   const [sites, setSites] = useState<any[]>([]);
-  const [selectedSite, setSelectedSite] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [modelsLoaded, setModelsLoaded] = useState(areModelsLoaded());
 
   // Camera & Face Verification States
-  const [isCameraActive, setIsCameraActive] = useState(false);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
-  const [verificationStatus, setVerificationStatus] = useState<'idle' | 'verifying' | 'success' | 'failed'>('idle');
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
   // Stepper State for Proxy Attendance Log
-  const [step, setStep] = useState<'idle' | 'checking_location' | 'location_success' | 'location_failed' | 'facial_scanning' | 'complete' | 'failed'>('idle');
+  const [step, setStep] = useState<'idle' | 'checking_location' | 'location_success' | 'location_failed' | 'facial_scanning' | 'verifying_face' | 'complete' | 'failed'>('idle');
   const [statusMessage, setStatusMessage] = useState("");
   const [errorDetail, setErrorDetail] = useState("");
   const [coords, setCoords] = useState<{lat: number, lng: number} | null>(null);
-  const [locationName, setLocationName] = useState("");
 
   // Personal Status State
   const [myTodayLogs, setMyTodayLogs] = useState<any[]>([]);
@@ -228,14 +113,11 @@ const ManagerAttendance: React.FC = () => {
 
   // Start/Stop Camera on Employee Selection
   useEffect(() => {
-    setPhotoPreview(null);
-    setVerificationStatus('idle');
-    setIsCameraActive(false);
+    stopCamera();
     setStep('idle');
     setStatusMessage("");
     setErrorDetail("");
     setCoords(null);
-    setLocationName("");
     return () => stopCamera();
   }, [selectedEmployee]);
 
@@ -258,10 +140,8 @@ const ManagerAttendance: React.FC = () => {
         videoRef.current.srcObject = stream;
       }
       streamRef.current = stream;
-      setIsCameraActive(true);
     } catch (err) {
       console.error("Camera access failed:", err);
-      setIsCameraActive(false);
     }
   };
 
@@ -270,7 +150,6 @@ const ManagerAttendance: React.FC = () => {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
     }
-    setIsCameraActive(false);
   };
 
   const handleFlipCamera = () => {
@@ -295,7 +174,7 @@ const ManagerAttendance: React.FC = () => {
   const handleStartVerification = async () => {
     if (!selectedEmployee || submitting) return;
     setStep('checking_location');
-    setStatusMessage("Acquiring GPS coordinates...");
+    setStatusMessage(t('acquiringGps'));
     setErrorDetail("");
 
     let currentCoords: {lat: number, lng: number} | null = null;
@@ -313,13 +192,13 @@ const ManagerAttendance: React.FC = () => {
         setCoords(currentCoords);
       } catch (e: any) {
         console.error("Geolocation error", e);
-        let errorMsg = "Unable to acquire GPS location.";
+        let errorMsg = t('unableAcquireGps');
         if (e.code === 1) {
-          errorMsg = "Location permission denied. Please allow location access in your browser settings.";
+          errorMsg = t('locationPermissionDenied');
         } else if (e.code === 2) {
-          errorMsg = "Location unavailable. Please make sure your device's location/GPS settings are turned on.";
+          errorMsg = t('locationUnavailable');
         } else if (e.code === 3) {
-          errorMsg = "Location request timed out. Please check your network connection and try again.";
+          errorMsg = t('locationTimeout');
         }
         setStep('location_failed');
         setErrorDetail(errorMsg);
@@ -327,18 +206,18 @@ const ManagerAttendance: React.FC = () => {
       }
     } else {
       setStep('location_failed');
-      setErrorDetail("Your browser does not support geolocation.");
+      setErrorDetail(t('browserNoGeolocation'));
       return;
     }
 
     try {
-      setStatusMessage("Checking operational boundaries...");
+      setStatusMessage(t('checkingBoundaries'));
       
       const employeeSite = sites.find(s => s.id === selectedEmployee.siteId);
       
       if (!employeeSite) {
         setStep('location_failed');
-        setErrorDetail("No operational site assigned to this employee's profile.");
+        setErrorDetail(t('noSiteAssignedProfile'));
         return;
       }
 
@@ -360,38 +239,37 @@ const ManagerAttendance: React.FC = () => {
         });
         
         setStep('location_failed');
-        setErrorDetail(`Out of bounds. You are ${Math.round(distance)}m away from site "${employeeSite.name}". Allowed radius is ${radius}m.`);
+        setErrorDetail(t('outOfBounds', { distance: Math.round(distance), siteName: employeeSite.name, radius }));
         return;
       }
 
       setStep('location_success');
-      setStatusMessage(`Within boundary of "${employeeSite.name}"!`);
-      setLocationName(`Zone: ${currentCoords.lat.toFixed(4)}, ${currentCoords.lng.toFixed(4)}`);
+      setStatusMessage(t('withinBoundary', { siteName: employeeSite.name }));
 
       setTimeout(() => {
         setStep('facial_scanning');
-        setStatusMessage("Initializing camera for biometric verification...");
+        setStatusMessage(t('initializingBiometricCamera'));
         startCamera(facingMode);
       }, 1500);
 
     } catch (err: any) {
       console.error("Verification error", err);
       setStep('location_failed');
-      setErrorDetail(err.message || "Failed to verify location with operational server.");
+      setErrorDetail(err.message || t('actionFailed'));
     }
   };
 
   const handleSimulateGPS = async () => {
     if (!selectedEmployee) return;
     setStep('checking_location');
-    setStatusMessage("Simulating GPS coordinates...");
+    setStatusMessage(t('acquiringGps'));
     setErrorDetail("");
     
     try {
       const employeeSite = sites.find(s => s.id === selectedEmployee.siteId);
       if (!employeeSite) {
         setStep('location_failed');
-        setErrorDetail("No operational site assigned to this employee. Cannot simulate GPS.");
+        setErrorDetail(t('noSiteAssignedProfile'));
         return;
       }
       
@@ -402,12 +280,11 @@ const ManagerAttendance: React.FC = () => {
       
       setCoords(simulatedCoords);
       setStep('location_success');
-      setStatusMessage(`[SIMULATED] Located at "${employeeSite.name}"`);
-      setLocationName(`Zone: ${simulatedCoords.lat.toFixed(4)}, ${simulatedCoords.lng.toFixed(4)} (Simulated)`);
+      setStatusMessage(t('gpsSimulated', { siteName: employeeSite.name }));
       
       setTimeout(() => {
         setStep('facial_scanning');
-        setStatusMessage("Initializing camera for biometric verification...");
+        setStatusMessage(t('initializingBiometricCamera'));
         startCamera(facingMode);
       }, 1500);
       
@@ -421,11 +298,9 @@ const ManagerAttendance: React.FC = () => {
   const resetVerification = () => {
     stopCamera();
     setStep('idle');
-    setPhotoPreview(null);
     setStatusMessage("");
     setErrorDetail("");
     setCoords(null);
-    setLocationName("");
   };
 
   const handleCaptureAndVerify = async () => {
@@ -437,10 +312,9 @@ const ManagerAttendance: React.FC = () => {
       return;
     }
 
-    setPhotoPreview(capturedFrame);
     stopCamera();
     setStep('verifying_face');
-    setStatusMessage("Analyzing face biometrics...");
+    setStatusMessage(t('analyzingFace'));
     setSubmitting(true);
 
     try {
@@ -465,7 +339,7 @@ const ManagerAttendance: React.FC = () => {
           }
         } catch (err: any) {
           console.error("AI Face Verification error:", err);
-          throw new Error("AI Face Verification failed: " + (err.message || "Face not detected"));
+          throw new Error(t('faceDetectionFailed', { message: err.message || "Face not detected" }));
         }
       }
 
@@ -478,7 +352,7 @@ const ManagerAttendance: React.FC = () => {
           employeeId: selectedEmployee.id,
           siteId: selectedEmployee.siteId
         });
-        throw new Error("Biometric Mismatch: Identity could not be verified.");
+        throw new Error(t('biometricMismatchError'));
       }
 
       // Submit attendance
@@ -495,7 +369,7 @@ const ManagerAttendance: React.FC = () => {
       await submitManagerLog(formData);
       
       setStep('complete');
-      setStatusMessage(type === 'CLOCK_IN' ? 'Clock In Success!' : 'Clock Out Success!');
+      setStatusMessage(type === 'CLOCK_IN' ? t('clockInSuccess') : t('clockOutSuccess'));
       
       // Reset state and reload
       setTimeout(async () => {
@@ -504,7 +378,7 @@ const ManagerAttendance: React.FC = () => {
       }, 2000);
     } catch (err: any) {
       setStep('failed');
-      setErrorDetail(err.message || 'Verification and log submission failed.');
+      setErrorDetail(err.message || t('actionFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -567,50 +441,35 @@ const ManagerAttendance: React.FC = () => {
     const s = searchTerm.toLowerCase();
     const matchesSearch = `${emp.firstName} ${emp.lastName}`.toLowerCase().includes(s) || 
            emp.employeeId?.toLowerCase().includes(s);
-    const matchesSite = selectedSite === 'all' || emp.siteId === selectedSite;
-    return matchesSearch && matchesSite;
+    return matchesSearch;
   });
 
   const getActiveSession = (empId: string) => {
     return attendance.find(a => a.employeeId === empId && !a.clockOut);
   };
 
-  const handleRetake = () => {
-    setPhotoPreview(null);
-    setVerificationStatus('idle');
-    setStep('facial_scanning');
-    startCamera(facingMode);
-  };
-
   const selectedEmpLogs = selectedEmployee ? attendance.filter(log => {
     const dateObj = new Date(log.date || log.clockIn);
     const logDateStr = `${dateObj.getFullYear()}-${(dateObj.getMonth() + 1).toString().padStart(2, '0')}-${dateObj.getDate().toString().padStart(2, '0')}`;
-    const todayStr = selectedDate;
+    const todayStr = new Date().toISOString().split('T')[0];
     return log.employeeId === selectedEmployee.id && logDateStr === todayStr;
   }) : [];
 
   const activeSessionForSelected = selectedEmployee ? selectedEmpLogs.find(l => !l.clockOut) : null;
 
-  if (loading) return <div className="manager-att-loader">Initializing Biometric Node...</div>;
-
-
+  if (loading) return <div className="manager-att-loader">{t('initializingBiometricCamera')}</div>;
 
   return (
     <div className="enterprise-page manager-att-page">
       <header className="main-header-row">
         <div className="title-section">
           <div>
-            <h1>Site Attendance</h1>
-            <p>Proxy logging & workforce control</p>
+            <h1>{t('siteAttendance')}</h1>
+            <p>{t('proxyLoggingControl')}</p>
           </div>
         </div>
 
         <div className="filter-controls">
-          
-
-          
-
-          {/* Date picker button removed */}
         </div>
       </header>
 
@@ -620,7 +479,7 @@ const ManagerAttendance: React.FC = () => {
             <Search size={18} />
             <input
               type="text"
-              placeholder="Search employees..."
+              placeholder={t('searchEmployeesPlaceholder')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="matrix-search-input"
@@ -642,7 +501,7 @@ const ManagerAttendance: React.FC = () => {
                     <span className="name">{emp.firstName} {emp.lastName}</span>
                     <span className="id">{emp.employeeId || 'No ID'}</span>
                   </div>
-                  <div className={`status-dot ${active ? 'online' : 'offline'}`} title={active ? 'Currently On-Site' : 'Off-Site'}></div>
+                  <div className={`status-dot ${active ? 'online' : 'offline'}`} title={active ? t('currentlyOnSite') : t('offSite')}></div>
                 </div>
               );
             })}
@@ -661,7 +520,7 @@ const ManagerAttendance: React.FC = () => {
               >
                 <div className="selected-header">
                   <UserCheck size={24} color="var(--primary)" />
-                  <h3>Attendance for {selectedEmployee.firstName}</h3>
+                  <h3>{t('attendanceForEmployee', { name: `${selectedEmployee.firstName} ${selectedEmployee.lastName}` })}</h3>
                 </div>
 
                 {step === 'idle' ? (
@@ -679,10 +538,7 @@ const ManagerAttendance: React.FC = () => {
                     }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-secondary)', letterSpacing: '0.05em' }}>
-                          {selectedDate === new Date().toISOString().split('T')[0] 
-                            ? "TODAY'S SHIFT RECORD" 
-                            : `${new Date(selectedDate).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }).toUpperCase()}'S SHIFT RECORD`
-                          }
+                          {t('todaysShiftRecord')}
                         </span>
                         <span className={`status-badge-premium ${activeSessionForSelected ? 'online' : 'offline'}`} style={{ 
                           fontSize: '10px', 
@@ -692,13 +548,13 @@ const ManagerAttendance: React.FC = () => {
                           color: activeSessionForSelected ? 'var(--success)' : 'var(--text-tertiary)',
                           fontWeight: 700
                         }}>
-                          {activeSessionForSelected ? 'ON DUTY' : 'OFF DUTY'}
+                          {activeSessionForSelected ? t('onDuty') : t('offDuty')}
                         </span>
                       </div>
                       
                       <div style={{ display: 'flex', gap: '16px', marginTop: '4px' }}>
                         <div style={{ flex: 1 }}>
-                          <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-tertiary)' }}>Clock In</label>
+                          <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-tertiary)' }}>{t('clockIn')}</label>
                           <strong style={{ fontSize: '14px', color: 'var(--text-primary)' }}>
                             {selectedEmpLogs.length > 0 && selectedEmpLogs[selectedEmpLogs.length - 1].clockIn 
                               ? new Date(selectedEmpLogs[selectedEmpLogs.length - 1].clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -706,12 +562,12 @@ const ManagerAttendance: React.FC = () => {
                           </strong>
                         </div>
                         <div style={{ flex: 1 }}>
-                          <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-tertiary)' }}>Clock Out</label>
+                          <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-tertiary)' }}>{t('clockOut')}</label>
                           <strong style={{ fontSize: '14px', color: 'var(--text-primary)' }}>
                             {selectedEmpLogs.length > 0 && selectedEmpLogs[0].clockOut
                               ? new Date(selectedEmpLogs[0].clockOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                               : activeSessionForSelected 
-                              ? 'Active Session' 
+                              ? t('activeSession') 
                               : '--:--'}
                           </strong>
                         </div>
@@ -734,10 +590,7 @@ const ManagerAttendance: React.FC = () => {
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                         <Clock size={14} color="var(--primary)" />
                         <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-secondary)', letterSpacing: '0.05em' }}>
-                          {selectedDate === new Date().toISOString().split('T')[0] 
-                            ? "TODAY'S CLOCKING LOGS" 
-                            : `${new Date(selectedDate).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }).toUpperCase()}'S CLOCKING LOGS`
-                          }
+                          {t('todaysClockingLogs')}
                         </span>
                         <span style={{ 
                           fontSize: '10px', 
@@ -748,27 +601,27 @@ const ManagerAttendance: React.FC = () => {
                           color: 'var(--text-secondary)', 
                           fontWeight: 700 
                         }}>
-                          {selectedEmpLogs.length} / 5 limit
+                          {t('limitLogs', { count: selectedEmpLogs.length, limit: 5 })}
                         </span>
                       </div>
 
                       {selectedEmpLogs.length === 0 ? (
                         <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', textAlign: 'center', padding: '12px 0' }}>
-                          No attendance logs recorded for today.
+                          {t('noLogsToday')}
                         </div>
                       ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           {selectedEmpLogs.map((log, idx) => (
                             <div key={log.id || idx} style={{ 
-                              display: 'flex', 
-                              alignItems: 'center', 
-                              justifyContent: 'space-between', 
-                              padding: '8px 12px', 
-                              background: 'rgba(255, 255, 255, 0.02)', 
-                              border: '1px solid var(--border)', 
-                              borderRadius: '8px',
-                              fontSize: '12px'
-                            }}>
+                                  display: 'flex', 
+                                  alignItems: 'center', 
+                                  justifyContent: 'space-between', 
+                                  padding: '8px 12px', 
+                                  background: 'rgba(255, 255, 255, 0.02)', 
+                                  border: '1px solid var(--border)', 
+                                  borderRadius: '8px',
+                                  fontSize: '12px'
+                                }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <span style={{ color: 'var(--text-tertiary)', fontWeight: 700 }}>#{selectedEmpLogs.length - idx}</span>
                                 <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
@@ -776,12 +629,12 @@ const ManagerAttendance: React.FC = () => {
                                 </span>
                                 <span style={{ color: 'var(--text-tertiary)' }}>→</span>
                                 <span style={{ color: log.clockOut ? 'var(--text-primary)' : '#10b981', fontWeight: 600 }}>
-                                  {log.clockOut ? new Date(log.clockOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Active Session'}
+                                  {log.clockOut ? new Date(log.clockOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : t('activeSession')}
                                 </span>
                               </div>
                               {log.verified && (
                                 <span style={{ fontSize: '10px', color: '#10b981', background: 'rgba(16, 185, 129, 0.08)', padding: '2px 6px', borderRadius: '6px', fontWeight: 700 }}>
-                                  VERIFIED
+                                  {t('verified').toUpperCase()}
                                 </span>
                               )}
                             </div>
@@ -803,21 +656,19 @@ const ManagerAttendance: React.FC = () => {
                     }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <MapPin size={14} color="var(--primary)" />
-                        <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-secondary)', letterSpacing: '0.05em' }}>ASSIGNED WORKPLACE</span>
+                        <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-secondary)', letterSpacing: '0.05em' }}>{t('assignedWorkplace')}</span>
                       </div>
                       <div style={{ marginTop: '2px' }}>
                         <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                          {sites.find(s => s.id === selectedEmployee.siteId)?.name || 'No Site Assigned'}
+                          {sites.find(s => s.id === selectedEmployee.siteId)?.name || t('noSiteAssigned')}
                         </div>
                         <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px', display: 'flex', gap: '8px' }}>
-                          <span>Geofence: {sites.find(s => s.id === selectedEmployee.siteId)?.geofenceRadius || 500}m</span>
+                          <span>{t('geofenceLabel')}: {sites.find(s => s.id === selectedEmployee.siteId)?.geofenceRadius || 500}m</span>
                           <span>•</span>
                           <span>Lat: {sites.find(s => s.id === selectedEmployee.siteId)?.latitude || '0.00'}, Lng: {sites.find(s => s.id === selectedEmployee.siteId)?.longitude || '0.00'}</span>
                         </div>
                       </div>
                     </div>
-
-
 
                     <div style={{ width: '100%', marginTop: 'auto', paddingTop: '10px' }}>
                       <button 
@@ -827,15 +678,15 @@ const ManagerAttendance: React.FC = () => {
                         style={{ width: '100%', height: '52px', fontSize: '15px' }}
                       >
                         <MapPin size={18} />
-                        <span>Verify Location & Start Log</span>
+                        <span>{t('verifyLocationStartLog')}</span>
                       </button>
                     </div>
                   </div>
                 ) : (
                   <div className="inline-verification-stepper">
                     <div className="stepper-header">
-                      <span className="stepper-title">VERIFICATION: CLOCK-{activeSessionForSelected ? 'OUT' : 'IN'}</span>
-                      <button className="stepper-cancel-btn" onClick={resetVerification}>Cancel</button>
+                      <span className="stepper-title">{t('verificationClock', { type: activeSessionForSelected ? t('outPrefix').toUpperCase() : t('inPrefix').toUpperCase() })}</span>
+                      <button className="stepper-cancel-btn" onClick={resetVerification}>{t('cancel')}</button>
                     </div>
 
                     <div className="stepper-progress">
@@ -871,14 +722,14 @@ const ManagerAttendance: React.FC = () => {
                       {step === 'location_failed' && (
                         <div className="step-body error-flow animate-fade-in">
                           <div className="error-triangle-icon">⚠️</div>
-                          <p className="step-status error-txt">Location Check Failed</p>
+                          <p className="step-status error-txt">{t('verificationFailed')}</p>
                           <p className="step-detail">{errorDetail}</p>
                           <div className="stepper-actions">
-                            <button className="btn-stepper-retry" onClick={handleStartVerification}>Retry GPS Check</button>
+                            <button className="btn-stepper-retry" onClick={handleStartVerification}>{t('retryGps')}</button>
                             {(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (
-                              <button className="btn-stepper-simulate" onClick={handleSimulateGPS}>Simulate GPS</button>
+                              <button className="btn-stepper-simulate" onClick={handleSimulateGPS}>{t('simulateGps')}</button>
                             )}
-                            <button className="btn-stepper-cancel" onClick={resetVerification}>Cancel</button>
+                            <button className="btn-stepper-cancel" onClick={resetVerification}>{t('cancel')}</button>
                           </div>
                         </div>
                       )}
@@ -898,9 +749,9 @@ const ManagerAttendance: React.FC = () => {
                           <p className="step-status" style={{ fontSize: '13px', margin: '4px 0' }}>{statusMessage}</p>
                           <div className="stepper-actions" style={{ gap: '8px' }}>
                             <button className="btn-stepper-retry" onClick={handleCaptureAndVerify} disabled={submitting}>
-                              {submitting ? 'Verifying...' : `Capture & Verify`}
+                              {submitting ? t('verifying') : t('captureAndVerify', 'Capture & Verify')}
                             </button>
-                            <button className="btn-stepper-cancel" onClick={handleFlipCamera}>Flip Camera</button>
+                            <button className="btn-stepper-cancel" onClick={handleFlipCamera}>{t('flipCamera', 'Flip Camera')}</button>
                           </div>
                         </div>
                       )}
@@ -924,27 +775,20 @@ const ManagerAttendance: React.FC = () => {
                       {step === 'failed' && (
                         <div className="step-body error-flow animate-fade-in">
                           <div className="error-triangle-icon">❌</div>
-                          <p className="step-status error-txt">Verification Failed</p>
+                          <p className="step-status error-txt">{t('verificationFailed')}</p>
                           <p className="step-detail">{errorDetail}</p>
                           <div className="stepper-actions">
                             <button className="btn-stepper-retry" onClick={() => {
                               setStep('facial_scanning');
-                              setStatusMessage("Initializing biometric camera...");
+                              setStatusMessage(t('initializingBiometricCamera'));
                               startCamera(facingMode);
-                            }}>Retry Scan</button>
-                            <button className="btn-stepper-cancel" onClick={resetVerification}>Cancel</button>
+                            }}>{t('retryScan')}</button>
+                            <button className="btn-stepper-cancel" onClick={resetVerification}>{t('cancel')}</button>
                           </div>
                         </div>
                       )}
                     </div>
                   </div>
-                )}
-
-                {!selectedEmployee.avatar && step === 'facial_scanning' && (
-                  <p className="warning-text">
-                    <AlertCircle size={14} />
-                    No reference photo enrolled for this employee. Clocking will bypass facial verification.
-                  </p>
                 )}
               </motion.div>
             ) : (
@@ -952,8 +796,8 @@ const ManagerAttendance: React.FC = () => {
                 <div className="pulse-icon">
                   <User size={48} />
                 </div>
-                <h3>Select Personnel</h3>
-                <p>Choose an employee from the list to begin proxy attendance logging.</p>
+                <h3>{t('selectPersonnel')}</h3>
+                <p>{t('selectPersonnelDesc')}</p>
               </div>
             )}
           </AnimatePresence>
@@ -975,7 +819,7 @@ const ManagerAttendance: React.FC = () => {
               {user?.isBiometricEnrolled && (
                 <div className="biometric-verified-badge">
                   <Shield size={14} className="verified-icon" />
-                  <span>BIOMETRIC SECURED</span>
+                  <span>{t('biometricSecured')}</span>
                 </div>
               )}
             </div>
@@ -986,7 +830,7 @@ const ManagerAttendance: React.FC = () => {
               <div className="personal-actions-sidebar">
                 <div className={`status-indicator ${isMyClockedIn ? 'active' : 'inactive'}`}>
                   {isMyClockedIn && <div className="pulse-dot"></div>}
-                  <span>{isMyClockedIn ? 'ON DUTY' : 'OFF DUTY'}</span>
+                  <span>{isMyClockedIn ? t('onDuty') : t('offDuty')}</span>
                 </div>
                 
                 <button 
@@ -995,7 +839,7 @@ const ManagerAttendance: React.FC = () => {
                   disabled={submitting}
                 >
                   {isMyClockedIn ? <X size={18} /> : <Clock size={18} />}
-                  <span>{isMyClockedIn ? 'Clock Out Now' : 'Clock In Now'}</span>
+                  <span>{isMyClockedIn ? t('clockOut') : t('clockIn')}</span>
                 </button>
 
                 {isMyClockedIn && myTodayLogs[0] && (
@@ -1011,13 +855,13 @@ const ManagerAttendance: React.FC = () => {
                     gap: '12px'
                   }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>CLOCKED IN TIME</span>
+                      <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>{t('clockin').toUpperCase()}</span>
                       <strong style={{ fontSize: '13px', color: 'var(--text-primary)' }}>
                         {new Date(myTodayLogs[0].clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </strong>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border)', paddingTop: '10px' }}>
-                      <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>CURRENT SHIFT TIME</span>
+                      <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>{t('currentShiftTime', 'CURRENT SHIFT TIME')}</span>
                       <strong style={{ fontSize: '13px', color: 'var(--primary)' }}>
                         {myElapsedTime || "0h 0m"}
                       </strong>
@@ -1031,7 +875,7 @@ const ManagerAttendance: React.FC = () => {
                    <Clock size={16} />
                    <div className="v-stack">
                      <span className="val">{personalStats.totalHours.toFixed(2)}</span>
-                     <span className="lab">Total hours</span>
+                     <span className="lab">{t('totalHours')}</span>
                    </div>
                  </div>
               </div>
@@ -1039,8 +883,8 @@ const ManagerAttendance: React.FC = () => {
           ) : (
             <div className="admin-exemption-badge">
               <Shield size={24} color="var(--primary)" />
-              <strong>Duty Exempt</strong>
-              <span>System administrators are exempt from site-wide clocking requirements.</span>
+              <strong>{t('dutyExempt')}</strong>
+              <span>{t('adminExemptDesc')}</span>
             </div>
           )}
         </div>

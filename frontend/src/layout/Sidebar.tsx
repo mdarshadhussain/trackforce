@@ -115,14 +115,14 @@ const Sidebar = ({ onClose, collapsed, onToggleCollapse }: SidebarProps) => {
   }, [collapsed, user]);
 
   const menuItems = [
-    ...(isManager ? [{ icon: <UserCheck size={20} />, label: 'Site Attendance', path: '/attendance/manager' }] : []),
-    ...( !isManager ? [{ icon: <LayoutDashboard size={20} />, label: t('dashboard'), path: '/dashboard' }] : [] ),
+    ...(user?.role !== 'MANAGER' ? [{ icon: <LayoutDashboard size={20} />, label: t('dashboard'), path: '/dashboard' }] : []),
+    ...(isManager ? [{ icon: <UserCheck size={20} />, label: t('siteAttendance'), path: '/attendance/manager' }] : []),
     ...(isManager ? [{ icon: <Users size={20} />, label: t('employees'), path: '/employees' }] : []),
     { icon: <Calendar size={20} />, label: t('attendance'), path: '/attendance' },
     ...(isAdmin ? [{ icon: <MapPin size={20} />, label: t('tracking'), path: '/tracking' }] : []),
-    ...((isEmployee || isAdmin) ? [{ icon: <Wallet size={20} />, label: isEmployee ? 'Payroll History' : t('payroll'), path: '/payroll' }] : []),
+    ...((isEmployee || isAdmin) ? [{ icon: <Wallet size={20} />, label: isEmployee ? t('payrollHistory') : t('payroll'), path: '/payroll' }] : []),
     { icon: <Building2 size={20} />, label: t('sites'), path: '/sites' },
-    { icon: <User size={20} />, label: 'Profile', path: '/profile' },
+    { icon: <User size={20} />, label: t('profile'), path: '/profile' },
   ];
 
   return (
@@ -146,7 +146,7 @@ const Sidebar = ({ onClose, collapsed, onToggleCollapse }: SidebarProps) => {
       </div>
 
       <nav className="nav-menu">
-        {!collapsed && <div className="nav-section-label">Main Menu</div>}
+        {!collapsed && <div className="nav-section-label">{t('mainMenu')}</div>}
         {menuItems.map((item) => (
           <Link 
             key={item.path} 
@@ -168,7 +168,7 @@ const Sidebar = ({ onClose, collapsed, onToggleCollapse }: SidebarProps) => {
           <>
             <div className="pulse-card">
               <div className="pulse-header">
-                <span className="pulse-label">{isEmployee ? 'Monthly Pulse' : 'Daily Pulse'}</span>
+                <span className="pulse-label">{isEmployee ? t('monthlyPulse') : t('dailyPulse')}</span>
                 <div className="pulse-dot"></div>
               </div>
               <div className="pulse-stats">
@@ -176,22 +176,22 @@ const Sidebar = ({ onClose, collapsed, onToggleCollapse }: SidebarProps) => {
                   <>
                     <div className="pulse-stat">
                       <span className="pulse-value">{pulseData.totalHours.toFixed(1)}h</span>
-                      <span className="pulse-desc">Working Hours</span>
+                      <span className="pulse-desc">{t('workingHours')}</span>
                     </div>
                     <div className="pulse-stat">
                       <span className="pulse-value accent">{pulseData.overtimeHours.toFixed(1)}h</span>
-                      <span className="pulse-desc">Overtime</span>
+                      <span className="pulse-desc">{t('overtime')}</span>
                     </div>
                   </>
                 ) : (
                   <>
                     <div className="pulse-stat">
                       <span className="pulse-value">{pulseData.present}</span>
-                      <span className="pulse-desc">Present</span>
+                      <span className="pulse-desc">{t('presentLabel')}</span>
                     </div>
                     <div className="pulse-stat">
                       <span className="pulse-value accent">{pulseData.absent}</span>
-                      <span className="pulse-desc">Absent</span>
+                      <span className="pulse-desc">{t('absentLabel')}</span>
                     </div>
                   </>
                 )}
@@ -211,7 +211,7 @@ const Sidebar = ({ onClose, collapsed, onToggleCollapse }: SidebarProps) => {
               className="btn-sidebar-primary"
             >
               <HelpCircle size={18} />
-              <span>Contact Support</span>
+              <span>{t('contactSupport')}</span>
             </a>
           </>
         )}

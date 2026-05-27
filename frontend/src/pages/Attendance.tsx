@@ -382,8 +382,7 @@ const Attendance = () => {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]); // YYYY-MM-DD
   const [showCalendar, setShowCalendar] = useState(false);
   const [showDayPicker, setShowDayPicker] = useState(false);
-  const [showInTimePicker, setShowInTimePicker] = useState(false);
-  const [showOutTimePicker, setShowOutTimePicker] = useState(false);
+
   const [manualData, setManualData] = useState({
     employeeId: '',
     siteId: '',
@@ -898,10 +897,10 @@ const Attendance = () => {
     );
   };
 
-  const handleDeleteLog = async (id: string) => {
-    setLogToPurge(id);
-    setShowPurgeConfirm(true);
-  };
+  // const handleDeleteLog = async (id: string) => {
+  //   setLogToPurge(id);
+  //   setShowPurgeConfirm(true);
+  // };
 
   const confirmPurge = async () => {
     if (!logToPurge) return;
@@ -998,23 +997,23 @@ const Attendance = () => {
               style={{ maxWidth: '520px', width: '100%' }}
             >
               <div className="modal-header-premium">
-                <h3>Log Manual Attendance</h3>
+                <h3>{t('logManualAttendance')}</h3>
                 <button className="close-btn-premium" onClick={() => setShowManualLog(false)}><X size={20} /></button>
               </div>
 
               <form onSubmit={handleManualSubmit} className="manual-log-form" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div className="form-group-premium">
-                  <label>Operational Site</label>
+                  <label>{t('operationalSites')}</label>
                   <SearchableSelect 
                     options={sites.map(s => ({ value: s.id, label: s.name, sublabel: s.address }))}
-                    placeholder="Choose Site..."
+                    placeholder={t('chooseSite')}
                     selectedValue={manualData.siteId}
                     onSelect={val => setManualData({...manualData, siteId: val, employeeId: ''})}
                   />
                 </div>
 
                 <div className="form-group-premium">
-                  <label>Select Employee</label>
+                  <label>{t('selectEmployee')}</label>
                   <SearchableSelect 
                     options={
                       manualData.siteId 
@@ -1025,14 +1024,15 @@ const Attendance = () => {
                           }))
                         : []
                     }
-                    placeholder={manualData.siteId ? "Choose Employee..." : "Please select a site first"}
+                    placeholder={manualData.siteId ? t('chooseEmployee') : t('selectSiteFirst')}
                     selectedValue={manualData.employeeId}
                     onSelect={val => setManualData({...manualData, employeeId: val})}
                     disabled={!manualData.siteId}
                   />
-                </div>                 <div className="form-row-premium" style={{ display: 'flex', gap: '16px', margin: 0 }}>
+                </div>
+                <div className="form-row-premium" style={{ display: 'flex', gap: '16px', margin: 0 }}>
                   <div className="form-group-premium" style={{ flex: 1 }}>
-                    <label>Record Date</label>
+                    <label>{t('recordDate')}</label>
                     <input 
                       type="date" 
                       className="premium-input" 
@@ -1055,14 +1055,14 @@ const Attendance = () => {
                     />
                   </div>
                   <div className="form-group-premium" style={{ flex: 1 }}>
-                    <label>Attendance Status</label>
+                    <label>{t('attendanceStatus')}</label>
                     <SearchableSelect 
                       options={[
-                        { value: 'PRESENT', label: 'PRESENT' },
-                        { value: 'LATE', label: 'LATE' },
-                        { value: 'ABSENT', label: 'ABSENT' }
+                        { value: 'PRESENT', label: t('presentLabel') },
+                        { value: 'LATE', label: t('lateLabel', 'LATE') },
+                        { value: 'ABSENT', label: t('absentLabel') }
                       ]}
-                      placeholder="Select Status"
+                      placeholder={t('selectStatus')}
                       selectedValue={manualData.status}
                       onSelect={val => setManualData({...manualData, status: val})}
                       showSearch={false}
@@ -1072,7 +1072,7 @@ const Attendance = () => {
 
                 <div className="form-row-premium" style={{ display: 'flex', gap: '16px', margin: 0 }}>
                   <div className="form-group-premium" style={{ flex: 1 }}>
-                    <label>Clock-In (T1)</label>
+                    <label>{t('clockInT1')}</label>
                     <input 
                       type="time" 
                       className="premium-input" 
@@ -1095,7 +1095,7 @@ const Attendance = () => {
                     />
                   </div>
                   <div className="form-group-premium" style={{ flex: 1 }}>
-                    <label>Clock-Out (T2)</label>
+                    <label>{t('clockOutT2')}</label>
                     <input 
                       type="time" 
                       className="premium-input" 
@@ -1120,7 +1120,7 @@ const Attendance = () => {
 
                 <div className="form-row-premium" style={{ display: 'flex', gap: '16px', margin: 0 }}>
                   <div className="form-group-premium" style={{ flex: 1 }}>
-                    <label>Check-in Image (Optional)</label>
+                    <label>{t('checkinImageOptional')}</label>
                     <label className="file-upload-premium" style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -1139,7 +1139,7 @@ const Attendance = () => {
                       transition: 'all 0.2s ease',
                     }}>
                       <Camera size={14} style={{ color: manualData.biometricProof ? 'var(--success)' : 'var(--primary)' }} />
-                      <span style={{ fontWeight: 600 }}>{manualData.biometricProof ? "Check-in Photo Selected" : "Upload Check-in Photo"}</span>
+                      <span style={{ fontWeight: 600 }}>{manualData.biometricProof ? t('checkinPhotoSelected') : t('uploadCheckinPhoto')}</span>
                       <input 
                         type="file" 
                         accept="image/*"
@@ -1149,7 +1149,7 @@ const Attendance = () => {
                     </label>
                   </div>
                   <div className="form-group-premium" style={{ flex: 1 }}>
-                    <label>Check-out Image (Optional)</label>
+                    <label>{t('checkoutImageOptional')}</label>
                     <label className="file-upload-premium" style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -1168,7 +1168,7 @@ const Attendance = () => {
                       transition: 'all 0.2s ease',
                     }}>
                       <Camera size={14} style={{ color: manualData.biometricProofOut ? 'var(--success)' : 'var(--primary)' }} />
-                      <span style={{ fontWeight: 600 }}>{manualData.biometricProofOut ? "Check-out Photo Selected" : "Upload Check-out Photo"}</span>
+                      <span style={{ fontWeight: 600 }}>{manualData.biometricProofOut ? t('checkoutPhotoSelected') : t('uploadCheckoutPhoto')}</span>
                       <input 
                         type="file" 
                         accept="image/*"
@@ -1181,10 +1181,10 @@ const Attendance = () => {
 
                 <div className="modal-actions-premium" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '8px' }}>
                   <button type="submit" className="btn btn-primary btn-block btn-lg" style={{ height: '48px', borderRadius: '12px' }}>
-                    Log Official Record
+                    {t('logOfficialRecord')}
                   </button>
                   <button type="button" className="btn btn-ghost btn-block" style={{ height: '48px', borderRadius: '12px' }} onClick={() => setShowManualLog(false)}>
-                    Discard
+                    {t('discard')}
                   </button>
                 </div>
               </form>

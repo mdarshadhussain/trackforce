@@ -247,6 +247,43 @@ function calculateRoundedDuration(clockIn: Date, clockOut: Date, breaks: any[] =
   return Math.floor(durationMins / 30) * 30;
 }
 
+function calculateAdjustedDuration(clockIn: Date, clockOut: Date, breaks: any[] = [], workingStartTime?: string | null) {
+  let start = new Date(clockIn);
+  if (workingStartTime) {
+    const expectedStart = new Date(clockIn);
+    const [startHH, startMM] = workingStartTime.split(':').map(Number);
+    expectedStart.setHours(startHH, startMM, 0, 0);
+
+    if (clockIn > expectedStart) {
+      const minsLate = (clockIn.getTime() - expectedStart.getTime()) / (1000 * 60);
+      const blockNumber = Math.floor(minsLate / 30);
+      const blockStartMs = expectedStart.getTime() + blockNumber * 30 * 60 * 1000;
+      const offset = minsLate - blockNumber * 30;
+      if (offset <= 10) {
+        start = new Date(blockStartMs);
+      } else {
+        start = new Date(blockStartMs + 30 * 60 * 1000);
+      }
+    } else {
+      // If clocked in early, count from official start time
+      start = expectedStart;
+    }
+  }
+
+  let durationMs = clockOut.getTime() - start.getTime();
+  if (breaks && breaks.length > 0) {
+    breaks.forEach(b => {
+      if (b.startTime && b.endTime) {
+        durationMs -= (new Date(b.endTime).getTime() - new Date(b.startTime).getTime());
+      }
+    });
+  }
+
+  const durationMins = Math.max(0, durationMs / (1000 * 60));
+  return Math.floor(durationMins / 30) * 30;
+}
+
+
 
 // --- Auth Routes ---
 
@@ -285,14 +322,15 @@ app.get('/api/sites', authenticateToken, async (req, res) => {
 });
 
 app.post('/api/sites', authenticateToken, requireAdmin, async (req, res) => {
-  const { name, location, displayAddress, managerName, latitude, longitude, geofenceRadius } = req.body;
+  const { name, location, displayAddress, managerName, latitude, longitude, geofenceRadius, workingStartTime } = req.body;
   try {
     const site = await prisma.site.create({
       data: {
         name, location, displayAddress, managerName,
         latitude: parseFloat(latitude) || 0,
         longitude: parseFloat(longitude) || 0,
-        geofenceRadius: parseFloat(geofenceRadius) || 500
+        geofenceRadius: parseFloat(geofenceRadius) || 500,
+        workingStartTime: workingStartTime || "07:00"
       }
     });
     res.status(201).json(site);
@@ -302,16 +340,16 @@ app.post('/api/sites', authenticateToken, requireAdmin, async (req, res) => {
 });
 
 app.put('/api/sites/:id', authenticateToken, requireAdmin, async (req, res) => {
-  const { name, location, displayAddress, managerName, geofenceRadius, latitude, longitude } = req.body;
+  const { name, location, displayAddress, managerName, geofenceRadius, latitude, longitude, workingStartTime } = req.body;
   try {
     const site = await prisma.site.update({
       where: { id: req.params.id },
       data: {
         name, location, displayAddress, managerName,
         geofenceRadius: geofenceRadius ? parseFloat(geofenceRadius) : undefined,
-
         latitude: latitude ? parseFloat(latitude) : undefined,
-        longitude: longitude ? parseFloat(longitude) : undefined
+        longitude: longitude ? parseFloat(longitude) : undefined,
+        workingStartTime: workingStartTime !== undefined ? workingStartTime : undefined
       }
     });
     res.json(site);
@@ -436,18 +474,37 @@ app.get('/api/employees/:id/full-profile', authenticateToken, async (req: any, r
       include: { site: true, attendance: { orderBy: { date: 'desc' }, include: { breaks: true } } }
     });
     if (!employee) return res.status(404).json({ error: 'Employee not found' });
+    
+    const holidays = await prisma.holiday.findMany();
     let totalMinutes = 0, totalEarnings = 0;
     const rate = employee.hourlyRate || 0;
+    
     employee.attendance.forEach(log => {
       if (log.clockIn && log.clockOut) {
-        const duration = calculateRoundedDuration(new Date(log.clockIn), new Date(log.clockOut), log.breaks);
-        totalMinutes += duration;
-        let dayEarnings = (duration / 60) * rate;
-        if (duration > 480) {
-          const overtimeMinutes = duration - 480;
-          const overtimeRate = employee.overtimeType === 'MULTIPLIER' ? rate * (employee.overtimeValue || 1.5) : rate + (employee.overtimeValue || 0);
-          dayEarnings = (8 * rate) + ((overtimeMinutes / 60) * overtimeRate);
+        const d = calculateAdjustedDuration(new Date(log.clockIn), new Date(log.clockOut), log.breaks, employee.site?.workingStartTime);
+        totalMinutes += d;
+
+        const logDate = new Date(log.date || log.clockIn);
+        const isSunday = logDate.getDay() === 0;
+        const isHoliday = holidays.some(h => {
+          const hDate = new Date(h.date);
+          return hDate.getFullYear() === logDate.getFullYear() &&
+                 hDate.getMonth() === logDate.getMonth() &&
+                 hDate.getDate() === logDate.getDate();
+        });
+
+        let regMins = 0, otMins = 0;
+        if (isSunday || isHoliday) {
+          otMins = d;
+        } else {
+          regMins = Math.min(480, d);
+          otMins = Math.max(0, d - 480);
         }
+
+        const rh = regMins / 60, oh = otMins / 60;
+        let dayEarnings = rh * rate;
+        const overtimeRate = employee.overtimeType === 'MULTIPLIER' ? rate * (employee.overtimeValue || 1.5) : rate + (employee.overtimeValue || 0);
+        dayEarnings += oh * overtimeRate;
         totalEarnings += dayEarnings;
       }
     });
@@ -1008,31 +1065,50 @@ app.get('/api/payroll', authenticateToken, async (req: any, res: Response) => {
       currentSiteId = me?.siteId;
     }
 
-    let where: any = {};
+    let where: any = { role: { not: 'ADMIN' } };
     if (isManager) {
       where = { 
         siteId: currentSiteId,
         role: { not: 'ADMIN' }
       };
-      if (!currentSiteId) where.id = req.user.id;
+      if (!currentSiteId) where = { id: req.user.id, role: { not: 'ADMIN' } };
     } else if (!isAdmin) {
       where = { id: req.user.id };
     }
 
     const employees = await prisma.employee.findMany({ 
       where, 
-      include: { attendance: { where: { clockOut: { not: null } }, include: { breaks: true } } } 
+      include: { 
+        site: true,
+        attendance: { where: { clockOut: { not: null } }, include: { breaks: true } } 
+      } 
     });
 
+    const holidays = await prisma.holiday.findMany();
+
     const data = employees.map(emp => {
-      let totalMins = 0, otMins = 0, rate = emp.hourlyRate || 25;
+      let regMins = 0, otMins = 0, rate = emp.hourlyRate || 25;
       emp.attendance.forEach(log => {
-        const d = calculateRoundedDuration(new Date(log.clockIn), new Date(log.clockOut!), log.breaks);
-        totalMins += d;
-        if (d > 480) otMins += (d - 480);
+        const d = calculateAdjustedDuration(new Date(log.clockIn), new Date(log.clockOut!), log.breaks, emp.site?.workingStartTime);
+        
+        const logDate = new Date(log.date || log.clockIn);
+        const isSunday = logDate.getDay() === 0;
+        const isHoliday = holidays.some(h => {
+          const hDate = new Date(h.date);
+          return hDate.getFullYear() === logDate.getFullYear() &&
+                 hDate.getMonth() === logDate.getMonth() &&
+                 hDate.getDate() === logDate.getDate();
+        });
+
+        if (isSunday || isHoliday) {
+          otMins += d;
+        } else {
+          regMins += Math.min(480, d);
+          otMins += Math.max(0, d - 480);
+        }
       });
 
-      const th = totalMins / 60, oh = otMins / 60, rh = th - oh;
+      const rh = regMins / 60, oh = otMins / 60, th = rh + oh;
       let earn = rh * rate;
       earn += (emp.overtimeType === 'MULTIPLIER' ? oh * rate * (emp.overtimeValue || 1.5) : oh * (emp.overtimeValue || 20));
       const status = emp.attendance.length > 0 && emp.attendance.every(log => log.status === 'PAID') ? 'PAID' : 'PENDING';
@@ -1091,14 +1167,41 @@ app.get('/api/payroll/stats', authenticateToken, async (req: any, res: Response)
 
     const logs = await prisma.attendance.findMany({ 
       where, 
-      include: { employee: true, breaks: true } 
+      include: { employee: { include: { site: true } }, breaks: true } 
     });
+
+    const holidays = await prisma.holiday.findMany();
 
     let cost = 0, hours = 0;
     logs.forEach(l => {
-      const h = calculateRoundedDuration(new Date(l.clockIn), new Date(l.clockOut!), l.breaks) / 60;
-      hours += h;
-      cost += (h * (l.employee?.hourlyRate || 25));
+      if (!l.employee) return;
+      const d = calculateAdjustedDuration(new Date(l.clockIn), new Date(l.clockOut!), l.breaks, l.employee.site?.workingStartTime);
+      
+      const logDate = new Date(l.date || l.clockIn);
+      const isSunday = logDate.getDay() === 0;
+      const isHoliday = holidays.some(h => {
+        const hDate = new Date(h.date);
+        return hDate.getFullYear() === logDate.getFullYear() &&
+               hDate.getMonth() === logDate.getMonth() &&
+               hDate.getDate() === logDate.getDate();
+      });
+
+      let regMins = 0;
+      let otMins = 0;
+
+      if (isSunday || isHoliday) {
+        otMins = d;
+      } else {
+        regMins = Math.min(480, d);
+        otMins = Math.max(0, d - 480);
+      }
+
+      const rh = regMins / 60, oh = otMins / 60;
+      hours += (rh + oh);
+
+      const rate = l.employee.hourlyRate || 25;
+      cost += (rh * rate);
+      cost += (l.employee.overtimeType === 'MULTIPLIER' ? oh * rate * (l.employee.overtimeValue || 1.5) : oh * (l.employee.overtimeValue || 20));
     });
 
     const activeEmployeeIds = new Set(logs.map(l => l.employeeId));
@@ -1211,6 +1314,7 @@ app.get('/api/stats', authenticateToken, async (req: any, res: Response) => {
           attendance: count
         });
       } else {
+        const employee = await prisma.employee.findUnique({ where: { id: req.user.id }, include: { site: true } });
         const dayLogs = await prisma.attendance.findMany({
           where: {
             employeeId: req.user.id,
@@ -1218,7 +1322,7 @@ app.get('/api/stats', authenticateToken, async (req: any, res: Response) => {
           },
           include: { breaks: true }
         });
-        const dayMins = dayLogs.reduce((acc, curr) => acc + (curr.clockOut ? calculateRoundedDuration(new Date(curr.clockIn), new Date(curr.clockOut), curr.breaks) : 0), 0);
+        const dayMins = dayLogs.reduce((acc, curr) => acc + (curr.clockOut ? calculateAdjustedDuration(new Date(curr.clockIn), new Date(curr.clockOut), curr.breaks, employee?.site?.workingStartTime) : 0), 0);
         const dayHours = dayMins / 60;
         
         trend.push({
@@ -1259,18 +1363,18 @@ app.get('/api/stats', authenticateToken, async (req: any, res: Response) => {
     // 5. Employee specific metrics
     let employeeMetrics: any = {};
     if (!isMgmt) {
+      const employee = await prisma.employee.findUnique({ where: { id: req.user.id }, include: { site: true } });
       const attendance = await prisma.attendance.findMany({ 
         where: { employeeId: req.user.id },
         include: { breaks: true }
       });
-      const employee = await prisma.employee.findUnique({ where: { id: req.user.id } });
       const hourlyRate = employee?.hourlyRate || 25.00;
 
       // Calculate weekly hours (shifts started in the last 7 days)
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
       const weeklyLogs = attendance.filter(l => new Date(l.date || l.clockIn) >= sevenDaysAgo);
-      const weeklyMins = weeklyLogs.reduce((acc, curr) => acc + (curr.clockOut ? calculateRoundedDuration(new Date(curr.clockIn), new Date(curr.clockOut), curr.breaks) : 0), 0);
+      const weeklyMins = weeklyLogs.reduce((acc, curr) => acc + (curr.clockOut ? calculateAdjustedDuration(new Date(curr.clockIn), new Date(curr.clockOut), curr.breaks, employee?.site?.workingStartTime) : 0), 0);
       const weeklyHoursVal = weeklyMins / 60;
 
       // Calculate monthly hours (shifts started in the current calendar month)
@@ -1279,11 +1383,39 @@ app.get('/api/stats', authenticateToken, async (req: any, res: Response) => {
         const d = new Date(l.date || l.clockIn);
         return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
       });
-      const monthlyMins = currentMonthLogs.reduce((acc, curr) => acc + (curr.clockOut ? calculateRoundedDuration(new Date(curr.clockIn), new Date(curr.clockOut), curr.breaks) : 0), 0);
+      const monthlyMins = currentMonthLogs.reduce((acc, curr) => acc + (curr.clockOut ? calculateAdjustedDuration(new Date(curr.clockIn), new Date(curr.clockOut), curr.breaks, employee?.site?.workingStartTime) : 0), 0);
       const monthlyHoursVal = monthlyMins / 60;
 
-      // Calculate actual earnings for current month
-      const earningsVal = monthlyHoursVal * hourlyRate;
+      // Calculate actual earnings for current month (with OT rates!)
+      const holidays = await prisma.holiday.findMany();
+      let monthlyEarnings = 0;
+      currentMonthLogs.forEach(l => {
+        if (l.clockIn && l.clockOut) {
+          const d = calculateAdjustedDuration(new Date(l.clockIn), new Date(l.clockOut), l.breaks, employee?.site?.workingStartTime);
+          const logDate = new Date(l.date || l.clockIn);
+          const isSunday = logDate.getDay() === 0;
+          const isHoliday = holidays.some(h => {
+            const hDate = new Date(h.date);
+            return hDate.getFullYear() === logDate.getFullYear() &&
+                   hDate.getMonth() === logDate.getMonth() &&
+                   hDate.getDate() === logDate.getDate();
+          });
+
+          let regMins = 0, otMins = 0;
+          if (isSunday || isHoliday) {
+            otMins = d;
+          } else {
+            regMins = Math.min(480, d);
+            otMins = Math.max(0, d - 480);
+          }
+
+          const rh = regMins / 60, oh = otMins / 60;
+          let dayEarnings = rh * hourlyRate;
+          const overtimeRate = employee?.overtimeType === 'MULTIPLIER' ? hourlyRate * (employee.overtimeValue || 1.5) : hourlyRate + (employee?.overtimeValue || 0);
+          dayEarnings += oh * overtimeRate;
+          monthlyEarnings += dayEarnings;
+        }
+      });
 
       // Calculate reliability (Present days / Total days logged this month, or default 98.4%)
       let reliability = 98.4;
@@ -1296,8 +1428,8 @@ app.get('/api/stats', authenticateToken, async (req: any, res: Response) => {
         weeklyHours: weeklyHoursVal.toFixed(1),
         monthlyHours: monthlyHoursVal.toFixed(1),
         efficiency: reliability,
-        earnings: Math.round(earningsVal),
-        currencySymbol: '$',
+        earnings: Math.round(monthlyEarnings),
+        currencySymbol: '₫',
         hourlyRate: hourlyRate
       };
     }
@@ -1350,6 +1482,43 @@ app.post('/api/security/alerts', authenticateToken, async (req, res) => {
 let systemConfig = { strictGeofencing: true, biometricRequired: true, notificationsEnabled: true, theme: 'dark' };
 app.get('/api/config', authenticateToken, (req, res) => res.json(systemConfig));
 app.post('/api/config', authenticateToken, requireAdmin, (req, res) => { systemConfig = { ...systemConfig, ...req.body }; res.json(systemConfig); });
+
+// --- Holiday Routes ---
+app.get('/api/holidays', authenticateToken, async (req, res) => {
+  try {
+    const holidays = await prisma.holiday.findMany({ orderBy: { date: 'asc' } });
+    res.json(holidays);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch holidays' });
+  }
+});
+
+app.post('/api/holidays', authenticateToken, requireAdmin, async (req, res) => {
+  const { date, name } = req.body;
+  if (!date) return res.status(400).json({ error: 'Date is required' });
+  try {
+    const parsedDate = new Date(date);
+    parsedDate.setHours(0, 0, 0, 0);
+    const holiday = await prisma.holiday.create({
+      data: { date: parsedDate, name }
+    });
+    res.status(201).json(holiday);
+  } catch (error: any) {
+    if (error.code === 'P2002') {
+      return res.status(400).json({ error: 'A holiday on this date already exists.' });
+    }
+    res.status(400).json({ error: 'Failed to create holiday' });
+  }
+});
+
+app.delete('/api/holidays/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    await prisma.holiday.delete({ where: { id: req.params.id } });
+    res.json({ message: 'Holiday deleted' });
+  } catch (error) {
+    res.status(400).json({ error: 'Failed to delete holiday' });
+  }
+});
 
 app.get('/health', (req, res) => res.json({ status: 'OK' }));
 

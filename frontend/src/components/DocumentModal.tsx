@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Download, ExternalLink, FileText, ZoomIn, ZoomOut, RotateCw } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import './Modal.css';
 
 interface DocumentModalProps {
@@ -11,6 +12,7 @@ interface DocumentModalProps {
 }
 
 const DocumentModal = ({ isOpen, onClose, docUrl, docTitle }: DocumentModalProps) => {
+  const { t } = useTranslation();
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
 
@@ -80,7 +82,7 @@ const DocumentModal = ({ isOpen, onClose, docUrl, docTitle }: DocumentModalProps
                 </div>
                 <div>
                   <h3 style={{ fontSize: '16px', margin: '0', fontWeight: 600 }}>{docTitle}</h3>
-                  <p style={{ fontSize: '11px', color: 'var(--text-dim)', margin: '0', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Secure Node Viewer</p>
+                  <p style={{ fontSize: '11px', color: 'var(--text-dim)', margin: '0', letterSpacing: '0.5px', textTransform: 'uppercase' }}>{t('secureNodeViewer')}</p>
                 </div>
               </div>
 
@@ -93,13 +95,13 @@ const DocumentModal = ({ isOpen, onClose, docUrl, docTitle }: DocumentModalProps
                   borderRadius: '8px',
                   padding: '4px'
                 }}>
-                  <button onClick={handleZoomOut} className="btn btn-ghost" style={{ padding: '6px' }} title="Zoom Out">
+                  <button onClick={handleZoomOut} className="btn btn-ghost" style={{ padding: '6px' }} title={t('zoomOut')}>
                     <ZoomOut size={18} />
                   </button>
                   <span style={{ fontSize: '12px', minWidth: '45px', textAlign: 'center', fontWeight: 600 }}>
                     {Math.round(zoom * 100)}%
                   </span>
-                  <button onClick={handleZoomIn} className="btn btn-ghost" style={{ padding: '6px' }} title="Zoom In">
+                  <button onClick={handleZoomIn} className="btn btn-ghost" style={{ padding: '6px' }} title={t('zoomIn')}>
                     <ZoomIn size={18} />
                   </button>
                 </div>
@@ -107,7 +109,7 @@ const DocumentModal = ({ isOpen, onClose, docUrl, docTitle }: DocumentModalProps
                 <div style={{ width: '1px', height: '24px', background: 'var(--border)' }}></div>
 
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button onClick={handleRotate} className="btn btn-ghost" style={{ padding: '8px' }} title="Rotate">
+                  <button onClick={handleRotate} className="btn btn-ghost" style={{ padding: '8px' }} title={t('rotate')}>
                     <RotateCw size={18} />
                   </button>
                   <a 
@@ -115,7 +117,7 @@ const DocumentModal = ({ isOpen, onClose, docUrl, docTitle }: DocumentModalProps
                     download 
                     className="btn btn-ghost" 
                     style={{ padding: '8px' }}
-                    title="Download File"
+                    title={t('downloadFile')}
                   >
                     <Download size={18} />
                   </a>
@@ -186,9 +188,9 @@ const DocumentModal = ({ isOpen, onClose, docUrl, docTitle }: DocumentModalProps
                   gap: '20px'
                 }}>
                   <FileText size={64} style={{ opacity: 0.3 }} />
-                  <p>Preview not available for this file type.</p>
+                  <p>{t('previewNotAvailable')}</p>
                   <a href={docUrl} target="_blank" rel="noreferrer" className="btn btn-primary">
-                    <ExternalLink size={16} /> Open in New Tab
+                    <ExternalLink size={16} /> {t('openNewTab')}
                   </a>
                 </div>
               )}
@@ -201,4 +203,3 @@ const DocumentModal = ({ isOpen, onClose, docUrl, docTitle }: DocumentModalProps
 };
 
 export default DocumentModal;
-

@@ -22,9 +22,11 @@ import type { ToastType } from '../components/Toast';
 import ConfirmModal from '../components/ConfirmModal';
 import { useNavigate } from 'react-router-dom';
 import PremiumSelect from '../components/PremiumSelect';
+import { useTranslation } from 'react-i18next';
 
 
 const Employees = () => {
+  const { t } = useTranslation();
   const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
   
@@ -71,7 +73,7 @@ const Employees = () => {
       const data = await fetchEmployees();
       setEmployees(data);
     } catch (err) {
-      addToast('Failed to load workforce', 'error');
+      addToast(t('failedLoadWorkforce'), 'error');
     } finally {
       setLoading(false);
     }
@@ -97,17 +99,26 @@ const Employees = () => {
     try {
       await deleteEmployee(employeeToDelete);
       setEmployees(employees.filter(emp => emp.id !== employeeToDelete));
-      addToast('Employee record purged successfully', 'success');
+      addToast(t('employeePurgedSuccess'), 'success');
     } catch (err: any) {
-      addToast(err.message || 'Failed to delete employee', 'error');
+      addToast(err.message || t('actionFailed'), 'error');
     } finally {
       setIsConfirmOpen(false);
     }
   };
 
+  const getDesignationLabel = (title: string) => {
+    if (!title) return t('specialist');
+    const normalized = title.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (normalized === 'experienceworker') return t('experienceWorker');
+    if (normalized === 'freshworker') return t('freshWorker');
+    if (normalized === 'storekeeper') return t('storeKeeper');
+    if (normalized === 'srforeman') return t('srForeman');
+    if (normalized === 'qaqc') return t('qaqc');
+    return t(normalized) || title;
+  };
 
-
-  if (loading) return <div className="loading-state">Decrypting Workforce Ledger...</div>;
+  if (loading) return <div className="loading-state">{t('decryptingLedger')}</div>;
 
   return (
     <div className="employees-container">
@@ -121,16 +132,16 @@ const Employees = () => {
 
       <header className="glass-card profile-header" style={{ marginBottom: '24px' }}>
         <div className="header-content">
-          <h1>Workforce Intelligence</h1>
-          <p>Master ledger of all active identity nodes and security parameters.</p>
+          <h1>{t('workforceIntelligence')}</h1>
+          <p>{t('masterLedger')}</p>
         </div>
         <div className="header-actions">
           <button className="btn btn-ghost" onClick={() => exportToCSV(filteredEmployees, `Workforce_Master_${new Date().toISOString().split('T')[0]}`)}>
-            <Download size={18} /> Export Ledger
+            <Download size={18} /> {t('exportLedger')}
           </button>
           {isAdmin && (
             <button className="btn btn-primary" onClick={() => navigate('/employees/add')}>
-              <UserPlus size={18} /> Add New Identity
+              <UserPlus size={18} /> {t('addNewIdentity')}
             </button>
           )}
         </div>
@@ -141,7 +152,7 @@ const Employees = () => {
           <Search size={20} className="search-icon" />
           <input 
             type="text" 
-            placeholder="Search identity ledger..." 
+            placeholder={t('searchIdentityLedger')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -150,23 +161,23 @@ const Employees = () => {
         {isAdmin && (
           <div className="filter-site-premium">
             <PremiumSelect 
-              placeholder="Filter Role"
+              placeholder={t('allRoles')}
               value={roleFilter}
               onChange={(val: string) => setRoleFilter(val)}
               options={[
-                { label: 'All Roles', value: 'ALL' },
-                { label: 'Admin', value: 'ADMIN' },
-                { label: 'Manager', value: 'MANAGER' },
-                { label: 'Employee', value: 'EMPLOYEE' }
+                { label: t('allRoles'), value: 'ALL' },
+                { label: t('admin'), value: 'ADMIN' },
+                { label: t('manager'), value: 'MANAGER' },
+                { label: t('employee'), value: 'EMPLOYEE' }
               ]}
               className="filter-dropdown"
             />
             <PremiumSelect 
-              placeholder="Filter Site"
+              placeholder={t('allSites')}
               value={siteFilter}
               onChange={(val: string) => setSiteFilter(val)}
               options={[
-                { label: 'All Sites', value: 'ALL' },
+                { label: t('allSites'), value: 'ALL' },
                 ...sites.map(site => ({ label: site.name, value: site.id }))
               ]}
               className="filter-dropdown"
@@ -179,53 +190,53 @@ const Employees = () => {
         <table className="employee-table">
           <thead>
             <tr>
-              <th>Employee Name</th>
-              <th>Login ID</th>
-              <th>Phone Number</th>
-              <th>Role & Status</th>
-              <th>Site</th>
-              <th>Actions</th>
+              <th>{t('employeeName')}</th>
+              <th>{t('employeeID')}</th>
+              <th>{t('phoneNum')}</th>
+              <th>{t('roleStatus')}</th>
+              <th>{t('site')}</th>
+              <th>{t('action')}</th>
             </tr>
           </thead>
           <tbody>
             {filteredEmployees.map((emp) => (
               <tr key={emp.id}>
-                <td data-label="Employee Name">
+                <td data-label={t('employeeName')}>
                   <div className="emp-identity">
                     <div className="name-stack">
                       <span className="full-name">{emp.firstName} {emp.lastName}</span>
-                      <span className="designation">{emp.designation || 'Specialist'}</span>
+                      <span className="designation">{getDesignationLabel(emp.designation)}</span>
                     </div>
                   </div>
                 </td>
-                <td data-label="Login ID"><span className="mono-badge">{emp.employeeId}</span></td>
-                <td data-label="Phone Number"><span className="email-text">{emp.phone || 'N/A'}</span></td>
-                <td data-label="Role & Status">
+                <td data-label={t('employeeID')}><span className="mono-badge">{emp.employeeId}</span></td>
+                <td data-label={t('phoneNum')}><span className="email-text">{emp.phone || 'N/A'}</span></td>
+                <td data-label={t('roleStatus')}>
                   <div className="role-status">
-                    <span className="role-tag">{emp.role}</span>
+                    <span className="role-tag">{t(emp.role.toLowerCase())}</span>
                     <span className={`status-dot ${emp.status.toLowerCase()}`}></span>
                   </div>
                 </td>
-                <td data-label="Site">{emp.site?.name || 'Unassigned'}</td>
-                <td data-label="Actions">
+                <td data-label={t('site')}>{emp.site?.name || t('unassigned')}</td>
+                <td data-label={t('action')}>
                     <div className="action-row">
                       {isAdmin && (
-                        <button className="action-icon-btn" onClick={() => navigate(`/employees/${emp.id}`)} title="View Node Details">
+                        <button className="action-icon-btn" onClick={() => navigate(`/employees/${emp.id}`)} title={t('viewDetailsBtn')}>
                           <Eye size={18} />
                         </button>
                       )}
                       {(isAdmin || user?.role === 'MANAGER') && emp.phone && (
-                        <a href={`tel:${emp.phone}`} className="action-icon-btn call-btn" title="Initiate Secure Voice Link">
+                        <a href={`tel:${emp.phone}`} className="action-icon-btn call-btn" title={t('talkArchitect')}>
                           <Phone size={18} />
                         </a>
                       )}
                       {isAdmin && (
-                        <button className="action-icon-btn" onClick={() => navigate(`/employees/edit/${emp.id}`)} title="Edit Configuration">
+                        <button className="action-icon-btn" onClick={() => navigate(`/employees/edit/${emp.id}`)} title={t('editProfile')}>
                           <Edit3 size={18} />
                         </button>
                       )}
                       {isAdmin && (
-                        <button className="action-icon-btn danger" onClick={() => handleDeleteEmployee(emp.id)} title="Decommission Node">
+                        <button className="action-icon-btn danger" onClick={() => handleDeleteEmployee(emp.id)} title={t('decommissionIdentityNode')}>
                           <XCircle size={18} />
                         </button>
                       )}
@@ -239,11 +250,12 @@ const Employees = () => {
 
       <ConfirmModal
         isOpen={isConfirmOpen}
-        title="Decommission Identity Node"
-        message="Are you sure you want to permanently delete this employee? All historical efficiency and attendance data will be purged."
+        title={t('decommissionIdentityNode')}
+        message={t('decommissionIdentityNodeDesc')}
         onConfirm={confirmDelete}
         onCancel={() => setIsConfirmOpen(false)}
-        confirmText="Execute Purge"
+        confirmText={t('executePurge')}
+        cancelText={t('cancel')}
         variant="danger"
       />
     </div>

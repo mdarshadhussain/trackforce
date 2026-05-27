@@ -34,11 +34,13 @@ import { fetchEmployeeFullProfile } from '../api/api';
 import DocumentModal from '../components/DocumentModal';
 import { useAuth } from '../context/AuthContext';
 import './EmployeeDetails.css';
+import { useTranslation } from 'react-i18next';
 
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const EmployeeDetails = () => {
+  const { t, i18n } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
   const { user, isAdmin } = useAuth();
@@ -81,14 +83,29 @@ const EmployeeDetails = () => {
         >
           <TrendingUp size={48} color="var(--primary)" />
         </motion.div>
-        <p>Decrypting Workforce Intelligence...</p>
+        <p>{t('decryptingLedger')}</p>
       </div>
     );
   }
 
-  if (!data) return <div className="error-state">Node Not Found in Grid</div>;
+  if (!data) return <div className="error-state">{t('noProjectsFound')}</div>;
 
   const { employee, attendance, stats } = data;
+
+  const getDesignationLabel = (title: string) => {
+    if (!title) return t('specialist');
+    const normalized = title.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (normalized === 'experienceworker') return t('experienceWorker');
+    if (normalized === 'freshworker') return t('freshWorker');
+    if (normalized === 'storekeeper') return t('storeKeeper');
+    if (normalized === 'srforeman') return t('srForeman');
+    if (normalized === 'qaqc') return t('qaqc');
+    return t(normalized) || title;
+  };
+
+  const getLocaleDateString = (dateStr: string, options?: Intl.DateTimeFormatOptions) => {
+    return new Date(dateStr).toLocaleDateString(i18n.language === 'vi' ? 'vi-VN' : 'en-US', options);
+  };
 
   return (
     <div className="employee-details-page">
@@ -99,7 +116,7 @@ const EmployeeDetails = () => {
           className="hero-back-btn-top-right" 
           onClick={() => navigate('/employees')}
         >
-          <ChevronLeft size={16} /> Back
+          <ChevronLeft size={16} /> {t('cancel')}
         </button>
 
         <div className="hero-avatar-wrapper">
@@ -113,7 +130,7 @@ const EmployeeDetails = () => {
           <button 
             className="avatar-edit-badge" 
             onClick={() => navigate(`/employees/edit/${employee.id}`)}
-            title="Edit Identity Manifest"
+            title={t('editProfile')}
           >
             <Edit3 size={16} />
           </button>
@@ -122,9 +139,9 @@ const EmployeeDetails = () => {
         <div className="hero-info-cluster">
           <div className="hero-meta-tags">
             <span className="id-tag-premium">{employee.employeeId}</span>
-            <span className={`status-badge-premium ${employee.status.toLowerCase()}`}>{employee.status}</span>
+            <span className={`status-badge-premium ${employee.status.toLowerCase()}`}>{t(employee.status.toLowerCase())}</span>
             <span className={`biometric-badge-premium ${employee.isBiometricEnrolled ? 'verified' : 'pending'}`}>
-              {employee.isBiometricEnrolled ? 'Verified' : 'Not Enrolled'}
+              {employee.isBiometricEnrolled ? t('verified') : t('notEnrolled')}
             </span>
           </div>
           <h1>{employee.firstName} {employee.lastName}</h1>
@@ -132,12 +149,12 @@ const EmployeeDetails = () => {
           <div className="hero-sub-meta" style={{ display: 'flex', gap: '2.5rem', color: 'var(--text-secondary)', alignItems: 'center', marginTop: '1rem' }}>
             <div className="credential-node-premium">
               <Key size={14} />
-              <label>Login ID:</label>
+              <label>{t('employeeID')}:</label>
               <span>{employee.employeeId}</span>
             </div>
             <div className="credential-node-premium">
               <Lock size={14} />
-              <label>Password:</label>
+              <label>{t('passwordLabel')}:</label>
               <div className="pass-toggle-node">
                 <input 
                   type={showPassword ? "text" : "password"} 
@@ -148,7 +165,7 @@ const EmployeeDetails = () => {
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="pass-visibility-btn"
-                  title={showPassword ? "Mask Password" : "Reveal Password"}
+                  title={showPassword ? t('rememberLogin') : t('signInNow')}
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
@@ -158,10 +175,10 @@ const EmployeeDetails = () => {
 
           <div className="hero-sub-meta" style={{ display: 'flex', gap: '2rem', color: 'var(--text-secondary)', alignItems: 'center', marginTop: '1rem' }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Briefcase size={16} /> {employee.designation || 'Operational Specialist'}
+              <Briefcase size={16} /> {getDesignationLabel(employee.designation)}
             </span>
             <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <MapPin size={16} /> {employee.site?.name || 'Unassigned Site'}
+              <MapPin size={16} /> {employee.site?.name || t('unassigned')}
             </span>
           </div>
         </div>
@@ -171,19 +188,19 @@ const EmployeeDetails = () => {
       <div className="intelligence-grid">
         <StatCard 
           icon={<Clock size={24} />} 
-          label="Total Hours" 
+          label={t('workingHours')} 
           value={`${parseFloat(stats.totalHours || '0').toFixed(1)}h`} 
           color="var(--primary)" 
         />
         <StatCard 
           icon={<Wallet size={24} />} 
-          label="Gross Earnings" 
+          label={t('grossAmount')} 
           value={`${parseFloat(stats.totalEarnings || '0').toLocaleString()} ₫`} 
           color="#10b981" 
         />
         <StatCard 
           icon={<Calendar size={24} />} 
-          label="Active Days" 
+          label={t('presentLabel')} 
           value={stats.totalDays} 
           color="#8b5cf6" 
         />
@@ -195,13 +212,13 @@ const EmployeeDetails = () => {
           className={`nav-tab-premium ${activeTab === 'overview' ? 'active' : ''}`}
           onClick={() => setActiveTab('overview')}
         >
-          Overview
+          {t('welcomeBack')}
         </button>
         <button 
           className={`nav-tab-premium ${activeTab === 'attendance' ? 'active' : ''}`}
           onClick={() => setActiveTab('attendance')}
         >
-          Attendance History
+          {t('history')}
         </button>
       </nav>
 
@@ -216,12 +233,12 @@ const EmployeeDetails = () => {
               <div className="glass-tile-premium identity-site-tile personal-details-tile">
                 <div className="tile-header">
                   <User size={20} />
-                  <h4>Personal Details</h4>
+                  <h4>{t('profile')}</h4>
                 </div>
                 <div className="tile-content-stack">
-                  <InfoItem icon={<Smartphone size={16} />} label="Phone Number" value={employee.phone || 'Not provided'} />
-                  <InfoItem icon={<Calendar size={16} />} label="Date of Birth" value={employee.dob ? new Date(employee.dob).toLocaleDateString() : 'Not provided'} />
-                  <InfoItem icon={<Calendar size={16} />} label="Joining Date" value={new Date(employee.createdAt).toLocaleDateString()} />
+                  <InfoItem icon={<Smartphone size={16} />} label={t('phoneNum')} value={employee.phone || t('noCustomHolidays')} />
+                  <InfoItem icon={<Calendar size={16} />} label={t('dobLabel')} value={employee.dob ? getLocaleDateString(employee.dob) : t('noCustomHolidays')} />
+                  <InfoItem icon={<Calendar size={16} />} label={t('date')} value={getLocaleDateString(employee.createdAt)} />
                 </div>
               </div>
 
@@ -229,30 +246,30 @@ const EmployeeDetails = () => {
                 <div className="glass-tile-premium finance-tile salary-details-tile">
                   <div className="tile-header">
                     <Coins size={20} />
-                    <h4>Salary Details</h4>
+                    <h4>{t('salaryPayout')}</h4>
                   </div>
                   <div className="tile-data-large">
                     <span className="large-value">{employee.hourlyRate?.toLocaleString() || '0'} ₫</span>
-                    <span className="label">Per Hour</span>
+                    <span className="label">{t('salaryPerHour')}</span>
                   </div>
                   <div className="tile-footer-meta">
                     <TrendingUp size={14} /> 
-                    <span>Overtime: {employee.overtimeType === 'MULTIPLIER' ? `${employee.overtimeValue}x Multiplier` : `${employee.overtimeValue?.toLocaleString()} ₫ Fixed`}</span>
+                    <span>{t('overtime')}: {employee.overtimeType === 'MULTIPLIER' ? `${employee.overtimeValue}x ${t('multiplier')}` : `${employee.overtimeValue?.toLocaleString()} ₫ ${t('fixedAmount')}`}</span>
                   </div>
                 </div>
 
                 <div className="glass-tile-premium performance-tile attendance-stats-tile">
                   <div className="tile-header">
                     <TrendingUp size={20} />
-                    <h4>Attendance Stats</h4>
+                    <h4>{t('attendanceEfficiency')}</h4>
                   </div>
                   <div className="mini-stat-cluster">
                     <div className="mini-stat">
-                      <span>Present Days</span>
+                      <span>{t('presentLabel')}</span>
                       <strong>{stats.totalDays}</strong>
                     </div>
                     <div className="mini-stat">
-                      <span>Working Hours</span>
+                      <span>{t('workingHours')}</span>
                       <strong>{parseFloat(stats.totalHours || '0').toFixed(1)}h</strong>
                     </div>
                   </div>
@@ -261,12 +278,12 @@ const EmployeeDetails = () => {
               <div className="glass-tile-premium identity-site-tile passport-intelligence-tile">
                 <div className="tile-header">
                   <CreditCard size={20} />
-                  <h4>Passport Intelligence</h4>
+                  <h4>{t('identificationDocs')}</h4>
                 </div>
                 <div className="tile-content-stack">
-                  <InfoItem icon={<Smartphone size={14} />} label="Passport No." value={employee.passportNumber || 'Not provided'} />
-                  <InfoItem icon={<Calendar size={14} />} label="Issue Date" value={employee.passportIssue ? new Date(employee.passportIssue).toLocaleDateString() : '--'} />
-                  <InfoItem icon={<Calendar size={14} />} label="Expiry Date" value={employee.passportExpiry ? new Date(employee.passportExpiry).toLocaleDateString() : '--'} />
+                  <InfoItem icon={<Smartphone size={14} />} label={t('passportIdNumber')} value={employee.passportNumber || t('noCustomHolidays')} />
+                  <InfoItem icon={<Calendar size={14} />} label={t('passportIssueLabel')} value={employee.passportIssue ? getLocaleDateString(employee.passportIssue) : '--'} />
+                  <InfoItem icon={<Calendar size={14} />} label={t('passportExpiryLabel')} value={employee.passportExpiry ? getLocaleDateString(employee.passportExpiry) : '--'} />
                 </div>
               </div>
             </div>
@@ -275,39 +292,39 @@ const EmployeeDetails = () => {
               <div className="glass-tile-premium identity-site-tile sidebar-tile financial-node-tile">
                 <div className="tile-header">
                   <Landmark size={20} />
-                  <h4>Financial Node</h4>
+                  <h4>{t('bankAccounts')}</h4>
                 </div>
                 <div className="tile-content-stack">
-                  <InfoItem icon={<Landmark size={14} />} label="Bank Name" value={employee.bankName || 'Not provided'} />
-                  <InfoItem icon={<CreditCard size={14} />} label="Account No." value={employee.accountNumber || 'Not provided'} />
-                  <InfoItem icon={<User size={14} />} label="Account Holder" value={employee.accountHolderName || 'Not provided'} />
+                  <InfoItem icon={<Landmark size={14} />} label={t('bankNameLabel')} value={employee.bankName || t('noCustomHolidays')} />
+                  <InfoItem icon={<CreditCard size={14} />} label={t('accountNumberLabel')} value={employee.accountNumber || t('noCustomHolidays')} />
+                  <InfoItem icon={<User size={14} />} label={t('accountHolderNameLabel')} value={employee.accountHolderName || t('noCustomHolidays')} />
                 </div>
               </div>
 
               <div className="glass-tile-premium documents-tile sidebar-tile documentation-tile" style={{ marginTop: '1.5rem' }}>
                 <div className="tile-header">
                   <FileText size={20} />
-                  <h4>Documentation</h4>
+                  <h4>{t('resumeCv')}</h4>
                 </div>
                 <div className="doc-link-stack">
                   <div className="doc-link-node">
-                    <span>Resume / CV</span>
+                    <span>{t('resumeCv')}</span>
                     {employee.cvPath ? (
-                      <button onClick={() => openDoc(employee.cvPath, 'Employee Resume')} className="doc-btn">
-                        <Eye size={14} /> View
+                      <button onClick={() => openDoc(employee.cvPath, t('resumeCv'))} className="doc-btn">
+                        <Eye size={14} /> {t('viewDetailsBtn')}
                       </button>
                     ) : (
-                      <span className="not-uploaded pending-badge">Pending</span>
+                      <span className="not-uploaded pending-badge">{t('pendingLabel')}</span>
                     )}
                   </div>
                   <div className="doc-link-node">
-                    <span>ID Proof / Passport</span>
+                    <span>{t('idProofDoc')}</span>
                     {employee.idDocPath ? (
-                      <button onClick={() => openDoc(employee.idDocPath, 'Identity Proof')} className="doc-btn">
-                        <Eye size={14} /> View
+                      <button onClick={() => openDoc(employee.idDocPath, t('idProofDoc'))} className="doc-btn">
+                        <Eye size={14} /> {t('viewDetailsBtn')}
                       </button>
                     ) : (
-                      <span className="not-uploaded pending-badge">Pending</span>
+                      <span className="not-uploaded pending-badge">{t('pendingLabel')}</span>
                     )}
                   </div>
 
@@ -326,32 +343,32 @@ const EmployeeDetails = () => {
               {attendance.length > 0 ? attendance.map((log: any) => (
                 <div key={log.id} className="glass-card log-entry-card">
                   <div className="log-date-cluster">
-                    <span className="log-date">{new Date(log.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                    <span className="log-day">{new Date(log.date).toLocaleDateString('en-US', { weekday: 'long' })}</span>
+                    <span className="log-date">{getLocaleDateString(log.date, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                    <span className="log-day">{getLocaleDateString(log.date, { weekday: 'long' })}</span>
                   </div>
 
                   <div className="log-details-cluster">
                     <div className="time-row">
                       <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Clock size={14} color="#10b981" /> In: <strong>{new Date(log.clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong>
+                        <Clock size={14} color="#10b981" /> {t('checkin')}: <strong>{new Date(log.clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong>
                       </span>
                       {log.clockOut ? (
                         <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <Clock size={14} color="#ef4444" /> Out: <strong>{new Date(log.clockOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong>
+                          <Clock size={14} color="#ef4444" /> {t('checkout')}: <strong>{new Date(log.clockOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong>
                         </span>
                       ) : (
-                        <span className="status-badge-premium pending">Active Session</span>
+                        <span className="status-badge-premium pending">{t('active')}</span>
                       )}
                     </div>
                     <div className="location-row" style={{ display: 'flex', gap: '1rem', marginTop: '4px' }}>
                       {log.clockInLat != null && log.clockInLong != null && (
                         <span className="location-tag-premium">
-                          <MapPin size={12} /> {Number(log.clockInLat).toFixed(4)}, {Number(log.clockInLong).toFixed(4)} (Check-in)
+                          <MapPin size={12} /> {Number(log.clockInLat).toFixed(4)}, {Number(log.clockInLong).toFixed(4)} ({t('checkin')})
                         </span>
                       )}
                       {log.clockOutLat != null && log.clockOutLong != null && (
                         <span className="location-tag-premium">
-                          <MapPin size={12} /> {Number(log.clockOutLat).toFixed(4)}, {Number(log.clockOutLong).toFixed(4)} (Check-out)
+                          <MapPin size={12} /> {Number(log.clockOutLat).toFixed(4)}, {Number(log.clockOutLong).toFixed(4)} ({t('checkout')})
                         </span>
                       )}
                     </div>
@@ -359,7 +376,7 @@ const EmployeeDetails = () => {
 
                   <div className="log-proof-cluster-dual">
                     <div className="proof-node-premium">
-                      <span className="proof-label">Check-in</span>
+                      <span className="proof-label">{t('checkin')}</span>
                       {log.biometricProof ? (
                         <div className="proof-img-container" onClick={() => window.open(log.biometricProof.startsWith('http') ? log.biometricProof : `${API_URL}${log.biometricProof}`, '_blank')}>
                           <img src={log.biometricProof.startsWith('http') ? log.biometricProof : `${API_URL}${log.biometricProof}`} alt="Check-in Proof" />
@@ -371,7 +388,7 @@ const EmployeeDetails = () => {
                     </div>
 
                     <div className="proof-node-premium">
-                      <span className="proof-label">Check-out</span>
+                      <span className="proof-label">{t('checkout')}</span>
                       {log.biometricProofOut ? (
                         <div className="proof-img-container" onClick={() => window.open(log.biometricProofOut.startsWith('http') ? log.biometricProofOut : `${API_URL}${log.biometricProofOut}`, '_blank')}>
                           <img src={log.biometricProofOut.startsWith('http') ? log.biometricProofOut : `${API_URL}${log.biometricProofOut}`} alt="Check-out Proof" />
@@ -381,13 +398,13 @@ const EmployeeDetails = () => {
                         <div className="proof-img-container no-proof"><ImageIcon size={20} color="var(--border)" /></div>
                       )}
                     </div>
-                    <span className={`status-badge-premium ${log.status.toLowerCase()}`}>{log.status}</span>
+                    <span className={`status-badge-premium ${log.status.toLowerCase()}`}>{t(log.status.toLowerCase())}</span>
                   </div>
                 </div>
               )) : (
                 <div className="empty-state-premium">
                   <Clock size={48} />
-                  <p>No historical attendance nodes found for this identity.</p>
+                  <p>{t('noLogs')}</p>
                 </div>
               )}
             </div>
@@ -419,7 +436,7 @@ const StatCard = ({ icon, label, value, color }: any) => (
 );
 
 const InfoItem = ({ icon, label, value }: any) => {
-  const isNotProvided = value === 'Not provided' || value === '--';
+  const isNotProvided = value === 'Not provided' || value === '--' || value === 'Chưa cấu hình ngày nghỉ lễ tùy chỉnh' || value === 'No custom holidays configured';
   return (
     <div className="info-item-stack">
       <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '4px' }}>

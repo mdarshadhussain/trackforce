@@ -14,6 +14,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { fetchEmployees, fetchAllLogs, fetchSites } from '../api/api';
 import './Attendance.css';
+import { useTranslation } from 'react-i18next';
 
 
 const SearchableSiteDropdown = ({ 
@@ -25,6 +26,7 @@ const SearchableSiteDropdown = ({
   selectedSiteId: string; 
   onSelectSite: (id: string) => void; 
 }) => {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -40,8 +42,8 @@ const SearchableSiteDropdown = ({
   }, []);
 
   const selectedSite = selectedSiteId === 'all' 
-    ? { id: 'all', name: 'All Sites' } 
-    : sites.find(s => s.id === selectedSiteId) || { id: 'all', name: 'All Sites' };
+    ? { id: 'all', name: t('allSites') } 
+    : sites.find(s => s.id === selectedSiteId) || { id: 'all', name: t('allSites') };
 
   const filteredSites = sites.filter(s => 
     s.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -72,7 +74,7 @@ const SearchableSiteDropdown = ({
               <Search size={14} className="search-icon-inside" />
               <input 
                 type="text" 
-                placeholder="Search sites..." 
+                placeholder={t('search')} 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 autoFocus
@@ -89,7 +91,7 @@ const SearchableSiteDropdown = ({
                   setSearchQuery('');
                 }}
               >
-                All Sites ({sites.length})
+                {t('allSites')} ({sites.length})
               </button>
               
               {filteredSites.length > 0 ? (
@@ -108,7 +110,7 @@ const SearchableSiteDropdown = ({
                   </button>
                 ))
               ) : (
-                <div className="dropdown-no-results">No sites found</div>
+                <div className="dropdown-no-results">{t('noProjectsFound')}</div>
               )}
             </div>
           </motion.div>
@@ -119,6 +121,7 @@ const SearchableSiteDropdown = ({
 };
 
 const AttendanceGrid: React.FC = () => {
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
@@ -202,7 +205,7 @@ const AttendanceGrid: React.FC = () => {
   };
 
   const handleExportExcel = () => {
-    const header = ['Personnel Name', 'Employee ID', ...[...Array(daysInMonth)].map((_, i) => (i + 1).toString()), 'Total Monthly Hours'];
+    const header = [t('employeeName'), t('employeeID'), ...[...Array(daysInMonth)].map((_, i) => (i + 1).toString()), t('monthlyHoursLabel')];
     const rows = filteredEmployees.map(emp => {
       let totalHours = 0;
       const dailyData = [...Array(daysInMonth)].map((_, i) => {
@@ -223,9 +226,9 @@ const AttendanceGrid: React.FC = () => {
         if (dayLogs.length > 0) {
           const s = dayLogs[0].status?.toUpperCase() || 'PENDING';
           const hourText = hours > 0 ? ` (${hours.toFixed(1)}h)` : '';
-          if (s === 'PAID' || s === 'APPROVED' || s === 'PRESENT') return `Present${hourText}`;
-          if (s === 'REJECTED' || s === 'ABSENT') return `Absent${hourText}`;
-          return `Pending${hourText}`;
+          if (s === 'PAID' || s === 'APPROVED' || s === 'PRESENT') return `${t('presentLabel')}${hourText}`;
+          if (s === 'REJECTED' || s === 'ABSENT') return `${t('absentLabel')}${hourText}`;
+          return `${t('pendingLabel')}${hourText}`;
         }
         return '-';
       });
@@ -266,13 +269,14 @@ const AttendanceGrid: React.FC = () => {
         {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((m, i) => {
           const mNum = (i + 1).toString().padStart(2, '0');
           const isSelected = tMonth === (i + 1);
+          const displayLabel = i18n.language === 'vi' ? `Tháng ${i + 1}` : m;
           return (
             <button 
               key={m}
               className={`month-cell ${isSelected ? 'selected' : ''}`}
               onClick={() => setTempDate(`${tYear}-${mNum}`)}
             >
-              {m}
+              {displayLabel}
             </button>
           );
         })}
@@ -280,10 +284,10 @@ const AttendanceGrid: React.FC = () => {
 
       <div className="picker-footer">
         <button className="picker-btn cancel" onClick={() => setShowMonthPicker(false)}>
-          Cancel
+          {t('cancel')}
         </button>
         <button className="picker-btn confirm" onClick={handleApplyFilter}>
-          Confirm
+          {t('saveChanges')}
         </button>
       </div>
     </motion.div>
@@ -297,8 +301,8 @@ const AttendanceGrid: React.FC = () => {
             <ArrowLeft size={20} />
           </button>
           <div>
-            <h1>Workforce Intelligence Matrix</h1>
-            <p>Monthly attendance telemetry for {new Date(year, month - 1).toLocaleString('default', { month: 'long', year: 'numeric' })}</p>
+            <h1>{t('workforceAttendance')}</h1>
+            <p>{t('timeline')}: {new Date(year, month - 1).toLocaleString(i18n.language === 'vi' ? 'vi-VN' : undefined, { month: 'long', year: 'numeric' })}</p>
           </div>
         </div>
 
@@ -307,7 +311,7 @@ const AttendanceGrid: React.FC = () => {
             <Search size={18} />
             <input 
               type="text" 
-              placeholder="Search personnel or ID..." 
+              placeholder={t('search')} 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -333,14 +337,14 @@ const AttendanceGrid: React.FC = () => {
               setShowMonthPicker(!showMonthPicker);
             }}>
               <Calendar size={18} />
-              <span>{new Date(year, month - 1).toLocaleString('default', { month: 'long' })} {year}</span>
+              <span>{new Date(year, month - 1).toLocaleString(i18n.language === 'vi' ? 'vi-VN' : undefined, { month: 'long' })} {year}</span>
             </button>
             <AnimatePresence>
               {showMonthPicker && renderMonthPicker()}
             </AnimatePresence>
           </div>
           <button className="matrix-btn primary" onClick={handleExportExcel}>
-            <Download size={18} /> <span>Export</span>
+            <Download size={18} /> <span>{t('exportCSV')}</span>
           </button>
         </div>
       </header>
@@ -349,14 +353,14 @@ const AttendanceGrid: React.FC = () => {
         {loading ? (
           <div className="matrix-loader">
             <div className="orbit"></div>
-            <span>Synchronizing Matrix Data...</span>
+            <span>{t('processing')}</span>
           </div>
         ) : (
           <div className="matrix-data-hub">
             <div className="matrix-body" style={{ height: '540px', overflowY: 'auto' }}>
               {/* Header Row */}
               <div className="matrix-row header">
-                <div className="employee-info-cell header-cell">Personnel</div>
+                <div className="employee-info-cell header-cell">{t('employee')}</div>
                 <div className="days-timeline">
                     {[...Array(daysInMonth)].map((_, i) => {
                       const dayNum = i + 1;
@@ -431,14 +435,14 @@ const AttendanceGrid: React.FC = () => {
 
       <div className="matrix-footer">
         <div className="legend">
-          <div className="legend-item"><span className="dot present"></span> Present</div>
-          <div className="legend-item"><span className="dot pending"></span> Pending</div>
-          <div className="legend-item"><span className="dot absent"></span> Absent</div>
-          <div className="legend-item"><span className="guide-box sunday"></span> Sunday</div>
-          <div className="legend-item"><span className="guide-box today"></span> Current Day</div>
+          <div className="legend-item"><span className="dot present"></span> {t('presentLabel')}</div>
+          <div className="legend-item"><span className="dot pending"></span> {t('pendingLabel')}</div>
+          <div className="legend-item"><span className="dot absent"></span> {t('absentLabel')}</div>
+          <div className="legend-item"><span className="guide-box sunday"></span> {t('absentLabel')}</div>
+          <div className="legend-item"><span className="guide-box today"></span> {t('filterToday')}</div>
         </div>
         <div className="stats-pill">
-          <Filter size={14} /> <span>{employees.length} Personnel Monitored</span>
+          <Filter size={14} /> <span>{filteredEmployees.length} {t('employees')}</span>
         </div>
       </div>
 

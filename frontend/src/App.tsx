@@ -14,6 +14,7 @@ import Profile from './pages/Profile.tsx';
 import ManagerAttendance from './pages/ManagerAttendance.tsx';
 import EmployeeDetails from './pages/EmployeeDetails.tsx';
 import CompleteProfile from './pages/CompleteProfile.tsx';
+import Holidays from './pages/Holidays.tsx';
 import Sidebar from './layout/Sidebar';
 import Topbar from './layout/Topbar';
 import './App.css';
@@ -93,6 +94,7 @@ function App() {
             <Route path="/attendance/manager" element={<ProtectedRoute><PlatformLayout><ManagerAttendance /></PlatformLayout></ProtectedRoute>} />
             <Route path="/tracking" element={<ProtectedRoute adminOnly><PlatformLayout><Tracking /></PlatformLayout></ProtectedRoute>} />
             <Route path="/payroll" element={<ProtectedRoute><PlatformLayout><Payroll /></PlatformLayout></ProtectedRoute>} />
+            <Route path="/holidays" element={<ProtectedRoute adminOnly><PlatformLayout><Holidays /></PlatformLayout></ProtectedRoute>} />
             <Route path="/sites" element={<ProtectedRoute><PlatformLayout><Sites /></PlatformLayout></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><PlatformLayout><Profile /></PlatformLayout></ProtectedRoute>} />
             <Route path="/settings" element={<Navigate to="/profile" replace />} />

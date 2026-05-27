@@ -54,7 +54,7 @@ export const Login = () => {
         navigate('/dashboard');
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to login. Please check your credentials.');
+      setError(err.message || t('loginFailed'));
     } finally {
       setLoading(false);
     }
@@ -84,7 +84,7 @@ export const Login = () => {
         navigate('/dashboard');
       }
     } catch (err: any) {
-      setError(err.message || 'Quick login failed.');
+      setError(err.message || t('quickLoginFailed'));
       setLoading(false);
     }
   };
@@ -97,7 +97,7 @@ export const Login = () => {
     // Simulate SSO Redirect
     setTimeout(() => {
       setLoading(false);
-      setError('SSO Gateway timed out. Please use regular login.');
+      setError(t('ssoGatewayTimeout'));
     }, 1500);
   };
 
@@ -119,10 +119,10 @@ export const Login = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
           >
-            <span className="left-panel-tag">SECURE WORKFORCE TELEMETRY</span>
-            <h1>Optimize the workforce. Secure the perimeter.</h1>
+            <span className="left-panel-tag">{t('secureWorkforceTelemetry')}</span>
+            <h1>{t('optimizeWorkforceSecurePerimeter')}</h1>
             <p>
-              Military-grade biometric logging, real-time geofencing metrics, and zero-trust verification systems integrated into one elegant operational intelligence hub.
+              {t('authLeftPanelDesc')}
             </p>
           </motion.div>
 
@@ -163,9 +163,9 @@ export const Login = () => {
             className="auth-card-deck"
           >
             <div className="auth-deck-header">
-              <span className="deck-tag-pre">SECURE GRID ENTRY</span>
-              <h2>Welcome back.</h2>
-              <p>Sign in to access your operational dashboard.</p>
+              <span className="deck-tag-pre">{t('secureGridEntry')}</span>
+              <h2>{t('welcomeBack')}</h2>
+              <p>{t('signInSubtitle')}</p>
             </div>
 
             {/* Custom sliding tab selector */}
@@ -178,14 +178,14 @@ export const Login = () => {
                 className={`tab-btn-slide ${activeTab === 'LOGIN' ? 'active' : ''}`}
                 onClick={() => { setActiveTab('LOGIN'); setError(''); }}
               >
-                Standard Sign In
+                {t('standardSignIn')}
               </button>
               <button 
                 type="button" 
                 className={`tab-btn-slide ${activeTab === 'SSO' ? 'active' : ''}`}
                 onClick={() => { setActiveTab('SSO'); setError(''); }}
               >
-                Enterprise SSO
+                {t('enterpriseSSO')}
               </button>
             </div>
 
@@ -222,7 +222,7 @@ export const Login = () => {
                   </div>
 
                   <div className="form-group-deck">
-                    <label>Password</label>
+                    <label>{t('passwordLabel')}</label>
                     <div className="input-group-deck">
                       <Lock size={18} className="input-icon-deck" />
                       <input 
@@ -244,13 +244,13 @@ export const Login = () => {
 
                   <div className="form-action-row">
                     <label className="checkbox-deck">
-                      <input type="checkbox" /> Remember login
+                      <input type="checkbox" /> {t('rememberLogin')}
                     </label>
-                    <a href="mailto:admin@trackforce.com?subject=TrackForce%20Access%20Recovery%20Request" className="forgot-key-link" title="Contact System Administrator for Access Recovery">Lost access? Contact Admin</a>
+                    <a href="mailto:admin@trackforce.com?subject=TrackForce%20Access%20Recovery%20Request" className="forgot-key-link" title="Contact System Administrator for Access Recovery">{t('lostAccessContactAdmin')}</a>
                   </div>
 
                   <button type="submit" className="btn-deck-primary" disabled={loading}>
-                    {loading ? 'Authorizing Node...' : 'Sign In Now'} <ArrowRight size={18} />
+                    {loading ? t('authorizingNode') : t('signInNow')} <ArrowRight size={18} />
                   </button>
                 </motion.form>
               ) : (
@@ -264,7 +264,7 @@ export const Login = () => {
                   className="deck-form"
                 >
                   <div className="form-group-deck">
-                    <label>Corporate SSO Domain</label>
+                    <label>{t('corporateSsoDomain')}</label>
                     <div className="input-group-deck">
                       <Fingerprint size={18} className="input-icon-deck" />
                       <input 
@@ -278,7 +278,7 @@ export const Login = () => {
                   </div>
 
                   <button type="submit" className="btn-deck-primary" disabled={loading}>
-                    {loading ? 'Routing to Gateway...' : 'Initiate Single Sign-On'} <ArrowRight size={18} />
+                    {loading ? t('routingToGateway') : t('initiateSingleSignOn')} <ArrowRight size={18} />
                   </button>
                 </motion.form>
               )}
@@ -286,7 +286,7 @@ export const Login = () => {
 
             {/* Test credentials shortcut row */}
             <div className="deck-test-credentials">
-              <span className="test-creds-label">TEST ENVIRONMENT KEYS</span>
+              <span className="test-creds-label">{t('testEnvironmentKeys')}</span>
               <div className="test-creds-grid">
                 <button type="button" className="test-cred-btn" onClick={() => handleQuickCredential('ADMIN')}>
                   Admin
@@ -303,7 +303,7 @@ export const Login = () => {
             <div className="deck-footer-status">
               <div className="security-status-node">
                 <div className="status-ping-pulse"></div>
-                <span>PORTAL: SECURE CHANNEL ACTIVE</span>
+                <span>{t('portalSecureChannelActive')}</span>
               </div>
             </div>
 

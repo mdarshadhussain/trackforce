@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, Search, Navigation, CheckCircle2, Loader2, Shield, MousePointer2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { MapPin, Search, Navigation, CheckCircle2, Loader2, Shield, MousePointer2, Clock } from 'lucide-react';
 
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap, Circle } from 'react-leaflet';
 import L from 'leaflet';
@@ -47,6 +48,7 @@ interface AddSiteModalProps {
 }
 
 const AddSiteModal = ({ isOpen, onClose, onSave, addToast, initialData }: AddSiteModalProps) => {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({
     name: '',
     location: '',
@@ -54,7 +56,8 @@ const AddSiteModal = ({ isOpen, onClose, onSave, addToast, initialData }: AddSit
     latitude: 0,
     longitude: 0,
     managerName: 'Admin',
-    geofenceRadius: 300
+    geofenceRadius: 300,
+    workingStartTime: '07:00'
   });
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -73,7 +76,8 @@ const AddSiteModal = ({ isOpen, onClose, onSave, addToast, initialData }: AddSit
         latitude: initialData.latitude || 0,
         longitude: initialData.longitude || 0,
         managerName: initialData.managerName || 'Admin',
-        geofenceRadius: initialData.geofenceRadius || 300
+        geofenceRadius: initialData.geofenceRadius || 300,
+        workingStartTime: initialData.workingStartTime || '07:00'
       });
       setSearchQuery(initialData.location || '');
     } else {
@@ -84,7 +88,8 @@ const AddSiteModal = ({ isOpen, onClose, onSave, addToast, initialData }: AddSit
         latitude: 0,
         longitude: 0,
         managerName: 'Admin',
-        geofenceRadius: 300
+        geofenceRadius: 300,
+        workingStartTime: '07:00'
       });
       setSearchQuery('');
     }
@@ -145,7 +150,7 @@ const AddSiteModal = ({ isOpen, onClose, onSave, addToast, initialData }: AddSit
     });
     setSearchQuery(s.display_name);
     setSuggestions([]);
-    addToast('Location synchronized. You can now adjust the pin on the map.', 'success');
+    addToast(t('locationSyncSuccess'), 'success');
   };
 
   const handleMapAction = async (lat: number, lon: number) => {
@@ -196,7 +201,7 @@ const AddSiteModal = ({ isOpen, onClose, onSave, addToast, initialData }: AddSit
   const fetchCurrentLocation = () => {
     setIsLocating(true);
     if (!navigator.geolocation) {
-      addToast('Geolocation not supported', 'error');
+      addToast(t('geolocationNotSupported'), 'error');
       setIsLocating(false);
       return;
     }
@@ -219,20 +224,20 @@ const AddSiteModal = ({ isOpen, onClose, onSave, addToast, initialData }: AddSit
             longitude: lon
           });
           setSearchQuery(address);
-          addToast('Location and Address synchronized', 'success');
+          addToast(t('locationAddressSyncSuccess'), 'success');
         } catch (err) {
           setFormData({
             ...formData,
             latitude: lat,
             longitude: lon
           });
-          addToast('Coordinates fetched (Address lookup failed)', 'info');
+          addToast(t('coordFetchedAddressFailed'), 'info');
         } finally {
           setIsLocating(false);
         }
       },
       () => {
-        addToast('Location access denied', 'error');
+        addToast(t('locationAccessDenied'), 'error');
         setIsLocating(false);
       }
     );
@@ -241,7 +246,7 @@ const AddSiteModal = ({ isOpen, onClose, onSave, addToast, initialData }: AddSit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.location) {
-      addToast('Please fill all required fields', 'info');
+      addToast(t('fillRequiredFields'), 'info');
       return;
     }
     setIsSaving(true);
@@ -273,7 +278,7 @@ const AddSiteModal = ({ isOpen, onClose, onSave, addToast, initialData }: AddSit
                   {/* Left Column: Essential Details */}
                   <div className="modal-column details-column">
                     <div className="form-group">
-                      <label>Site Name</label>
+                      <label>{t('siteName')}</label>
                       <div className="input-with-icon">
                         <Navigation size={18} />
                         <input
@@ -287,7 +292,7 @@ const AddSiteModal = ({ isOpen, onClose, onSave, addToast, initialData }: AddSit
                     </div>
 
                     <div className="form-group">
-                      <label>Display Address (Optional Override)</label>
+                      <label>{t('displayAddressOverride')}</label>
                       <div className="input-with-icon">
                         <MapPin size={18} />
                         <input
@@ -298,18 +303,34 @@ const AddSiteModal = ({ isOpen, onClose, onSave, addToast, initialData }: AddSit
                         />
                       </div>
                       <p className="hint-text" style={{ fontSize: '10px', color: 'var(--text-dim)', marginTop: '4px' }}>
-                        If left blank, the system will show City & Province from the address.
+                        {t('displayAddressHint')}
+                      </p>
+                    </div>
+
+                    <div className="form-group">
+                      <label>{t('workingStartTime')}</label>
+                      <div className="input-with-icon">
+                        <Clock size={18} />
+                        <input
+                          type="time"
+                          required
+                          value={formData.workingStartTime || '07:00'}
+                          onChange={(e) => setFormData({...formData, workingStartTime: e.target.value})}
+                        />
+                      </div>
+                      <p className="hint-text" style={{ fontSize: '10px', color: 'var(--text-dim)', marginTop: '4px' }}>
+                        {t('workingStartTimeHint')}
                       </p>
                     </div>
 
                     <div className="form-group" ref={searchRef}>
-                      <label>Physical Address & Search</label>
+                      <label>{t('physicalAddressSearch')}</label>
                       <div className="location-input-group">
                         <div className="input-with-icon flex-1">
                           <Search size={18} />
                           <input
                             type="text"
-                            placeholder="Search address..."
+                            placeholder={t('searchAddressPlaceholder')}
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                           />
@@ -352,11 +373,11 @@ const AddSiteModal = ({ isOpen, onClose, onSave, addToast, initialData }: AddSit
 
                     <div className="coord-preview-grid">
                       <div className="coord-box">
-                        <span>LATITUDE</span>
+                        <span>{t('latitudeLabel')}</span>
                         <code>{formData.latitude.toFixed(6)}</code>
                       </div>
                       <div className="coord-box">
-                        <span>LONGITUDE</span>
+                        <span>{t('longitudeLabel')}</span>
                         <code>{formData.longitude.toFixed(6)}</code>
                       </div>
                     </div>
@@ -370,9 +391,9 @@ const AddSiteModal = ({ isOpen, onClose, onSave, addToast, initialData }: AddSit
                       <div className="map-section-header">
                         <div className="title">
                           <MousePointer2 size={16} />
-                          <span>Pin Placement</span>
+                          <span>{t('pinPlacement')}</span>
                         </div>
-                        <span className="hint">Drag or click map</span>
+                        <span className="hint">{t('dragOrClickMap')}</span>
                       </div>
                       <div className="modal-map-container-large">
                         <MapContainer 
@@ -391,10 +412,10 @@ const AddSiteModal = ({ isOpen, onClose, onSave, addToast, initialData }: AddSit
                       <div className="geofence-header-premium">
                         <div className="title">
                           <Shield size={18} />
-                          <span>Security Perimeter</span>
+                          <span>{t('securityPerimeter')}</span>
                         </div>
                         <div className="value-badge">
-                          {formData.geofenceRadius} <span>meters</span>
+                          {formData.geofenceRadius} <span>{t('metersUnit')}</span>
                         </div>
                       </div>
                       
@@ -423,19 +444,19 @@ const AddSiteModal = ({ isOpen, onClose, onSave, addToast, initialData }: AddSit
                           min="10"
                           max="5000"
                         />
-                        <span className="unit">MANUAL ENTRY (M)</span>
+                        <span className="unit">{t('manualEntryM')}</span>
                       </div>
-                      <p className="geofence-hint">Geofencing protocol will be strictly enforced within this radius.</p>
+                      <p className="geofence-hint">{t('geofenceHint')}</p>
                     </div>
                   </div>
                 </div>
               </div>
 
               <div className="modal-footer-sticky">
-                <button type="button" onClick={onClose} className="btn btn-ghost">Cancel</button>
+                <button type="button" onClick={onClose} className="btn btn-ghost">{t('cancel')}</button>
                 <button type="submit" className="btn btn-primary" disabled={isSaving}>
                   {isSaving ? <Loader2 className="spin" size={18} /> : <CheckCircle2 size={18} />}
-                  {initialData ? 'Update Site Node' : 'Initialize Site Node'}
+                  {initialData ? t('updateSiteNode') : t('initializeSiteNode')}
                 </button>
               </div>
             </form>

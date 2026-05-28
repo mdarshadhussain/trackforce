@@ -34,7 +34,7 @@ const PayslipModal: React.FC<PayslipModalProps> = ({ isOpen, onClose, data }) =>
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="payslip-card-premium"
+            className="payslip-modal-content"
           >
             <div className="payslip-header-actions no-print">
                <button className="btn-icon" onClick={handlePrint} title={t('printPayslip')}>

@@ -11,7 +11,7 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
-  margin-bottom: 32px;
+  margin-bottom: 16px;
 }
 
 .identity-section-watt {
@@ -136,6 +136,9 @@
   background: var(--primary);
   color: white;
   box-shadow: 0 4px 12px var(--primary-glow);
+  .dashboard-header {
+    margin-bottom: 20px;
+  }
 }
 
 .watt-btn.primary:hover {
@@ -196,66 +199,75 @@
   }
 }
 
-.watt-card {
-  background: var(--surface);
+/* Creative Stat Cards */
+.creative-stat-card {
+  position: relative;
+  background: linear-gradient(135deg, var(--card-color) 0%, #1e293b 100%);
   border-radius: 20px;
-  border: 1px solid var(--border);
-  box-shadow: 0 4px 20px rgba(0,0,0,0.03);
   padding: 24px;
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-  position: relative;
   overflow: hidden;
-}
-
-.watt-card::before {
-  content: '';
-  position: absolute;
-  top: 0; right: 0;
-  width: 150px; height: 150px;
-  background: radial-gradient(circle, var(--primary-glow) 0%, transparent 70%);
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  pointer-events: none;
-  z-index: 0;
-}
-
-.watt-card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 12px 30px rgba(0,0,0,0.08);
-  border-color: rgba(59, 130, 246, 0.3);
-}
-
-.watt-card:hover::before {
-  opacity: 1;
-}
-
-.stat-card {
-  position: relative;
-  z-index: 1;
+  box-shadow: 0 10px 30px -10px var(--card-color);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   display: flex;
   flex-direction: column;
   gap: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: white;
 }
 
-.stat-card-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+.creative-stat-card:hover {
+  transform: translateY(-8px) scale(1.02);
 }
 
-.stat-icon-box {
+.creative-card-bg-icon {
+  position: absolute;
+  right: -20px;
+  bottom: -20px;
+  opacity: 0.1;
+  transform: scale(4);
+  pointer-events: none;
+}
+
+.creative-icon-box {
+  color: white;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
   width: 48px;
   height: 48px;
   border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--surface-hover);
-  border: 1px solid var(--border);
-  box-shadow: inset 0 2px 4px rgba(255,255,255,0.1);
 }
 
-.stat-trend-badge {
+.creative-label {
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 11px;
+}
+
+.creative-value {
+  color: white;
+  font-size: 36px;
+  font-weight: 800;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  margin: 0;
+}
+
+.creative-unit {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.creative-trend-label {
+  background: rgba(255,255,255,0.15) !important;
+  color: white !important;
+  backdrop-filter: blur(4px);
+}
+
+.creative-trend {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -265,50 +277,13 @@
   font-weight: 700;
 }
 
-.stat-trend-label {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--text-tertiary);
-  background: var(--surface-hover);
-  padding: 4px 8px;
-  border-radius: 6px;
-  text-transform: uppercase;
-}
-
-[data-theme='dark'] .stat-trend-label {
-  background: var(--surface-hover);
-}
-
-.stat-card-content {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.stat-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-secondary);
-}
-
-.stat-value-group {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-}
-
-.stat-value {
-  font-size: 32px;
-  font-weight: 800;
-  color: var(--text-primary);
-  margin: 0;
-  letter-spacing: -1px;
-}
-
-.stat-unit {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-tertiary);
+/* Only kept for chart wrappers now */
+.watt-card {
+  background: var(--surface);
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+  padding: 24px;
 }
 
 /* Charts Grid */

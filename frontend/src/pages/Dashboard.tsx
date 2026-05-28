@@ -207,37 +207,41 @@ const CustomDateDropdown = ({
   );
 };
 
-const StatCard = ({ icon, label, value, trend, color, description, trendLabel }: any) => (
-  <motion.div
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    className="watt-card stat-card"
-  >
-    <div className="stat-card-top">
-      <div className="stat-icon-box" style={{ backgroundColor: `${color}15`, color: color }}>
-        {icon}
-      </div>
-      {trend !== undefined && (
-        <div className="stat-trend-badge" style={{ backgroundColor: trend > 0 ? '#10B98115' : '#EF444415', color: trend > 0 ? '#10B981' : '#EF4444' }}>
-          <TrendingUp size={12} style={{ transform: trend > 0 ? 'none' : 'rotate(180deg)' }} />
-          <span>{Math.abs(trend)}%</span>
+const StatCard = ({ icon, label, value, trend, color, description, trendLabel }: any) => {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="creative-stat-card"
+      style={{ '--card-color': color } as React.CSSProperties}
+    >
+      <div className="creative-card-bg-icon">{icon}</div>
+      <div className="stat-card-top">
+        <div className="stat-icon-box creative-icon-box" style={{ backgroundColor: color }}>
+          {icon}
         </div>
-      )}
-      {trendLabel && (
-        <div className="stat-trend-label" style={{ display: 'inline-block' }}>
-          {trendLabel}
-        </div>
-      )}
-    </div>
-    <div className="stat-card-content">
-      <span className="stat-label">{label}</span>
-      <div className="stat-value-group">
-        <h2 className="stat-value">{value}</h2>
-        {description && <span className="stat-unit">{description}</span>}
+        {trend !== undefined && (
+          <div className="stat-trend-badge creative-trend" style={{ backgroundColor: 'rgba(255,255,255,0.2)', color: '#fff' }}>
+            <TrendingUp size={12} style={{ transform: trend > 0 ? 'none' : 'rotate(180deg)' }} />
+            <span>{Math.abs(trend)}%</span>
+          </div>
+        )}
+        {trendLabel && (
+          <div className="stat-trend-label creative-trend-label">
+            {trendLabel}
+          </div>
+        )}
       </div>
-    </div>
-  </motion.div>
-);
+      <div className="stat-card-content creative-content">
+        <span className="stat-label creative-label">{label}</span>
+        <div className="stat-value-group">
+          <h2 className="stat-value creative-value">{value}</h2>
+          {description && <span className="stat-unit creative-unit">{description}</span>}
+        </div>
+      </div>
+    </motion.div>
+  );
+};
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -825,7 +829,6 @@ const Dashboard = () => {
               <div className="welcome-top-line">
                 <h1 className="page-title">{t('welcomeBack')}, <span className="text-gradient">{user?.firstName}</span></h1>
               </div>
-              <p className="page-subtitle">{t('realtimeGridIntel')}</p>
               <div className="role-chip-watt">
                 <Activity size={12} />
                 <span>{user?.role} {t('optimizedStatus')}</span>

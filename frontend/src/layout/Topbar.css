@@ -120,6 +120,11 @@
   background: var(--primary-glow);
 }
 
+/* ── Topbar Logo (Hidden on desktop, used on mobile) ── */
+.topbar-mobile-logo {
+  display: none;
+}
+
 .mobile-menu-btn {
   display: none;
   background: transparent;
@@ -134,46 +139,46 @@
 /* ── Mobile Topbar: Compact App Header ── */
 @media (max-width: 1024px) {
   .topbar {
-    height: 60px;
+    height: 64px;
   }
 
   .topbar-inner {
     padding: 0 16px;
   }
 
-  /* Show a centered "TrackForce" app title on mobile */
-  .topbar-spacer {
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  /* Remove centered TrackForce, we use the logo div instead */
+  .topbar-spacer::before {
+    content: none;
   }
 
-  .topbar-spacer::before {
-    content: 'TrackForce';
-    font-size: 17px;
+  /* Show landing-page style logo */
+  .topbar-mobile-logo {
+    display: flex;
+    font-size: 20px;
     font-weight: 800;
     color: var(--text-primary);
-    letter-spacing: -0.01em;
+    letter-spacing: 0.05em;
   }
 
-  /* Only keep dark mode toggle + language on mobile */
+  .topbar-mobile-logo span {
+    color: var(--primary);
+  }
+
+  /* Hide bell and help */
   .icon-btn.bell-btn,
   .icon-btn.help-btn {
     display: none;
   }
 
-  /* Show avatar — it's the profile quick link */
+  /* Hide profile on mobile as requested */
   .user-profile-mini {
-    display: block;
-    margin-left: 4px;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
+    display: none;
   }
 
+  /* Make theme and lang buttons bigger for touch */
   .icon-btn {
-    width: 36px;
-    height: 36px;
+    width: 48px;
+    height: 48px;
   }
 }
 

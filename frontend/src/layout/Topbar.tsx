@@ -41,11 +41,15 @@ const Topbar = ({ onMenuClick, hideMenuBtn = false }: { onMenuClick?: () => void
           </button>
         )}
         
+        <div className="topbar-mobile-logo">
+          TRACK<span>FORCE</span>
+        </div>
+        
         <div className="topbar-spacer"></div>
 
         <div className="topbar-actions">
-          <button className="icon-btn" onClick={toggleTheme}>
-            {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+          <button className="icon-btn theme-btn" onClick={toggleTheme}>
+            {theme === 'dark' ? <Sun size={24} /> : <Moon size={24} />}
           </button>
 
           <button className="icon-btn bell-btn">
@@ -62,7 +66,7 @@ const Topbar = ({ onMenuClick, hideMenuBtn = false }: { onMenuClick?: () => void
               className={`icon-btn ${showLangDropdown ? 'active' : ''}`} 
               onClick={() => setShowLangDropdown(!showLangDropdown)}
             >
-              <Globe size={20} />
+              <Globe size={24} />
             </button>
 
             {showLangDropdown && (

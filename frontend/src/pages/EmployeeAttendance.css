@@ -19,8 +19,8 @@
 @media (max-width: 640px) {
   .employee-att-container {
     max-width: 100%;
-    margin: -20px -16px 0;
-    width: calc(100% + 32px);
+    margin: 0;
+    width: 100%;
   }
 }
 
@@ -277,9 +277,10 @@
 }
 
 .attendance-card-premium .big-btn.in {
-  background: linear-gradient(145deg, #3b82f6 0%, #1d4ed8 100%);
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
   color: white;
   box-shadow: 0 8px 24px -4px rgba(59, 130, 246, 0.45);
+  border: none;
 }
 
 .attendance-card-premium .big-btn.in:active:not(:disabled) {
@@ -287,21 +288,34 @@
   box-shadow: 0 4px 12px -2px rgba(59, 130, 246, 0.3);
 }
 
+.attendance-card-premium .big-btn.in.disabled {
+  background: rgba(59, 130, 246, 0.04) !important;
+  color: rgba(59, 130, 246, 0.4) !important;
+  border: 1.5px dashed rgba(59, 130, 246, 0.2) !important;
+  box-shadow: none !important;
+  opacity: 0.8;
+  cursor: not-allowed;
+}
+
 .attendance-card-premium .big-btn.out {
-  background: linear-gradient(145deg, rgba(239, 68, 68, 0.12) 0%, rgba(220, 38, 38, 0.08) 100%);
-  color: #ef4444;
-  border: 1.5px solid rgba(239, 68, 68, 0.25);
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  box-shadow: 0 8px 24px -4px rgba(239, 68, 68, 0.45);
+  border: none;
 }
 
 .attendance-card-premium .big-btn.out:active:not(:disabled) {
   transform: scale(0.96);
+  box-shadow: 0 4px 12px -2px rgba(239, 68, 68, 0.3);
 }
 
-.attendance-card-premium .big-btn.disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-  transform: none !important;
+.attendance-card-premium .big-btn.out.disabled {
+  background: rgba(239, 68, 68, 0.04) !important;
+  color: rgba(239, 68, 68, 0.4) !important;
+  border: 1.5px dashed rgba(239, 68, 68, 0.2) !important;
   box-shadow: none !important;
+  opacity: 0.8;
+  cursor: not-allowed;
 }
 
 /* ── Shift Info Footer ── */
@@ -705,7 +719,7 @@
 .cal-dot-box {
   aspect-ratio: 1;
   background: var(--surface);
-  border-radius: 10px;
+  border-radius: 12px;
   border: 1px solid var(--border);
   position: relative;
   display: flex;
@@ -721,26 +735,47 @@
 }
 
 .cal-dot-box.approved {
-  background: rgba(16, 185, 129, 0.1);
-  border-color: rgba(16, 185, 129, 0.25);
+  background: #fef3c7; /* Soft amber/yellow background matching Image 1 */
+  border-color: #fde68a;
 }
-.cal-dot-box.approved .dot-date { color: var(--success); }
+.cal-dot-box.approved .dot-date { 
+  color: #b45309; 
+  font-weight: 700;
+}
+.cal-dot-box.approved .dot-hours { 
+  color: #b45309; 
+  font-weight: 700;
+  font-size: 8px;
+}
 
 .cal-dot-box.pending {
-  background: rgba(245, 158, 11, 0.1);
-  border-color: rgba(245, 158, 11, 0.25);
+  background: rgba(245, 158, 11, 0.05);
+  border-color: rgba(245, 158, 11, 0.15);
 }
-.cal-dot-box.pending .dot-date { color: #d97706; }
+.cal-dot-box.pending .dot-date { 
+  color: #d97706; 
+}
+.cal-dot-box.pending .dot-hours { 
+  color: #d97706; 
+}
 
 .cal-dot-box.absent {
-  background: rgba(239, 68, 68, 0.08);
-  border-color: rgba(239, 68, 68, 0.2);
+  background: #fee2e2; /* Soft red background matching Image 1 */
+  border-color: #fca5a5;
 }
-.cal-dot-box.absent .dot-date { color: #dc2626; }
+.cal-dot-box.absent .dot-date { 
+  color: #dc2626; 
+  font-weight: 700;
+}
+.cal-dot-box.absent .dot-absent { 
+  color: #dc2626; 
+  font-weight: 700;
+  font-size: 7px !important;
+}
 
 .cal-dot-box.today {
-  border: 2px solid var(--primary);
-  box-shadow: 0 0 10px rgba(59, 130, 246, 0.2);
+  border: 2px solid #3b82f6; /* Bright blue highlight border */
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.25);
 }
 
 .cal-dot-box.empty {
@@ -751,7 +786,7 @@
 }
 
 .cal-dot-box .dot-date {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--text-primary);
   line-height: 1;
@@ -759,15 +794,15 @@
 
 .cal-dot-box .dot-hours {
   font-size: 8px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-secondary);
-  margin-top: 2px;
+  margin-top: 3px;
 }
 
 .cal-dot-box .dot-absent {
   font-size: 7px !important;
-  font-weight: 700;
-  margin-top: 2px;
+  font-weight: 600;
+  margin-top: 3px;
 }
 
 /* ── Permissions Help Modal ── */

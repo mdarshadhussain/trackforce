@@ -535,6 +535,14 @@ const EmployeeAttendance = () => {
   };
 
 
+  const now = new Date();
+  const currentHour = now.getHours();
+  
+  // User cannot check in after 5:00 PM (17:00)
+  const isCheckInDisabled = isClockedIn || currentHour >= 17;
+  // User cannot clock out after 22:59 (if hour is >= 23)
+  const isCheckOutDisabled = !isClockedIn || currentHour >= 23;
+
   if (isLoading) return <div className="dashboard-loading"><div className="loading-spinner-watt"></div><span>{t('processing')}</span></div>;
 
   return (
@@ -657,9 +665,9 @@ const EmployeeAttendance = () => {
                     <motion.button 
                       whileHover={{ scale: 1.02 }} 
                       whileTap={{ scale: 0.98 }} 
-                      className={`big-btn in ${isClockedIn ? 'disabled' : ''}`} 
-                      onClick={() => !isClockedIn && handleAction('IN')} 
-                      disabled={isClockedIn}
+                      className={`big-btn in ${isCheckInDisabled ? 'disabled' : ''}`} 
+                      onClick={() => !isCheckInDisabled && handleAction('IN')} 
+                      disabled={isCheckInDisabled}
                     >
                       <Clock size={28} /> 
                       <span>{t('clockIn').toUpperCase()}</span>
@@ -668,9 +676,9 @@ const EmployeeAttendance = () => {
                     <motion.button 
                       whileHover={{ scale: 1.02 }} 
                       whileTap={{ scale: 0.98 }} 
-                      className={`big-btn out ${!isClockedIn ? 'disabled' : ''}`} 
-                      onClick={() => isClockedIn && handleAction('OUT')} 
-                      disabled={!isClockedIn}
+                      className={`big-btn out ${isCheckOutDisabled ? 'disabled' : ''}`} 
+                      onClick={() => !isCheckOutDisabled && handleAction('OUT')} 
+                      disabled={isCheckOutDisabled}
                     >
                       <History size={28} /> 
                       <span>{t('clockOut').toUpperCase()}</span>

@@ -1034,7 +1034,7 @@ const Dashboard = () => {
           value={isManagement ? formattedPayrollValue : (stats?.earnings ?? 0).toLocaleString('en-US')}
           color="#8B5CF6"
           description={isManagement ? formattedPayrollDesc : (stats?.currencySymbol || "Γé½")}
-          trendLabel={isManagement ? t('calculatedLabel') : `${i18n.language === 'vi' ? '─É╞ín gi├í: ' : 'Rate: '}${stats?.hourlyRate?.toLocaleString('en-US') || '50,000'} Γé½/hr`}
+          trendLabel={isManagement ? t('calculatedLabel') : `${i18n.language === 'vi' ? 'Đơn giá: ' : 'Rate: '}${stats?.hourlyRate ? (stats.hourlyRate / 1000).toLocaleString('en-US') + 'k' : '50k'} ₫/hr`}
         />
       </section>
 

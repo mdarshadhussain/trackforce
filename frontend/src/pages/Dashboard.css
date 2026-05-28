@@ -14,9 +14,13 @@
   margin-bottom: 32px;
 }
 
+.header-titles {
+  width: 100%;
+}
+
 .identity-section-watt {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 20px;
   width: 100%;

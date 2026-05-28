@@ -980,17 +980,17 @@ const Dashboard = () => {
       {user && (user.role === 'EMPLOYEE' || user.role === 'MANAGER') && (
         <div className="featured-blue-card">
           <div className="fbc-top">
-            <p className="fbc-subtitle">{t('todaySchedule') || "Today's Activity"}</p>
+            <p className="fbc-subtitle">Today's schedule</p>
             <div className="fbc-main-stat">
               <span className="fbc-number">{(stats?.weeklyHours ?? "0.0")}</span>
-              <span className="fbc-unit">{t('hoursLogged') || "hours logged this week"}</span>
+              <span className="fbc-unit">hours logged</span>
             </div>
           </div>
           <div className="fbc-divider"></div>
           <div className="fbc-bottom">
             <div className="fbc-callout">
               <Clock className="fbc-icon" size={24} />
-              <p>{t('verifyShiftAttendanceDesc') || "Ready to log your shift?"}</p>
+              <p>Ready to log your shift?</p>
             </div>
             <button className="fbc-action-btn" onClick={() => setShowAttendancePrompt(true)}>
               {t('attendance') || "Attendance"}

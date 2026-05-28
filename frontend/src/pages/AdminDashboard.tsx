@@ -22,7 +22,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { exportToCSV } from '../utils/export';
-import './AdminDashboard.css';
+import './Dashboard.css';
 
 import { useEffect, useState, useRef } from 'react';
 import { fetchStats, fetchSites, fetchEmployees, fetchAllLogs } from '../api/api';
@@ -241,7 +241,7 @@ const StatCard = ({ icon, label, value, trend, color, description, trendLabel }:
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-const AdminDashboard = () => {
+const Dashboard = () => {
   const { user } = useAuth();
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
@@ -1284,4 +1284,4 @@ const AdminDashboard = () => {
   );
 };
 
-export default AdminDashboard;
+export default Dashboard;

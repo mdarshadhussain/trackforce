@@ -319,6 +319,9 @@ function calculateAdjustedDuration(
   lunchStartTime?: string | null,
   lunchEndTime?: string | null
 ) {
+  if (!clockIn || isNaN(clockIn.getTime()) || !clockOut || isNaN(clockOut.getTime())) {
+    return 0;
+  }
   let start = new Date(clockIn);
   if (workingStartTime) {
     const expectedStart = new Date(clockIn);
@@ -1217,7 +1220,8 @@ app.get('/api/payroll', authenticateToken, async (req: any, res: Response) => {
     const data = employees.map(emp => {
       let regMins = 0, otMins = 0, rate = emp.hourlyRate || 25;
       emp.attendance.forEach(log => {
-        const d = calculateAdjustedDuration(new Date(log.clockIn!), new Date(log.clockOut!), log.breaks, emp.site?.workingStartTime, emp.site?.lunchStartTime, emp.site?.lunchEndTime);
+        if (!log.clockIn || !log.clockOut) return;
+        const d = calculateAdjustedDuration(new Date(log.clockIn), new Date(log.clockOut), log.breaks, emp.site?.workingStartTime, emp.site?.lunchStartTime, emp.site?.lunchEndTime);
         
         const logDate = new Date(log.date || log.clockIn!);
         const isSunday = logDate.getDay() === 0;

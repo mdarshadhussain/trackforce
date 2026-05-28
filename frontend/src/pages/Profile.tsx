@@ -229,7 +229,7 @@ const Profile = () => {
                  <div className="ppd-icon"><DollarSign size={20} /></div>
                  <div className="ppd-content">
                    <label>{t('salaryPerHour')}</label>
-                   <span>{fullProfile?.employee?.hourlyRate ? `${fullProfile.employee.hourlyRate.toLocaleString()} ₫/h` : '0 ₫/h'}</span>
+                   <span>{fullProfile?.employee?.hourlyRate ? `${fullProfile.employee.hourlyRate.toLocaleString('en-US')} ₫/h` : '0 ₫/h'}</span>
                  </div>
                </div>
              </div>

@@ -981,7 +981,7 @@ const Payroll = () => {
               <StatCard 
                 icon={<Clock size={24} />} 
                 label={t('cumulativeHours')} 
-                value={`${dynamicStats.totalHours.toLocaleString()}h`}
+                value={`${dynamicStats.totalHours.toLocaleString('en-US')}h`}
                 color="#6366f1"
                 trend="+8.2%"
               />
@@ -995,7 +995,7 @@ const Payroll = () => {
               <StatCard 
                 icon={<Activity size={24} />} 
                 label={t('overtime')} 
-                value={`${dynamicStats.totalOvertime.toLocaleString()}h`}
+                value={`${dynamicStats.totalOvertime.toLocaleString('en-US')}h`}
                 color="#10b981"
               />
             </div>

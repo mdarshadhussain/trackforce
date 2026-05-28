@@ -195,7 +195,7 @@ const EmployeeDetails = () => {
         <StatCard 
           icon={<Wallet size={24} />} 
           label={t('grossAmount')} 
-          value={`${parseFloat(stats.totalEarnings || '0').toLocaleString()} ₫`} 
+          value={`${parseFloat(stats.totalEarnings || '0').toLocaleString('en-US')} ₫`} 
           color="#10b981" 
         />
         <StatCard 
@@ -249,12 +249,12 @@ const EmployeeDetails = () => {
                     <h4>{t('salaryPayout')}</h4>
                   </div>
                   <div className="tile-data-large">
-                    <span className="large-value">{employee.hourlyRate?.toLocaleString() || '0'} ₫</span>
+                    <span className="large-value">{employee.hourlyRate?.toLocaleString('en-US') || '0'} ₫</span>
                     <span className="label">{t('salaryPerHour')}</span>
                   </div>
                   <div className="tile-footer-meta">
                     <TrendingUp size={14} /> 
-                    <span>{t('overtime')}: {employee.overtimeType === 'MULTIPLIER' ? `${employee.overtimeValue}x ${t('multiplier')}` : `${employee.overtimeValue?.toLocaleString()} ₫ ${t('fixedAmount')}`}</span>
+                    <span>{t('overtime')}: {employee.overtimeType === 'MULTIPLIER' ? `${employee.overtimeValue}x ${t('multiplier')}` : `${employee.overtimeValue?.toLocaleString('en-US')} ₫ ${t('fixedAmount')}`}</span>
                   </div>
                 </div>
 

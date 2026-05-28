@@ -1031,10 +1031,10 @@ const Dashboard = () => {
         <StatCard
           icon={<Wallet size={20} />}
           label={isManagement ? t('estPayroll') : t('totalEarnings')}
-          value={isManagement ? formattedPayrollValue : (stats?.earnings ?? 0).toLocaleString()}
+          value={isManagement ? formattedPayrollValue : (stats?.earnings ?? 0).toLocaleString('en-US')}
           color="#8B5CF6"
           description={isManagement ? formattedPayrollDesc : (stats?.currencySymbol || "Γé½")}
-          trendLabel={isManagement ? t('calculatedLabel') : `${i18n.language === 'vi' ? '─É╞ín gi├í: ' : 'Rate: '}${stats?.hourlyRate?.toLocaleString() || '50,000'} Γé½/hr`}
+          trendLabel={isManagement ? t('calculatedLabel') : `${i18n.language === 'vi' ? '─É╞ín gi├í: ' : 'Rate: '}${stats?.hourlyRate?.toLocaleString('en-US') || '50,000'} Γé½/hr`}
         />
       </section>
 

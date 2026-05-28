@@ -194,7 +194,7 @@ const formatVND = (value: number | string) => {
   const num = typeof value === 'string' ? parseFloat(value) : value;
   if (isNaN(num)) return '0 ₫';
   const rounded = Math.round(num / 1000) * 1000;
-  return `${rounded.toLocaleString()} ₫`;
+  return `${rounded.toLocaleString('en-US')} ₫`;
 };
 
 const formatDateDDMMYYYY = (date: Date) => {

@@ -53,45 +53,48 @@ const Topbar = ({ onMenuClick, hideMenuBtn = false }: { onMenuClick?: () => void
             <HelpCircle size={20} />
           </button>
 
-          <div className="lang-direct-switch" style={{ display: 'flex', gap: '10px', alignItems: 'center', marginLeft: '6px' }}>
-            <button 
-              className={`flag-btn ${i18n.language === 'en' ? 'active' : ''}`} 
-              onClick={() => i18n.changeLanguage('en')}
-              title="English"
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                padding: '4px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                opacity: i18n.language === 'en' ? 1 : 0.4,
-                transform: i18n.language === 'en' ? 'scale(1.15)' : 'scale(1)',
-                transition: 'all 0.2s ease',
-              }}
-            >
-              <img src="https://flagcdn.com/w40/gb.png" alt="English" style={{ width: '28px', height: 'auto', borderRadius: '4px', boxShadow: '0 2px 6px rgba(0,0,0,0.15)', display: 'block' }} />
-            </button>
-            <button 
-              className={`flag-btn ${i18n.language === 'vi' ? 'active' : ''}`} 
-              onClick={() => i18n.changeLanguage('vi')}
-              title="Tiếng Việt"
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                padding: '4px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                opacity: i18n.language === 'vi' ? 1 : 0.4,
-                transform: i18n.language === 'vi' ? 'scale(1.15)' : 'scale(1)',
-                transition: 'all 0.2s ease',
-              }}
-            >
-              <img src="https://flagcdn.com/w40/vn.png" alt="Tiếng Việt" style={{ width: '28px', height: 'auto', borderRadius: '4px', boxShadow: '0 2px 6px rgba(0,0,0,0.15)', display: 'block' }} />
-            </button>
+          <div className="lang-direct-switch" style={{ display: 'flex', alignItems: 'center', marginLeft: '6px' }}>
+            {i18n.language === 'vi' ? (
+              <button 
+                className="flag-btn" 
+                onClick={() => i18n.changeLanguage('en')}
+                title="Switch to English"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'transform 0.2s ease',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+              >
+                <img src="https://flagcdn.com/w40/gb.png" alt="English" style={{ width: '28px', height: '20px', objectFit: 'cover', borderRadius: '4px', boxShadow: '0 2px 6px rgba(0,0,0,0.15)', display: 'block' }} />
+              </button>
+            ) : (
+              <button 
+                className="flag-btn" 
+                onClick={() => i18n.changeLanguage('vi')}
+                title="Chuyển sang Tiếng Việt"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'transform 0.2s ease',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+              >
+                <img src="https://flagcdn.com/w40/vn.png" alt="Tiếng Việt" style={{ width: '28px', height: '20px', objectFit: 'cover', borderRadius: '4px', boxShadow: '0 2px 6px rgba(0,0,0,0.15)', display: 'block' }} />
+              </button>
+            )}
           </div>
           
           <div className="user-profile-mini">

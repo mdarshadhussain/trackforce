@@ -1019,7 +1019,7 @@ const Dashboard = () => {
               <p>{t('verifyShiftAttendanceDesc')}</p>
             </div>
           </div>
-          <button className="banner-btn">
+          <button className="banner-btn" style={{ color: isClockedIn ? '#ef4444' : '#10b981', fontWeight: 800 }}>
             {isClockedIn 
               ? (i18n.language === 'vi' ? 'Ra ca' : 'Clock Out') 
               : (i18n.language === 'vi' ? 'Vào ca' : 'Clock In')}

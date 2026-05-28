@@ -460,20 +460,28 @@
     bottom: 0;
     left: 0;
     width: 100%;
-    max-height: 60vh;
     z-index: 10;
-    overflow-y: auto;
-    padding: 16px 16px 100px 16px; /* Further increased bottom padding to lift card */
-    background: linear-gradient(to top, var(--bg) 0%, transparent 100%);
+    overflow-x: hidden;
+    padding: 16px 0 100px 0; /* Removing side padding here to allow edge-to-edge scrolling */
+    background: transparent;
   }
   .search-filter-card {
-    display: none; /* Hide search/filter on map view to save space, or style it to float on top */
+    display: none; 
   }
   .sites-grid { 
-    grid-template-columns: 1fr; 
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
     gap: 16px; 
+    padding: 0 16px; /* Move side padding here */
+    scrollbar-width: none;
+  }
+  .sites-grid::-webkit-scrollbar {
+    display: none;
   }
   .site-card { 
+    min-width: calc(100vw - 32px); /* Full width minus padding */
+    scroll-snap-align: center;
     min-height: auto; 
     border-radius: 20px;
     box-shadow: 0 10px 40px rgba(0,0,0,0.2);

@@ -823,11 +823,7 @@ const Dashboard = () => {
           <div className="identity-section-watt">
             <div className="welcome-group-watt">
               <div className="welcome-top-line">
-                <h1 className="page-title">{t('welcomeBack')}, <span className="text-gradient">{user?.firstName}</span></h1>
-              </div>
-              <div className="role-chip-watt">
-                <Activity size={12} />
-                <span>{user?.role} {t('optimizedStatus')}</span>
+                <h1 className="page-title">{user?.firstName} {user?.lastName}</h1>
               </div>
             </div>
             <motion.div 

@@ -256,6 +256,7 @@ const Dashboard = () => {
   const [allLogs, setAllLogs] = useState<any[]>([]);
   const [showAttendancePrompt, setShowAttendancePrompt] = useState(false);
   const [isClockedIn, setIsClockedIn] = useState(false);
+  const [todayLogsCount, setTodayLogsCount] = useState(0);
 
   useEffect(() => {
     if (user && (user.role === 'EMPLOYEE' || user.role === 'MANAGER')) {
@@ -274,7 +275,12 @@ const Dashboard = () => {
       localStorage.setItem(popupKey, 'shown');
       setShowAttendancePrompt(false);
       const destination = user.role === 'EMPLOYEE' ? '/attendance' : '/attendance/manager';
-      navigate(destination, { state: { autoAction: isClockedIn ? 'OUT' : 'IN' } });
+      const limitReached = todayLogsCount >= 2 && !isClockedIn;
+      if (limitReached) {
+        navigate(destination);
+      } else {
+        navigate(destination, { state: { autoAction: isClockedIn ? 'OUT' : 'IN' } });
+      }
     }
   };
 
@@ -336,6 +342,7 @@ const Dashboard = () => {
           if (user) {
             const todayLogs = await fetchTodayLogs(user.id).catch(() => []);
             setIsClockedIn(todayLogs.length > 0 && !todayLogs[0].clockOut);
+            setTodayLogsCount(todayLogs.length);
           }
         }
       } catch (err) {
@@ -1019,8 +1026,19 @@ const Dashboard = () => {
               <p>{t('verifyShiftAttendanceDesc')}</p>
             </div>
           </div>
-          <button className={`banner-btn ${isClockedIn ? 'clock-out' : 'clock-in'}`}>
-            {isClockedIn 
+          <button 
+            className={`banner-btn ${
+              todayLogsCount >= 2 && !isClockedIn 
+                ? 'completed' 
+                : isClockedIn 
+                ? 'clock-out' 
+                : 'clock-in'
+            }`}
+            style={todayLogsCount >= 2 && !isClockedIn ? { background: '#10B981', color: '#ffffff', cursor: 'default' } : undefined}
+          >
+            {todayLogsCount >= 2 && !isClockedIn
+              ? (i18n.language === 'vi' ? 'Đã nộp' : 'Submitted')
+              : isClockedIn 
               ? (i18n.language === 'vi' ? 'Ra ca' : 'Clock Out') 
               : (i18n.language === 'vi' ? 'Vào ca' : 'Clock In')}
           </button>

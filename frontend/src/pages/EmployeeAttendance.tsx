@@ -622,29 +622,77 @@ const EmployeeAttendance = () => {
             
             {step === 'idle' ? (
               <>
-                <div className="action-buttons-group">
-                  <motion.button 
-                    whileHover={{ scale: 1.02 }} 
-                    whileTap={{ scale: 0.98 }} 
-                    className={`big-btn in ${(isClockedIn || (logs.length >= 2 && !isClockedIn)) ? 'disabled' : ''}`} 
-                    onClick={() => !isClockedIn && logs.length < 2 && handleAction('IN')} 
-                    disabled={isClockedIn || (logs.length >= 2 && !isClockedIn)}
-                  >
-                    <Clock size={28} /> 
-                    <span>{logs.length >= 2 && !isClockedIn ? t('target').toUpperCase() : t('clockIn').toUpperCase()}</span>
-                  </motion.button>
-                  
-                  <motion.button 
-                    whileHover={{ scale: 1.02 }} 
-                    whileTap={{ scale: 0.98 }} 
-                    className={`big-btn out ${!isClockedIn ? 'disabled' : ''}`} 
-                    onClick={() => isClockedIn && handleAction('OUT')} 
-                    disabled={!isClockedIn}
-                  >
-                    <History size={28} /> 
-                    <span>{t('clockOut').toUpperCase()}</span>
-                  </motion.button>
-                </div>
+                {logs.length >= 2 && !isClockedIn ? (
+                  <div className="attendance-submitted-banner" style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '2.5rem 1.5rem',
+                    textAlign: 'center',
+                    background: 'rgba(16, 185, 129, 0.08)',
+                    borderRadius: '16px',
+                    border: '1px dashed rgba(16, 185, 129, 0.3)',
+                    margin: '1rem 0'
+                  }}>
+                    <div style={{
+                      width: '56px',
+                      height: '56px',
+                      borderRadius: '50%',
+                      background: 'rgba(16, 185, 129, 0.15)',
+                      color: '#10B981',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginBottom: '1rem'
+                    }}>
+                      <UserCheck size={32} />
+                    </div>
+                    <h3 style={{
+                      fontSize: '1.25rem',
+                      fontWeight: 700,
+                      color: '#10B981',
+                      margin: '0 0 0.5rem 0'
+                    }}>
+                      {i18n.language === 'vi' ? 'Đã Nộp Chấm Công' : 'Attendance Submitted'}
+                    </h3>
+                    <p style={{
+                      fontSize: '0.9rem',
+                      color: 'var(--text-secondary)',
+                      margin: 0,
+                      maxWidth: '300px',
+                      lineHeight: '1.4'
+                    }}>
+                      {i18n.language === 'vi' 
+                        ? 'Bạn đã hoàn thành giới hạn 2 lần chấm công cho ngày hôm nay.' 
+                        : 'You have completed your daily limit of 2 attendance submissions for today.'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="action-buttons-group">
+                    <motion.button 
+                      whileHover={{ scale: 1.02 }} 
+                      whileTap={{ scale: 0.98 }} 
+                      className={`big-btn in ${isClockedIn ? 'disabled' : ''}`} 
+                      onClick={() => !isClockedIn && handleAction('IN')} 
+                      disabled={isClockedIn}
+                    >
+                      <Clock size={28} /> 
+                      <span>{t('clockIn').toUpperCase()}</span>
+                    </motion.button>
+                    
+                    <motion.button 
+                      whileHover={{ scale: 1.02 }} 
+                      whileTap={{ scale: 0.98 }} 
+                      className={`big-btn out ${!isClockedIn ? 'disabled' : ''}`} 
+                      onClick={() => isClockedIn && handleAction('OUT')} 
+                      disabled={!isClockedIn}
+                    >
+                      <History size={28} /> 
+                      <span>{t('clockOut').toUpperCase()}</span>
+                    </motion.button>
+                  </div>
+                )}
 
                 {isClockedIn && logs[0] && (
                   <div className="shift-info-footer">

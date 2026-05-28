@@ -821,6 +821,16 @@ const Dashboard = () => {
       <header className="dashboard-header">
         <div className="header-titles">
           <div className="identity-section-watt">
+            <div className="welcome-group-watt">
+              <div className="welcome-top-line">
+                <h1 className="page-title">{t('welcomeBack')}, <span className="text-gradient">{user?.firstName}</span></h1>
+              </div>
+              <p className="page-subtitle">{t('realtimeGridIntel')}</p>
+              <div className="role-chip-watt">
+                <Activity size={12} />
+                <span>{user?.role} {t('optimizedStatus')}</span>
+              </div>
+            </div>
             <motion.div 
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -829,15 +839,7 @@ const Dashboard = () => {
               <img src={avatarSrc} alt="" />
               <div className="status-ring-watt"></div>
             </motion.div>
-            <div className="welcome-group-watt">
-              <h1 className="page-title">{t('welcomeBack')}, {user?.firstName}</h1>
-              <div className="role-chip-watt">
-                <Activity size={12} />
-                <span>{user?.role} {t('optimizedStatus')}</span>
-              </div>
-            </div>
           </div>
-          <p className="page-subtitle">{t('realtimeGridIntel')}</p>
         </div>
 
         {/* Filters and Controls */}
@@ -976,15 +978,6 @@ const Dashboard = () => {
             </div>
           )}
 
-          <div className="header-actions">
-            <button 
-              className="watt-btn primary" 
-              onClick={() => exportToCSV(isManagement ? computedTableLogs : (stats?.recentLogs || []), 'Dashboard_Stats')}
-            >
-              <CheckCircle2 size={18} />
-              <span>{t('exportData')}</span>
-            </button>
-          </div>
         </div>
       </header>
 

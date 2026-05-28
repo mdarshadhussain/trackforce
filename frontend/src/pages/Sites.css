@@ -410,7 +410,7 @@
   }
   .map-preview-section {
     order: -1;
-    height: 400px;
+    height: 520px;
     padding: 16px 0;
   }
   .sites-list-section {
@@ -425,7 +425,7 @@
     padding: 12px;
   }
   .map-preview-section {
-    height: 300px;
+    height: 420px;
   }
   .search-filter-card {
     margin-bottom: 16px;

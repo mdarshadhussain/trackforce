@@ -1427,4 +1427,24 @@
   }
 }
 
+.attendance-prompt-banner .banner-btn.clock-in {
+  background: #10b981 !important;
+  color: white !important;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35) !important;
+}
+
+.attendance-prompt-banner .banner-btn.clock-in:hover {
+  background: #059669 !important;
+}
+
+.attendance-prompt-banner .banner-btn.clock-out {
+  background: #ef4444 !important;
+  color: white !important;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35) !important;
+}
+
+.attendance-prompt-banner .banner-btn.clock-out:hover {
+  background: #dc2626 !important;
+}
+
 

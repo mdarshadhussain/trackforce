@@ -21,6 +21,7 @@ const MobileNav = () => {
   // Build tabs based on role — max 5 tabs
   const tabs = isEmployee
     ? [
+        { icon: <LayoutDashboard size={22} />, label: t('dashboard'), path: '/dashboard' },
         { icon: <Calendar size={22} />, label: t('attendance'), path: '/attendance' },
         { icon: <Wallet size={22} />, label: t('payrollHistory'), path: '/payroll' },
         { icon: <Building2 size={22} />, label: t('sites'), path: '/sites' },

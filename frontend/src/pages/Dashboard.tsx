@@ -25,7 +25,7 @@ import { exportToCSV } from '../utils/export';
 import './Dashboard.css';
 
 import { useEffect, useState, useRef } from 'react';
-import { fetchStats, fetchSites, fetchEmployees, fetchAllLogs } from '../api/api';
+import { fetchStats, fetchSites, fetchEmployees, fetchAllLogs, fetchTodayLogs } from '../api/api';
 import { useAuth } from '../context/AuthContext';
 
 // Custom Searchable Project Dropdown
@@ -255,6 +255,7 @@ const Dashboard = () => {
   const [employees, setEmployees] = useState<any[]>([]);
   const [allLogs, setAllLogs] = useState<any[]>([]);
   const [showAttendancePrompt, setShowAttendancePrompt] = useState(false);
+  const [isClockedIn, setIsClockedIn] = useState(false);
 
   useEffect(() => {
     if (user && (user.role === 'EMPLOYEE' || user.role === 'MANAGER')) {
@@ -265,6 +266,17 @@ const Dashboard = () => {
       }
     }
   }, [user]);
+
+  const handleBannerClick = () => {
+    if (user) {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const popupKey = `attendance_prompt_${user.id}_${todayStr}`;
+      localStorage.setItem(popupKey, 'shown');
+      setShowAttendancePrompt(false);
+      const destination = user.role === 'EMPLOYEE' ? '/attendance' : '/attendance/manager';
+      navigate(destination, { state: { autoAction: isClockedIn ? 'OUT' : 'IN' } });
+    }
+  };
 
   const handleGoToAttendance = () => {
     if (user) {
@@ -321,6 +333,10 @@ const Dashboard = () => {
         } else {
           const statsData = await fetchStats();
           setStats(statsData);
+          if (user) {
+            const todayLogs = await fetchTodayLogs(user.id).catch(() => []);
+            setIsClockedIn(todayLogs.length > 0 && !todayLogs[0].clockOut);
+          }
         }
       } catch (err) {
         console.error("Dashboard synchronization error:", err);
@@ -995,7 +1011,7 @@ const Dashboard = () => {
 
       {/* Attendance Quick Banner */}
       {user && (user.role === 'EMPLOYEE' || user.role === 'MANAGER') && (
-        <div className="attendance-prompt-banner" onClick={() => setShowAttendancePrompt(true)}>
+        <div className="attendance-prompt-banner" onClick={handleBannerClick}>
           <div className="banner-left">
             <Clock className="banner-icon-pulse" size={20} />
             <div className="banner-text">
@@ -1003,7 +1019,11 @@ const Dashboard = () => {
               <p>{t('verifyShiftAttendanceDesc')}</p>
             </div>
           </div>
-          <button className="banner-btn">{t('recordAttendanceBtn')}</button>
+          <button className="banner-btn">
+            {isClockedIn 
+              ? (i18n.language === 'vi' ? 'Ra ca' : 'Clock Out') 
+              : (i18n.language === 'vi' ? 'Vào ca' : 'Clock In')}
+          </button>
         </div>
       )}
 

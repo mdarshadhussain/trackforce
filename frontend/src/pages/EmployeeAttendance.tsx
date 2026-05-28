@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Clock, 
@@ -113,6 +114,7 @@ function playSound(type: 'success' | 'error' | 'location' | 'facial' | 'biometri
 const EmployeeAttendance = () => {
   const { user } = useAuth();
   const { t, i18n } = useTranslation();
+  const location = useLocation();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [logs, setLogs] = useState<any[]>([]);
   const [allLogs, setAllLogs] = useState<any[]>([]);
@@ -464,6 +466,17 @@ const EmployeeAttendance = () => {
       setIsProcessing(false);
     }
   };
+
+  useEffect(() => {
+    if (!isLoading && user && location.state?.autoAction) {
+      const action = location.state.autoAction;
+      // Clear location state to prevent double execution on reload
+      window.history.replaceState({}, document.title);
+      
+      // Auto trigger the action!
+      handleAction(action);
+    }
+  }, [isLoading, user, location.state]);
 
   const resetVerification = () => {
     stopCamera();

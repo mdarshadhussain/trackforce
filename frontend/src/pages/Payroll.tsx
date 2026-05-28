@@ -774,52 +774,8 @@ const Payroll = () => {
   if (isEmployee) {
     const personalRecord = payrollData.find(item => item.employee?.id === user?.id) || payrollData[0];
     
-    let lifetimeEarnings = parseFloat(personalRecord?.earnings || '0');
-    let lifetimeHours = parseFloat(personalRecord?.regularHours || '0') + parseFloat(personalRecord?.overtimeHours || '0');
-    let lifetimeOvertime = parseFloat(personalRecord?.overtimeHours || '0');
-    
-    employeePayslips.forEach((slip: any) => {
-      lifetimeEarnings += slip.netPay || 0;
-      lifetimeHours += (slip.regularHours || 0) + (slip.overtimeHours || 0);
-      lifetimeOvertime += slip.overtimeHours || 0;
-    });
-
     return (
       <div className="payroll-page">
-        <header className="page-header-premium">
-          <div className="header-text">
-            <h1>{t('personalEarningsVault')}</h1>
-            <p>{t('reviewHistoricalPayouts')}</p>
-          </div>
-        </header>
-
-        <div className="stats-grid-premium">
-          <StatCard 
-            icon={<Wallet size={24} />} 
-            label={t('totalEarned')} 
-            value={formatVND(lifetimeEarnings)}
-            color="#f59e0b"
-          />
-          <StatCard 
-            icon={<Clock size={24} />} 
-            label={t('cumulativeHours')} 
-            value={`${lifetimeHours.toFixed(1)}h`}
-            color="#6366f1"
-          />
-          <StatCard 
-            icon={<Activity size={24} />} 
-            label={t('overtime')} 
-            value={`${lifetimeOvertime.toFixed(1)}h`}
-            color="#10b981"
-          />
-          <StatCard 
-            icon={<CheckCircle2 size={24} />} 
-            label={t('verification')} 
-            value={t('identityVerified')}
-            color="#14b8a6"
-          />
-        </div>
-
         <div className="employee-payroll-history">
           <h2 className="history-section-title"><Calendar size={20} style={{marginRight: '8px', color: 'var(--primary)'}} /> Active Cycle (Unfinalized)</h2>
           {personalRecord && (

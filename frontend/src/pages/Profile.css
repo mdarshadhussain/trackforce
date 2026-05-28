@@ -653,8 +653,25 @@
     flex-wrap: wrap;
   }
 
-  .info-grid-creative {
+  .ppd-grid {
     grid-template-columns: 1fr;
+  }
+
+  .virtual-bank-card {
+    padding: 24px 20px;
+  }
+
+  .vbc-number {
+    font-size: 18px;
+    letter-spacing: 2px;
+  }
+
+  .vbc-top span {
+    font-size: 13px;
+  }
+
+  .vbc-bottom span {
+    font-size: 11px;
   }
 
   .profile-section {
@@ -690,5 +707,24 @@
   .badge-premium {
     font-size: 10px;
     padding: 4px 12px;
+  }
+
+  .vbc-number {
+    font-size: 16px;
+    letter-spacing: 1px;
+  }
+  
+  .vbc-chip {
+    width: 36px;
+    height: 28px;
+  }
+
+  .ppd-item {
+    padding: 16px;
+  }
+  
+  .ppd-icon {
+    width: 40px;
+    height: 40px;
   }
 }

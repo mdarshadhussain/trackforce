@@ -8,6 +8,8 @@ import {
   Briefcase,
   Fingerprint,
   LogOut,
+  Hash,
+  DollarSign
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -201,23 +203,31 @@ const Profile = () => {
 
           <section className="profile-section" style={{ background: 'transparent', padding: 0, border: 'none', boxShadow: 'none' }}>
              <h3 className="creative-section-title"><Landmark size={18} /> {t('bankAccounts')}</h3>
-             <div className="virtual-bank-card">
-               <div className="vbc-top">
-                 <Landmark size={24} style={{ opacity: 0.8 }} />
-                 <span>{fullProfile?.employee?.bankName || t('noCustomHolidays')}</span>
-               </div>
-               <div className="vbc-middle">
-                 <div className="vbc-chip"></div>
-                 <div className="vbc-number">
-                   {(fullProfile?.employee?.accountNumber || '**** **** **** ****').replace(/(.{4})/g, '$1 ').trim()}
+             <div className="ppd-grid">
+               <div className="ppd-item">
+                 <div className="ppd-icon"><Landmark size={20} /></div>
+                 <div className="ppd-content">
+                   <label>{t('bankNameLabel')}</label>
+                   <span>{fullProfile?.employee?.bankName || t('noCustomHolidays')}</span>
                  </div>
                </div>
-               <div className="vbc-bottom">
-                 <div className="vbc-holder">
+               <div className="ppd-item">
+                 <div className="ppd-icon"><Hash size={20} /></div>
+                 <div className="ppd-content">
+                   <label>{t('accountNumberLabel')}</label>
+                   <span>{fullProfile?.employee?.accountNumber || t('noCustomHolidays')}</span>
+                 </div>
+               </div>
+               <div className="ppd-item">
+                 <div className="ppd-icon"><User size={20} /></div>
+                 <div className="ppd-content">
                    <label>{t('accountHolderNameLabel')}</label>
                    <span>{fullProfile?.employee?.accountHolderName || 'N/A'}</span>
                  </div>
-                 <div className="vbc-salary">
+               </div>
+               <div className="ppd-item">
+                 <div className="ppd-icon"><DollarSign size={20} /></div>
+                 <div className="ppd-content">
                    <label>{t('salaryPerHour')}</label>
                    <span>{fullProfile?.employee?.hourlyRate ? `${fullProfile.employee.hourlyRate.toLocaleString()} ₫/h` : '0 ₫/h'}</span>
                  </div>

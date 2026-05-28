@@ -62,7 +62,6 @@ const Topbar = ({ onMenuClick, hideMenuBtn = false }: { onMenuClick?: () => void
                 background: 'none',
                 border: 'none',
                 cursor: 'pointer',
-                fontSize: '24px',
                 padding: '4px',
                 display: 'flex',
                 alignItems: 'center',
@@ -70,10 +69,9 @@ const Topbar = ({ onMenuClick, hideMenuBtn = false }: { onMenuClick?: () => void
                 opacity: i18n.language === 'en' ? 1 : 0.4,
                 transform: i18n.language === 'en' ? 'scale(1.15)' : 'scale(1)',
                 transition: 'all 0.2s ease',
-                filter: i18n.language === 'en' ? 'none' : 'grayscale(30%)'
               }}
             >
-              🇬🇧
+              <img src="https://flagcdn.com/w40/gb.png" alt="English" style={{ width: '28px', height: 'auto', borderRadius: '4px', boxShadow: '0 2px 6px rgba(0,0,0,0.15)', display: 'block' }} />
             </button>
             <button 
               className={`flag-btn ${i18n.language === 'vi' ? 'active' : ''}`} 
@@ -83,7 +81,6 @@ const Topbar = ({ onMenuClick, hideMenuBtn = false }: { onMenuClick?: () => void
                 background: 'none',
                 border: 'none',
                 cursor: 'pointer',
-                fontSize: '24px',
                 padding: '4px',
                 display: 'flex',
                 alignItems: 'center',
@@ -91,10 +88,9 @@ const Topbar = ({ onMenuClick, hideMenuBtn = false }: { onMenuClick?: () => void
                 opacity: i18n.language === 'vi' ? 1 : 0.4,
                 transform: i18n.language === 'vi' ? 'scale(1.15)' : 'scale(1)',
                 transition: 'all 0.2s ease',
-                filter: i18n.language === 'vi' ? 'none' : 'grayscale(30%)'
               }}
             >
-              🇻🇳
+              <img src="https://flagcdn.com/w40/vn.png" alt="Tiếng Việt" style={{ width: '28px', height: 'auto', borderRadius: '4px', boxShadow: '0 2px 6px rgba(0,0,0,0.15)', display: 'block' }} />
             </button>
           </div>
           

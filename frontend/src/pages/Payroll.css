@@ -5,6 +5,27 @@
   padding-top: 10px;
 }
 
+/* Horizontal payroll card scroll strip */
+.payroll-page [style*="overflowX: auto"],
+.payroll-page [style*="overflow-x: auto"] {
+  scrollbar-width: thin;
+  scrollbar-color: var(--primary) transparent;
+}
+.payroll-page [style*="overflowX: auto"]::-webkit-scrollbar,
+.payroll-page [style*="overflow-x: auto"]::-webkit-scrollbar {
+  height: 5px;
+}
+.payroll-page [style*="overflowX: auto"]::-webkit-scrollbar-track,
+.payroll-page [style*="overflow-x: auto"]::-webkit-scrollbar-track {
+  background: transparent;
+}
+.payroll-page [style*="overflowX: auto"]::-webkit-scrollbar-thumb,
+.payroll-page [style*="overflow-x: auto"]::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 4px;
+  opacity: 0.6;
+}
+
 .page-header-premium {
   display: flex;
   justify-content: space-between;
@@ -468,6 +489,13 @@
   color: var(--warning);
   border-color: var(--warning-bg);
 }
+
+.badge-processing {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+  border-color: rgba(59, 130, 246, 0.2);
+}
+
 
 .badge-paid {
   background: var(--success);

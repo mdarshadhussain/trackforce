@@ -335,7 +335,13 @@ const Dashboard = () => {
   }, [isManagement]);
 
   // Calculations for 30-min block rounding
-  const calculateRoundedDuration = (clockIn: Date, clockOut: Date, breaks: any[] = []) => {
+  const calculateRoundedDuration = (
+    clockIn: Date, 
+    clockOut: Date, 
+    breaks: any[] = [], 
+    lunchStartTime?: string | null, 
+    lunchEndTime?: string | null
+  ) => {
     let durationMs = clockOut.getTime() - clockIn.getTime();
     if (breaks && breaks.length > 0) {
       breaks.forEach(b => {
@@ -344,6 +350,27 @@ const Dashboard = () => {
         }
       });
     }
+
+    // Subtract lunch break if overlap exists
+    if (clockIn && clockOut) {
+      const startOfDay = new Date(clockIn);
+      startOfDay.setHours(0, 0, 0, 0);
+      const [lS_HH, lS_MM] = (lunchStartTime || "12:00").split(":").map(Number);
+      const [lE_HH, lE_MM] = (lunchEndTime || "13:00").split(":").map(Number);
+      
+      const lunchStart = new Date(startOfDay);
+      lunchStart.setHours(lS_HH, lS_MM, 0, 0);
+      
+      const lunchEnd = new Date(startOfDay);
+      lunchEnd.setHours(lE_HH, lE_MM, 0, 0);
+
+      const overlapStart = new Date(Math.max(clockIn.getTime(), lunchStart.getTime()));
+      const overlapEnd = new Date(Math.min(clockOut.getTime(), lunchEnd.getTime()));
+      const overlapMs = Math.max(0, overlapEnd.getTime() - overlapStart.getTime());
+      
+      durationMs -= overlapMs;
+    }
+
     const durationMins = Math.max(0, durationMs / (1000 * 60));
     return Math.floor(durationMins / 30) * 30; // Round down to nearest 30-min block
   };
@@ -451,6 +478,7 @@ const Dashboard = () => {
   const computedTotalWorkforce = filteredEmployees.length;
 
   const computedActiveNow = allLogs.filter(log => {
+    if (log.status === 'ABSENT') return false;
     if (log.clockOut !== null) return false;
 
     // Project filter
@@ -490,7 +518,8 @@ const Dashboard = () => {
       const otType = emp?.overtimeType || 'MULTIPLIER';
       const otValue = emp?.overtimeValue || 1.5;
 
-      const durationMins = calculateRoundedDuration(new Date(log.clockIn), new Date(log.clockOut), log.breaks);
+      const logSite = sites.find(s => s.id === log.siteId);
+      const durationMins = calculateRoundedDuration(new Date(log.clockIn), new Date(log.clockOut), log.breaks, logSite?.lunchStartTime, logSite?.lunchEndTime);
       const durationHours = durationMins / 60;
 
       let earnings = 0;
@@ -518,24 +547,40 @@ const Dashboard = () => {
         const targetTime = new Date(filterStart);
         targetTime.setHours(h, 0, 0, 0);
 
-        const count = allLogs.filter(log => {
-          // Project filter
-          if (projectFilterMode === 'DROPDOWN' && selectedSiteId !== 'ALL' && log.siteId !== selectedSiteId) return false;
-          // Search filter
-          if (projectFilterMode === 'SEARCH' && searchVal.trim() !== '') {
-            const q = searchVal.toLowerCase();
-            const emp = employees.find(e => e.id === log.employeeId);
-            const empName = emp ? `${emp.firstName || ''} ${emp.lastName || ''}`.toLowerCase() : '';
-            const siteName = (log.site?.name || '').toLowerCase();
-            if (!empName.includes(q) && !siteName.includes(q)) return false;
+        let totalHours = 0;
+        let otHours = 0;
+        const presentEmployeeIds = new Set<string>();
+
+        allLogs.forEach(log => {
+          if (log.status === 'ABSENT' || !log.clockIn) return;
+          const clockInTime = new Date(log.clockIn);
+          if (clockInTime > targetTime) return;
+
+          const clockOutTime = log.clockOut ? new Date(log.clockOut) : new Date();
+          if (clockOutTime >= targetTime) {
+            presentEmployeeIds.add(log.employeeId);
           }
 
-          const clockInTime = new Date(log.clockIn);
-          const clockOutTime = log.clockOut ? new Date(log.clockOut) : null;
-          return clockInTime <= targetTime && (clockOutTime === null || clockOutTime >= targetTime);
-        }).length;
+          const effectiveOutTime = clockOutTime > targetTime ? targetTime : clockOutTime;
 
-        return { name: timeStr, attendance: count };
+          const logSite = sites.find(s => s.id === log.siteId);
+          const durationMins = calculateRoundedDuration(clockInTime, effectiveOutTime, log.breaks, logSite?.lunchStartTime, logSite?.lunchEndTime);
+          const durationHours = durationMins / 60;
+
+          if (durationHours > 8) {
+            totalHours += durationHours;
+            otHours += (durationHours - 8);
+          } else {
+            totalHours += durationHours;
+          }
+        });
+
+        return { 
+          name: timeStr, 
+          totalHours: parseFloat(totalHours.toFixed(1)), 
+          otHours: parseFloat(otHours.toFixed(1)),
+          presentCount: presentEmployeeIds.size 
+        };
       });
     } else if (dateFilter === '7_DAYS' || (dateFilter === 'CUSTOM' && customDateType === 'RANGE')) {
       const trend: any[] = [];
@@ -548,7 +593,11 @@ const Dashboard = () => {
         const startOfDay = new Date(date.setHours(0,0,0,0));
         const endOfDay = new Date(date.setHours(23,59,59,999));
 
-        const count = allLogs.filter(log => {
+        let totalHours = 0;
+        let otHours = 0;
+
+        const dayLogs = allLogs.filter(log => {
+          if (log.status === 'ABSENT') return false;
           // Project filter
           if (projectFilterMode === 'DROPDOWN' && selectedSiteId !== 'ALL' && log.siteId !== selectedSiteId) return false;
           // Search filter
@@ -562,11 +611,32 @@ const Dashboard = () => {
 
           const logDate = new Date(log.date || log.clockIn);
           return logDate >= startOfDay && logDate <= endOfDay;
-        }).length;
+        });
+
+        dayLogs.forEach(log => {
+          if (log.clockIn) {
+            const inTime = new Date(log.clockIn);
+            const outTime = log.clockOut ? new Date(log.clockOut) : new Date();
+            const logSite = sites.find(s => s.id === log.siteId);
+            const durationMins = calculateRoundedDuration(inTime, outTime, log.breaks, logSite?.lunchStartTime, logSite?.lunchEndTime);
+            const durationHours = durationMins / 60;
+
+            if (durationHours > 8) {
+              totalHours += durationHours;
+              otHours += (durationHours - 8);
+            } else {
+              totalHours += durationHours;
+            }
+          }
+        });
+
+        const uniquePresent = new Set(dayLogs.map(l => l.employeeId)).size;
 
         trend.push({
           name: startOfDay.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-          attendance: count
+          totalHours: parseFloat(totalHours.toFixed(1)),
+          otHours: parseFloat(otHours.toFixed(1)),
+          presentCount: uniquePresent
         });
       }
       return trend;
@@ -590,7 +660,11 @@ const Dashboard = () => {
         endDay.setDate(chunk.end);
         endDay.setHours(23, 59, 59, 999);
 
-        const count = allLogs.filter(log => {
+        let totalHours = 0;
+        let otHours = 0;
+
+        const chunkLogs = allLogs.filter(log => {
+          if (log.status === 'ABSENT') return false;
           // Project filter
           if (projectFilterMode === 'DROPDOWN' && selectedSiteId !== 'ALL' && log.siteId !== selectedSiteId) return false;
           // Search filter
@@ -604,9 +678,33 @@ const Dashboard = () => {
 
           const logDate = new Date(log.date || log.clockIn);
           return logDate >= startDay && logDate <= endDay;
-        }).length;
+        });
 
-        trend.push({ name: chunk.label, attendance: count });
+        chunkLogs.forEach(log => {
+          if (log.clockIn) {
+            const inTime = new Date(log.clockIn);
+            const outTime = log.clockOut ? new Date(log.clockOut) : new Date();
+            const logSite = sites.find(s => s.id === log.siteId);
+            const durationMins = calculateRoundedDuration(inTime, outTime, log.breaks, logSite?.lunchStartTime, logSite?.lunchEndTime);
+            const durationHours = durationMins / 60;
+
+            if (durationHours > 8) {
+              totalHours += durationHours;
+              otHours += (durationHours - 8);
+            } else {
+              totalHours += durationHours;
+            }
+          }
+        });
+
+        const uniquePresent = new Set(chunkLogs.map(l => l.employeeId)).size;
+
+        trend.push({ 
+          name: chunk.label, 
+          totalHours: parseFloat(totalHours.toFixed(1)), 
+          otHours: parseFloat(otHours.toFixed(1)), 
+          presentCount: uniquePresent
+        });
       });
       return trend;
     }
@@ -616,42 +714,70 @@ const Dashboard = () => {
 
   // 4. Site Distribution list
   const getSitePerformance = () => {
-    const activeLogs = allLogs.filter(l => l.clockOut === null);
-    const groups: { [key: string]: { name: string; count: number; activeEmployees: string[] } } = {};
+    const today = new Date();
+    const todayStart = new Date(today.setHours(0,0,0,0));
+    const todayEnd = new Date(today.setHours(23,59,59,999));
 
-    activeLogs.forEach(log => {
-      // Project filter
-      if (projectFilterMode === 'DROPDOWN') {
-        if (selectedSiteId !== 'ALL' && log.siteId !== selectedSiteId) return;
-      } else { // SEARCH Mode
-        if (searchVal.trim() !== '') {
-          const q = searchVal.toLowerCase();
-          const emp = employees.find(e => e.id === log.employeeId);
-          const empName = emp ? `${emp.firstName || ''} ${emp.lastName || ''}`.toLowerCase() : '';
-          const siteName = (log.site?.name || '').toLowerCase();
-          const statusStr = (log.status || '').toLowerCase();
-          
-          const matchesName = empName.includes(q);
-          const matchesSite = siteName.includes(q);
-          const matchesStatus = statusStr.includes(q);
-          
-          if (!matchesName && !matchesSite && !matchesStatus) return;
-        }
+    // Get unique employee attendance logs for today
+    const todayLogs = allLogs.filter(log => {
+      // Search filter integration
+      if (projectFilterMode === 'SEARCH' && searchVal.trim() !== '') {
+        const q = searchVal.toLowerCase();
+        const emp = employees.find(e => e.id === log.employeeId);
+        const empName = emp ? `${emp.firstName || ''} ${emp.lastName || ''}`.toLowerCase() : '';
+        const siteName = (log.site?.name || '').toLowerCase();
+        if (!empName.includes(q) && !siteName.includes(q)) return false;
       }
 
+      const logDate = new Date(log.date || log.clockIn);
+      return logDate >= todayStart && logDate <= todayEnd;
+    });
+
+    const groups: { [key: string]: { name: string; presentCount: number; totalAssigned: number; activeEmployees: string[] } } = {};
+
+    // Populate all sites from `sites` array
+    sites.forEach(site => {
+      // Check project filter dropdown
+      if (projectFilterMode === 'DROPDOWN' && selectedSiteId !== 'ALL' && site.id !== selectedSiteId) return;
+
+      const totalAssigned = employees.filter(e => e.siteId === site.id && e.role !== 'ADMIN').length;
+      groups[site.id] = {
+        name: site.name,
+        presentCount: 0,
+        totalAssigned,
+        activeEmployees: []
+      };
+    });
+
+    // Handle Mobile Operations fallback (unassigned employees)
+    if (projectFilterMode === 'DROPDOWN' && (selectedSiteId === 'ALL' || selectedSiteId === 'mobile')) {
+      const unassignedTotal = employees.filter(e => !e.siteId && e.role !== 'ADMIN').length;
+      groups['mobile'] = {
+        name: 'Mobile Operations',
+        presentCount: 0,
+        totalAssigned: unassignedTotal,
+        activeEmployees: []
+      };
+    }
+
+    // Process logs to count present employees today
+    todayLogs.forEach(log => {
+      if (log.status === 'ABSENT') return;
       const sId = log.siteId || 'mobile';
-      const sName = log.site?.name || 'Mobile Operations';
       const empName = log.employee ? `${log.employee.firstName} ${log.employee.lastName}` : 'Unknown';
 
-      if (!groups[sId]) {
-        groups[sId] = { name: sName, count: 0, activeEmployees: [] };
-      }
-      if (!groups[sId].activeEmployees.includes(empName)) {
-        groups[sId].activeEmployees.push(empName);
-        groups[sId].count++;
+      if (groups[sId]) {
+        if (!groups[sId].activeEmployees.includes(empName)) {
+          groups[sId].activeEmployees.push(empName);
+          groups[sId].presentCount++;
+        }
       }
     });
-    return Object.values(groups);
+
+    // Return the list sorted by total assigned employees (most → least)
+    return Object.values(groups)
+      .filter(g => g.totalAssigned > 0 || g.presentCount > 0)
+      .sort((a, b) => b.totalAssigned - a.totalAssigned);
   };
 
   const computedSitePerformance = getSitePerformance();
@@ -918,8 +1044,18 @@ const Dashboard = () => {
           <div className="card-header-watt">
             <h3 className="card-title">{isManagement ? t('workforceActivityTime') : t('personalPerformanceTrend')}</h3>
             <div className="chart-legend-watt">
-              <span className="legend-item"><span className="dot active"></span> {isManagement ? t('activeLoad') : t('efficiencyLabel')}</span>
-              <span className="legend-item"><span className="dot baseline"></span> {t('baseload')}</span>
+              {isManagement ? (
+                <>
+                  <span className="legend-item"><span className="dot active" style={{ backgroundColor: '#3B82F6' }}></span> {t('overallHours')}</span>
+                  <span className="legend-item"><span className="dot baseline" style={{ backgroundColor: '#F59E0B' }}></span> {t('overtimeHours')}</span>
+                  <span className="legend-item"><span className="dot baseline" style={{ backgroundColor: '#10B981' }}></span> {t('totalPresent')}</span>
+                </>
+              ) : (
+                <>
+                  <span className="legend-item"><span className="dot active"></span> {t('efficiencyLabel')}</span>
+                  <span className="legend-item"><span className="dot baseline"></span> {t('baseload')}</span>
+                </>
+              )}
             </div>
           </div>
           <div className="chart-wrapper-watt" style={{ minHeight: '320px' }}>
@@ -927,6 +1063,18 @@ const Dashboard = () => {
               <ResponsiveContainer width="100%" height={320}>
                 <AreaChart data={isManagement ? computedChartData : (stats?.weeklyTrend || [])}>
                   <defs>
+                    <linearGradient id="overallGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.1} />
+                      <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="overtimeGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.1} />
+                      <stop offset="95%" stopColor="#F59E0B" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="presentGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10B981" stopOpacity={0.1} />
+                      <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
+                    </linearGradient>
                     <linearGradient id="wattBlue" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor={isManagement ? "#3B82F6" : "#10B981"} stopOpacity={0.1} />
                       <stop offset="95%" stopColor={isManagement ? "#3B82F6" : "#10B981"} stopOpacity={0} />
@@ -953,14 +1101,46 @@ const Dashboard = () => {
                       padding: '12px'
                     }} 
                   />
-                  <Area 
-                    type="monotone" 
-                    dataKey="attendance" 
-                    stroke={isManagement ? "#3B82F6" : "#10B981"} 
-                    strokeWidth={3}
-                    fillOpacity={1} 
-                    fill="url(#wattBlue)" 
-                  />
+                  {isManagement ? (
+                    <>
+                      <Area 
+                        type="monotone" 
+                        dataKey="totalHours" 
+                        name={t('overallHours')}
+                        stroke="#3B82F6" 
+                        strokeWidth={3}
+                        fillOpacity={1} 
+                        fill="url(#overallGrad)" 
+                      />
+                      <Area 
+                        type="monotone" 
+                        dataKey="otHours" 
+                        name={t('overtimeHours')}
+                        stroke="#F59E0B" 
+                        strokeWidth={3}
+                        fillOpacity={1} 
+                        fill="url(#overtimeGrad)" 
+                      />
+                      <Area 
+                        type="monotone" 
+                        dataKey="presentCount" 
+                        name={t('totalPresent')}
+                        stroke="#10B981" 
+                        strokeWidth={3}
+                        fillOpacity={1} 
+                        fill="url(#presentGrad)" 
+                      />
+                    </>
+                  ) : (
+                    <Area 
+                      type="monotone" 
+                      dataKey="attendance" 
+                      stroke="#10B981" 
+                      strokeWidth={3}
+                      fillOpacity={1} 
+                      fill="url(#wattBlue)" 
+                    />
+                  )}
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
@@ -979,27 +1159,19 @@ const Dashboard = () => {
                 <div key={idx} className="asset-item">
                   <div className="asset-info">
                     <span className="asset-name">{site.name}</span>
-                    <span className="asset-value">{site.count} {i18n.language === 'vi' ? 'HOẠT ĐỘNG' : 'ACTIVE'}</span>
+                    <span className="asset-value">
+                      {site.presentCount} / {site.totalAssigned} {i18n.language === 'vi' ? 'ĐÃ CÓ MẶT' : 'PRESENT'}
+                    </span>
                   </div>
                   <div className="asset-progress-bg">
                     <motion.div 
                       initial={{ width: 0 }}
-                      animate={{ width: `${Math.min(site.count * 10, 100)}%` }}
+                      animate={{ width: `${site.totalAssigned > 0 ? (site.presentCount / site.totalAssigned) * 100 : 0}%` }}
                       className="asset-progress-fill"
                       transition={{ duration: 1, ease: "easeOut" }}
                     />
                   </div>
-                  {site.activeEmployees && site.activeEmployees.length > 0 && (
-                    <div className="active-employees-list">
-                      {site.activeEmployees.map((emp: string, empIdx: number) => (
-                        <span key={empIdx} className="active-employee-badge">
-                          <span className="status-dot"></span>
-                          {emp}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                  </div>
               )) : (
                 <div className="empty-asset-state">{t('noActiveSiteSessions')}</div>
               )

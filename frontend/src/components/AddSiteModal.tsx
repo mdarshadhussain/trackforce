@@ -57,7 +57,9 @@ const AddSiteModal = ({ isOpen, onClose, onSave, addToast, initialData }: AddSit
     longitude: 0,
     managerName: 'Admin',
     geofenceRadius: 300,
-    workingStartTime: '07:00'
+    workingStartTime: '07:00',
+    lunchStartTime: '12:00',
+    lunchEndTime: '13:00'
   });
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -77,7 +79,9 @@ const AddSiteModal = ({ isOpen, onClose, onSave, addToast, initialData }: AddSit
         longitude: initialData.longitude || 0,
         managerName: initialData.managerName || 'Admin',
         geofenceRadius: initialData.geofenceRadius || 300,
-        workingStartTime: initialData.workingStartTime || '07:00'
+        workingStartTime: initialData.workingStartTime || '07:00',
+        lunchStartTime: initialData.lunchStartTime || '12:00',
+        lunchEndTime: initialData.lunchEndTime || '13:00'
       });
       setSearchQuery(initialData.location || '');
     } else {
@@ -89,7 +93,9 @@ const AddSiteModal = ({ isOpen, onClose, onSave, addToast, initialData }: AddSit
         longitude: 0,
         managerName: 'Admin',
         geofenceRadius: 300,
-        workingStartTime: '07:00'
+        workingStartTime: '07:00',
+        lunchStartTime: '12:00',
+        lunchEndTime: '13:00'
       });
       setSearchQuery('');
     }
@@ -321,6 +327,34 @@ const AddSiteModal = ({ isOpen, onClose, onSave, addToast, initialData }: AddSit
                       <p className="hint-text" style={{ fontSize: '10px', color: 'var(--text-dim)', marginTop: '4px' }}>
                         {t('workingStartTimeHint')}
                       </p>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '16px' }}>
+                      <div className="form-group" style={{ flex: 1 }}>
+                        <label>{t('lunchStartTime')}</label>
+                        <div className="input-with-icon">
+                          <Clock size={18} />
+                          <input
+                            type="time"
+                            required
+                            value={formData.lunchStartTime || '12:00'}
+                            onChange={(e) => setFormData({...formData, lunchStartTime: e.target.value})}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="form-group" style={{ flex: 1 }}>
+                        <label>{t('lunchEndTime')}</label>
+                        <div className="input-with-icon">
+                          <Clock size={18} />
+                          <input
+                            type="time"
+                            required
+                            value={formData.lunchEndTime || '13:00'}
+                            onChange={(e) => setFormData({...formData, lunchEndTime: e.target.value})}
+                          />
+                        </div>
+                      </div>
                     </div>
 
                     <div className="form-group" ref={searchRef}>

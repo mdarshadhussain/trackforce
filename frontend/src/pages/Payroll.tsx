@@ -25,7 +25,10 @@ import {
   fetchPayroll, 
   fetchSites, 
   logManualAttendance, 
-  generatePayslip
+  generateMonthlyPayslip,
+  finalizeMonthlyPayslip,
+  payMonthlyPayslip,
+  fetchEmployeePayslips
 } from '../api/api';
 import { exportToCSV } from '../utils/export';
 import { useAuth } from '../context/AuthContext';
@@ -254,6 +257,7 @@ const Payroll = () => {
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
   const [attendanceMonthFilter, setAttendanceMonthFilter] = useState('ALL');
+  const [slipsMonthFilter, setSlipsMonthFilter] = useState('ALL');
 
   // Manual Log Form State
   const [showManualLog, setShowManualLog] = useState(false);
@@ -278,6 +282,15 @@ const Payroll = () => {
   const [insuranceDeduction, setInsuranceDeduction] = useState<number>(0);
   const [advancePayment, setAdvancePayment] = useState<number>(0);
   const [otherDeductions, setOtherDeductions] = useState<number>(0);
+
+  // Payslip Workflow States
+  const [employeePayslips, setEmployeePayslips] = useState<any[]>([]);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentPayslipId, setPaymentPayslipId] = useState<string>('');
+  const [transactionId, setTransactionId] = useState('');
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [receiptPreview, setReceiptPreview] = useState<string>('');
+
 
   const addToast = (message: string, type: ToastType = 'info') => {
     const id = Math.random().toString(36).substr(2, 9);
@@ -308,6 +321,125 @@ const Payroll = () => {
       setLoading(false);
     }
   };
+
+  const loadEmployeePayslips = async () => {
+    if (!selectedEmployeeId) return;
+    try {
+      const slips = await fetchEmployeePayslips(selectedEmployeeId);
+      setEmployeePayslips(slips);
+    } catch (err) {
+      console.error("Failed to load employee payslips", err);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedEmployeeId) {
+      loadEmployeePayslips();
+    } else {
+      setEmployeePayslips([]);
+    }
+  }, [selectedEmployeeId]);
+
+  const handleViewSlip = (payslip: any) => {
+    const slipPayload = {
+      id: payslip.id,
+      employee: selectedEmployeeRecord?.employee,
+      regularHours: payslip.regularHours.toFixed(1),
+      overtimeHours: payslip.overtimeHours.toFixed(1),
+      earnings: payslip.grossPay.toFixed(2),
+      basePay: payslip.regularHours * (selectedEmployeeRecord?.employee?.hourlyRate || 0),
+      overtimePay: payslip.overtimeHours * (selectedEmployeeRecord?.employee?.hourlyRate || 0) * (selectedEmployeeRecord?.employee?.overtimeValue || 1.5),
+      allowances: {
+        food: payslip.foodAllowance,
+        other: payslip.otherAllowance
+      },
+      deductions: {
+        tax: payslip.taxAmount,
+        taxRate: payslip.taxRate,
+        insurance: payslip.insurance,
+        advance: payslip.advancePayment,
+        other: payslip.otherDeductions
+      },
+      netTotal: payslip.netPay,
+      periodStart: `${payslip.month}-01`,
+      periodEnd: `${payslip.month}-28`
+    };
+    setSelectedPayslip(slipPayload);
+    setIsPayslipOpen(true);
+  };
+
+
+
+  const handleGenerateSlip = async () => {
+    if (!selectedEmployeeId || !selectedMonth) return;
+    try {
+      const response = await generateMonthlyPayslip({
+        employeeId: selectedEmployeeId,
+        month: selectedMonth,
+        regularHours: monthCalculations.regularHours,
+        overtimeHours: monthCalculations.overtimeHours,
+        grossPay: monthCalculations.grossPay,
+        netPay: calculatedNet.net,
+        foodAllowance,
+        otherAllowance,
+        taxRate,
+        taxAmount: calculatedNet.tax,
+        insurance: insuranceDeduction,
+        advancePayment,
+        otherDeductions
+      });
+      
+      addToast(t('paymentsProcessedSuccess') || "Payslip generated successfully!", 'success');
+      await loadEmployeePayslips();
+      loadPayrollData();
+      
+      // Auto view the payslip
+      handleViewSlip(response);
+    } catch (err: any) {
+      addToast(err.message, 'error');
+    }
+  };
+
+  const handleFinalizeSlip = async (payslipId: string) => {
+    try {
+      await finalizeMonthlyPayslip(payslipId);
+      addToast("Payslip finalized successfully!", 'success');
+      await loadEmployeePayslips();
+      loadPayrollData();
+    } catch (err: any) {
+      addToast(err.message, 'error');
+    }
+  };
+
+  const handlePaySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!paymentPayslipId || !transactionId) return;
+
+    try {
+      const formData = new FormData();
+      formData.append('payslipId', paymentPayslipId);
+      formData.append('transactionId', transactionId);
+      if (receiptFile) {
+        formData.append('receipt', receiptFile);
+      }
+
+      await payMonthlyPayslip(formData);
+      addToast("Payment logged and marked as paid!", 'success');
+      setShowPaymentModal(false);
+      setTransactionId('');
+      setReceiptFile(null);
+      setReceiptPreview('');
+      setPaymentPayslipId('');
+      await loadEmployeePayslips();
+      loadPayrollData();
+    } catch (err: any) {
+      addToast(err.message, 'error');
+    }
+  };
+
+
+
+
 
   const handleExport = () => {
     exportToCSV(payrollData, 'Payroll_Registry');
@@ -345,6 +477,20 @@ const Payroll = () => {
     });
     return Array.from(monthsSet).sort().reverse();
   }, [selectedEmployeeRecord]);
+
+  // Unique list of months for slips filter
+  const availableSlipMonths = useMemo(() => {
+    const monthsSet = new Set<string>();
+    if (selectedEmployeeRecord?.employee?.attendance) {
+      selectedEmployeeRecord.employee.attendance.forEach((log: any) => {
+        const logDate = new Date(log.date || log.clockIn);
+        const monthKey = `${logDate.getFullYear()}-${String(logDate.getMonth() + 1).padStart(2, '0')}`;
+        monthsSet.add(monthKey);
+      });
+    }
+    employeePayslips.forEach(ps => monthsSet.add(ps.month));
+    return Array.from(monthsSet).sort().reverse();
+  }, [selectedEmployeeRecord, employeePayslips]);
 
   // Filtered attendance logs based on selected month, generating all days (1 to 30/31)
   const attendanceHistoryRows = useMemo(() => {
@@ -477,44 +623,7 @@ const Payroll = () => {
 
 
 
-  // Generate and Finalize slip
-  const handleGenerateSlip = async () => {
-    if (!selectedEmployeeId) return;
-    try {
-      await generatePayslip(selectedEmployeeId);
-      
-      // Construct customized data payload for PayslipModal
-      const slipPayload = {
-        employee: selectedEmployeeRecord?.employee,
-        regularHours: monthCalculations.regularHours.toFixed(1),
-        overtimeHours: monthCalculations.overtimeHours.toFixed(1),
-        earnings: monthCalculations.grossPay.toFixed(2),
-        basePay: monthCalculations.regularHours * (selectedEmployeeRecord?.employee?.hourlyRate || 0),
-        overtimePay: monthCalculations.grossPay - (monthCalculations.regularHours * (selectedEmployeeRecord?.employee?.hourlyRate || 0)),
-        allowances: {
-          food: foodAllowance,
-          other: otherAllowance
-        },
-        deductions: {
-          tax: calculatedNet.tax,
-          taxRate: taxRate,
-          insurance: insuranceDeduction,
-          advance: advancePayment,
-          other: otherDeductions
-        },
-        netTotal: calculatedNet.net,
-        periodStart: `${selectedMonth}-01`,
-        periodEnd: `${selectedMonth}-28` // Approximate end or end of month
-      };
 
-      setSelectedPayslip(slipPayload);
-      setIsPayslipOpen(true);
-      addToast(t('paymentsProcessedSuccess') || "Payslip generated successfully!", 'success');
-      loadPayrollData();
-    } catch (err: any) {
-      addToast(err.message, 'error');
-    }
-  };
 
   const filteredData = useMemo(() => {
     const baseFiltered = payrollData.filter(item => {
@@ -1255,49 +1364,99 @@ const Payroll = () => {
 
               {activeTab === 'slips' && (
                 <div>
-                  <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: 'bold' }}>{t('monthlyPayrollSlips')}</h3>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
-                    {Object.keys(groupedMonths).map(monthKey => {
-                      const logs = groupedMonths[monthKey];
-                      const isMonthPaid = logs.every((l: any) => l.status === 'PAID');
-                      
-                      // Calculate monthly quick sum
-                      const hours = logs.reduce((sum: number, l: any) => {
-                        const inTime = new Date(l.clockIn).getTime();
-                        const outTime = l.clockOut ? new Date(l.clockOut).getTime() : inTime;
-                        return sum + ((outTime - inTime) / 3600000);
-                      }, 0);
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+                    <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 'bold' }}>{t('monthlyPayrollSlips')}</h3>
+                    <div style={{ width: '200px' }}>
+                      <PremiumSelect 
+                        placeholder={t('filterMonth') || 'Filter Month'}
+                        value={slipsMonthFilter}
+                        onChange={(val: string) => setSlipsMonthFilter(val)}
+                        options={[
+                          { label: t('allMonths', 'All Months'), value: 'ALL' },
+                          ...availableSlipMonths.map(m => ({ label: m, value: m }))
+                        ]}
+                      />
+                    </div>
+                  </div>
 
-                      const rate = selectedEmployeeRecord.employee.hourlyRate || 25;
-                      const earnings = hours * rate;
+                  <div style={{ display: 'flex', flexDirection: 'row', gap: '16px', overflowX: 'auto', paddingBottom: '12px', scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
+                    {availableSlipMonths
+                      .filter(monthKey => slipsMonthFilter === 'ALL' || monthKey === slipsMonthFilter)
+                      .map(monthKey => {
+                        const logs = groupedMonths[monthKey] || [];
+                        
+                        // Calculate monthly quick sum
+                        const hours = logs.reduce((sum: number, l: any) => {
+                          const inTime = new Date(l.clockIn).getTime();
+                          const outTime = l.clockOut ? new Date(l.clockOut).getTime() : inTime;
+                          return sum + ((outTime - inTime) / 3600000);
+                        }, 0);
 
-                      return (
-                        <div key={monthKey} className="glass-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px', border: '1px solid var(--border)' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <h4 style={{ margin: 0, fontWeight: 'bold', fontSize: '16px' }}>{monthKey}</h4>
-                            <span className={`badge badge-${isMonthPaid ? 'paid' : 'pending'}`}>
-                              {isMonthPaid ? t('paid') : t('pending')}
-                            </span>
+                        const rate = selectedEmployeeRecord?.employee?.hourlyRate || 25;
+                        const earnings = hours * rate;
+
+                        const matchingPayslip = employeePayslips.find(ps => ps.month === monthKey);
+                        const payslipStatus = matchingPayslip ? matchingPayslip.status : 'PENDING';
+
+                        let badgeText = t('pending', 'Pending');
+                        let badgeClass = 'badge-pending';
+                        if (payslipStatus === 'PROCESSING' || payslipStatus === 'FINALIZED') {
+                          badgeText = t('processing', 'Processing');
+                          badgeClass = 'badge-processing';
+                        } else if (payslipStatus === 'PAID') {
+                          badgeText = t('paid', 'Paid');
+                          badgeClass = 'badge-paid';
+                        }
+
+                        return (
+                          <div key={monthKey} className="glass-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px', border: `1px solid ${payslipStatus === 'PAID' ? 'rgba(16,185,129,0.3)' : 'var(--border)'}`, width: '100%', flexShrink: 0, scrollSnapAlign: 'start', background: payslipStatus === 'PAID' ? 'rgba(16,185,129,0.04)' : undefined }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <h4 style={{ margin: 0, fontWeight: 'bold', fontSize: '16px' }}>{monthKey}</h4>
+                              <span className={`badge ${badgeClass}`}>
+                                {badgeText}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: '14px', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              <span>{t('hoursWorked') || 'Hours worked'}: <strong>{hours.toFixed(1)}h</strong></span>
+                              <span>{t('estimatedSalary') || 'Estimated salary'}: <strong>{formatVND(matchingPayslip ? matchingPayslip.netPay : earnings)}</strong></span>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                              <button 
+                                className="btn btn-secondary" 
+                                onClick={() => {
+                                  if (matchingPayslip) {
+                                    handleViewSlip(matchingPayslip);
+                                  } else {
+                                    addToast(t('generatePayslipFirst', 'Please generate or calculate the payslip first'), 'info');
+                                  }
+                                }}
+                                disabled={!matchingPayslip}
+                                style={{ flex: 1, padding: '8px 12px', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                              >
+                                <FileText size={14} /> {t('view', 'View')}
+                              </button>
+
+                              <button 
+                                className="btn btn-secondary" 
+                                onClick={() => {
+                                  setSelectedMonth(monthKey);
+                                  setActiveTab('calculator');
+                                }}
+                                disabled={payslipStatus === 'PAID'}
+                                title={payslipStatus === 'PAID' ? (t('cannotEditPaid') || 'Cannot edit a paid payslip') : undefined}
+                                style={{ flex: 1, padding: '8px 12px', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', opacity: payslipStatus === 'PAID' ? 0.45 : 1, cursor: payslipStatus === 'PAID' ? 'not-allowed' : 'pointer' }}
+                              >
+                                {payslipStatus === 'PAID' ? (
+                                  <><CheckCircle2 size={14} style={{ color: '#10b981' }} /> {t('paid', 'Paid')}</>
+                                ) : matchingPayslip ? t('edit', 'Edit') : t('calculate', 'Calculate')}
+                              </button>
+                            </div>
                           </div>
-                          <div style={{ fontSize: '14px', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <span>{t('hoursWorked') || 'Hours worked'}: <strong>{hours.toFixed(1)}h</strong></span>
-                            <span>{t('estimatedSalary') || 'Estimated salary'}: <strong>{formatVND(earnings)}</strong></span>
-                          </div>
-                          <button 
-                            className={`btn ${isMonthPaid ? 'btn-ghost' : 'btn-primary'}`}
-                            onClick={() => {
-                              setSelectedMonth(monthKey);
-                              setActiveTab('calculator');
-                            }}
-                            style={{ marginTop: '8px' }}
-                          >
-                            {isMonthPaid ? t('viewDetails') || 'View Details' : t('calculateGeneratePayslip')}
-                          </button>
-                        </div>
-                      );
-                    })}
-                    {Object.keys(groupedMonths).length === 0 && (
-                      <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>
+                        );
+                      })}
+                    {availableSlipMonths.length === 0 && (
+                      <div style={{ width: '100%', textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>
                         {t('noPayslipData') || 'No payroll data found for this employee.'}
                       </div>
                     )}
@@ -1311,133 +1470,199 @@ const Payroll = () => {
                     <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>
                       {t('selectMonthFirst') || 'Please select a month from the'} <strong>{t('monthlyPayrollSlips') || 'Monthly Payroll Slips'}</strong> {t('tabFirst') || 'tab first.'}
                     </div>
-                  ) : (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-                      {/* Left: Input parameters */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 'bold' }}>{t('calculatingForMonth') || 'Calculating payroll for'}: {selectedMonth}</h3>
-                          <button className="btn btn-ghost" onClick={() => setSelectedMonth('')}>{t('changeMonth') || 'Change Month'}</button>
+                  ) : (() => {
+                    const matchingPayslip = employeePayslips.find(ps => ps.month === selectedMonth);
+                    const payslipStatus = matchingPayslip ? matchingPayslip.status : 'PENDING';
+                    const isLocked = payslipStatus === 'FINALIZED' || payslipStatus === 'PAID';
+
+                    return (
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                        {/* Left: Input parameters */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 'bold' }}>{t('calculatingForMonth') || 'Calculating payroll for'}: {selectedMonth}</h3>
+                            <button className="btn btn-ghost" onClick={() => setSelectedMonth('')}>{t('changeMonth') || 'Change Month'}</button>
+                          </div>
+
+                          {/* Additions Section */}
+                          <div className="glass-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', color: '#10b981' }}>
+                              <PlusCircle size={18} /> {t('additionsAllowances')}
+                            </h4>
+                            <div>
+                              <label style={{ display: 'block', fontSize: '12px', marginBottom: '6px' }}>{t('foodAllowance')}</label>
+                              <input 
+                                type="number" 
+                                style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--surface-bright)', color: 'var(--text-primary)' }}
+                                value={foodAllowance}
+                                onChange={(e) => setFoodAllowance(Math.max(0, parseInt(e.target.value) || 0))}
+                                disabled={isLocked}
+                              />
+                            </div>
+                            <div>
+                              <label style={{ display: 'block', fontSize: '12px', marginBottom: '6px' }}>{t('otherAllowances')}</label>
+                              <input 
+                                type="number" 
+                                style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--surface-bright)', color: 'var(--text-primary)' }}
+                                value={otherAllowance}
+                                onChange={(e) => setOtherAllowance(Math.max(0, parseInt(e.target.value) || 0))}
+                                disabled={isLocked}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Deductions Section */}
+                          <div className="glass-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', color: '#ef4444' }}>
+                              <MinusCircle size={18} /> {t('deductions')}
+                            </h4>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                              <div>
+                                <label style={{ display: 'block', fontSize: '12px', marginBottom: '6px' }}>{t('taxRatePercent')}</label>
+                                <input 
+                                  type="number" 
+                                  style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--surface-bright)', color: 'var(--text-primary)' }}
+                                  value={taxRate}
+                                  onChange={(e) => setTaxRate(Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)))}
+                                  disabled={isLocked}
+                                />
+                              </div>
+                              <div>
+                                <label style={{ display: 'block', fontSize: '12px', marginBottom: '6px' }}>{t('insuranceDeduction')}</label>
+                                <input 
+                                  type="number" 
+                                  style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--surface-bright)', color: 'var(--text-primary)' }}
+                                  value={insuranceDeduction}
+                                  onChange={(e) => setInsuranceDeduction(Math.max(0, parseInt(e.target.value) || 0))}
+                                  disabled={isLocked}
+                                />
+                              </div>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                              <div>
+                                <label style={{ display: 'block', fontSize: '12px', marginBottom: '6px' }}>{t('advancePayment')}</label>
+                                <input 
+                                  type="number" 
+                                  style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--surface-bright)', color: 'var(--text-primary)' }}
+                                  value={advancePayment}
+                                  onChange={(e) => setAdvancePayment(Math.max(0, parseInt(e.target.value) || 0))}
+                                  disabled={isLocked}
+                                />
+                              </div>
+                              <div>
+                                <label style={{ display: 'block', fontSize: '12px', marginBottom: '6px' }}>{t('otherDeductions')}</label>
+                                <input 
+                                  type="number" 
+                                  style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--surface-bright)', color: 'var(--text-primary)' }}
+                                  value={otherDeductions}
+                                  onChange={(e) => setOtherDeductions(Math.max(0, parseInt(e.target.value) || 0))}
+                                  disabled={isLocked}
+                                />
+                              </div>
+                            </div>
+                          </div>
                         </div>
 
-                        {/* Additions Section */}
-                        <div className="glass-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                          <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', color: '#10b981' }}>
-                            <PlusCircle size={18} /> {t('additionsAllowances')}
-                          </h4>
-                          <div>
-                            <label style={{ display: 'block', fontSize: '12px', marginBottom: '6px' }}>{t('foodAllowance')}</label>
-                            <input 
-                              type="number" 
-                              style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--surface-bright)', color: 'var(--text-primary)' }}
-                              value={foodAllowance}
-                              onChange={(e) => setFoodAllowance(Math.max(0, parseInt(e.target.value) || 0))}
-                            />
-                          </div>
-                          <div>
-                            <label style={{ display: 'block', fontSize: '12px', marginBottom: '6px' }}>{t('otherAllowances')}</label>
-                            <input 
-                              type="number" 
-                              style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--surface-bright)', color: 'var(--text-primary)' }}
-                              value={otherAllowance}
-                              onChange={(e) => setOtherAllowance(Math.max(0, parseInt(e.target.value) || 0))}
-                            />
-                          </div>
-                        </div>
+                        {/* Right: Calculations workspace */}
+                        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                          <div className="glass-card" style={{ padding: '24px', flex: 1, display: 'flex', flexDirection: 'column', gap: '16px', border: '1px solid var(--border)' }}>
+                            <h4 style={{ margin: 0, fontSize: '16px', fontWeight: 'bold', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>{t('payrollBreakdown') || 'Payroll Breakdown'}</h4>
+                            
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '14px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <span>{t('workingHoursRegularOT') || 'Working Hours (Regular / OT)'}:</span>
+                                <strong>{monthCalculations.regularHours.toFixed(1)}h / {monthCalculations.overtimeHours.toFixed(1)}h</strong>
+                              </div>
+                              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <span>{t('grossPay') || 'Gross Pay'}:</span>
+                                <strong>{formatVND(calculatedNet.gross)}</strong>
+                              </div>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#10b981' }}>
+                                <span>{t('totalAdditions') || 'Total Additions'}:</span>
+                                <strong>+{formatVND(calculatedNet.additions)}</strong>
+                              </div>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ef4444' }}>
+                                <span>{t('incomeTax') || 'Income Tax'} ({taxRate}%):</span>
+                                <strong>-{formatVND(calculatedNet.tax)}</strong>
+                              </div>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ef4444' }}>
+                                <span>{t('totalDeductions') || 'Total Deductions'}:</span>
+                                <strong>-{formatVND(calculatedNet.deductions)}</strong>
+                              </div>
+                            </div>
 
-                        {/* Deductions Section */}
-                        <div className="glass-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                          <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', color: '#ef4444' }}>
-                            <MinusCircle size={18} /> {t('deductions')}
-                          </h4>
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                            <div>
-                              <label style={{ display: 'block', fontSize: '12px', marginBottom: '6px' }}>{t('taxRatePercent')}</label>
-                              <input 
-                                type="number" 
-                                style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--surface-bright)', color: 'var(--text-primary)' }}
-                                value={taxRate}
-                                onChange={(e) => setTaxRate(Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)))}
-                              />
-                            </div>
-                            <div>
-                              <label style={{ display: 'block', fontSize: '12px', marginBottom: '6px' }}>{t('insuranceDeduction')}</label>
-                              <input 
-                                type="number" 
-                                style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--surface-bright)', color: 'var(--text-primary)' }}
-                                value={insuranceDeduction}
-                                onChange={(e) => setInsuranceDeduction(Math.max(0, parseInt(e.target.value) || 0))}
-                              />
+                            <div style={{ marginTop: 'auto', borderTop: '1px solid var(--border)', paddingTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontSize: '16px', fontWeight: 'bold' }}>{t('netTotal')}</span>
+                              <span style={{ fontSize: '24px', fontWeight: '800', color: 'var(--primary)' }}>{formatVND(calculatedNet.net)}</span>
                             </div>
                           </div>
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                            <div>
-                              <label style={{ display: 'block', fontSize: '12px', marginBottom: '6px' }}>{t('advancePayment')}</label>
-                              <input 
-                                type="number" 
-                                style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--surface-bright)', color: 'var(--text-primary)' }}
-                                value={advancePayment}
-                                onChange={(e) => setAdvancePayment(Math.max(0, parseInt(e.target.value) || 0))}
-                              />
+
+                          {payslipStatus === 'PENDING' && (
+                            <button 
+                              onClick={handleGenerateSlip} 
+                              className="btn btn-primary" 
+                              style={{ width: '100%', marginTop: '16px', padding: '16px', fontSize: '16px', fontWeight: 'bold', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}
+                            >
+                              <Printer size={20} /> {t('generateDraftPayslip', 'Generate Draft Payslip')}
+                            </button>
+                          )}
+
+                          {payslipStatus === 'GENERATED' && (
+                            <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
+                              <button 
+                                onClick={handleGenerateSlip} 
+                                className="btn btn-secondary" 
+                                style={{ flex: 1, padding: '16px', fontSize: '16px', fontWeight: 'bold', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}
+                              >
+                                <Printer size={20} /> {t('regenerateDraft', 'Re-generate Draft')}
+                              </button>
+                              <button 
+                                onClick={() => handleFinalizeSlip(matchingPayslip.id)} 
+                                className="btn btn-primary" 
+                                style={{ flex: 1, padding: '16px', fontSize: '16px', fontWeight: 'bold', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', background: '#f59e0b', borderColor: '#f59e0b' }}
+                              >
+                                <CheckCircle2 size={20} /> {t('finalizePayslip', 'Finalize Payslip')}
+                              </button>
                             </div>
-                            <div>
-                              <label style={{ display: 'block', fontSize: '12px', marginBottom: '6px' }}>{t('otherDeductions')}</label>
-                              <input 
-                                type="number" 
-                                style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--surface-bright)', color: 'var(--text-primary)' }}
-                                value={otherDeductions}
-                                onChange={(e) => setOtherDeductions(Math.max(0, parseInt(e.target.value) || 0))}
-                              />
+                          )}
+
+                          {payslipStatus === 'FINALIZED' && (
+                            <button 
+                              onClick={() => {
+                                setPaymentPayslipId(matchingPayslip.id);
+                                setShowPaymentModal(true);
+                              }} 
+                              className="btn btn-primary" 
+                              style={{ width: '100%', marginTop: '16px', padding: '16px', fontSize: '16px', fontWeight: 'bold', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', background: '#10b981', borderColor: '#10b981' }}
+                            >
+                              <Wallet size={20} /> {t('proceedToPayment', 'Proceed to Payment')}
+                            </button>
+                          )}
+
+                          {payslipStatus === 'PAID' && (
+                            <div className="glass-card" style={{ marginTop: '16px', padding: '16px', border: '1px solid rgba(16, 185, 129, 0.2)', background: 'rgba(16, 185, 129, 0.05)', borderRadius: '12px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#10b981', fontWeight: 'bold', marginBottom: '8px' }}>
+                                <CheckCircle2 size={18} /> {t('paymentDone', 'Payment Completed')}
+                              </div>
+                              <div style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <span>Transaction ID: <strong style={{ color: 'var(--text-primary)' }}>{matchingPayslip.transactionId}</strong></span>
+                                {matchingPayslip.receiptPath && (
+                                  <a 
+                                    href={`${API_URL}${matchingPayslip.receiptPath.startsWith('/') ? matchingPayslip.receiptPath : `/${matchingPayslip.receiptPath}`}`} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    style={{ color: 'var(--primary)', textDecoration: 'underline', marginTop: '4px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                                  >
+                                    <FileText size={14} /> {t('viewReceipt', 'View Transfer Receipt')}
+                                  </a>
+                                )}
+                              </div>
                             </div>
-                          </div>
+                          )}
                         </div>
                       </div>
-
-                      {/* Right: Calculations workspace */}
-                      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                        <div className="glass-card" style={{ padding: '24px', flex: 1, display: 'flex', flexDirection: 'column', gap: '16px', border: '1px solid var(--border)' }}>
-                          <h4 style={{ margin: 0, fontSize: '16px', fontWeight: 'bold', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>{t('payrollBreakdown') || 'Payroll Breakdown'}</h4>
-                          
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '14px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                              <span>{t('workingHoursRegularOT') || 'Working Hours (Regular / OT)'}:</span>
-                              <strong>{monthCalculations.regularHours.toFixed(1)}h / {monthCalculations.overtimeHours.toFixed(1)}h</strong>
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                              <span>{t('grossPay') || 'Gross Pay'}:</span>
-                              <strong>{formatVND(calculatedNet.gross)}</strong>
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#10b981' }}>
-                              <span>{t('totalAdditions') || 'Total Additions'}:</span>
-                              <strong>+{formatVND(calculatedNet.additions)}</strong>
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ef4444' }}>
-                              <span>{t('incomeTax') || 'Income Tax'} ({taxRate}%):</span>
-                              <strong>-{formatVND(calculatedNet.tax)}</strong>
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ef4444' }}>
-                              <span>{t('totalDeductions') || 'Total Deductions'}:</span>
-                              <strong>-{formatVND(calculatedNet.deductions)}</strong>
-                            </div>
-                          </div>
-
-                          <div style={{ marginTop: 'auto', borderTop: '1px solid var(--border)', paddingTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontSize: '16px', fontWeight: 'bold' }}>{t('netTotal')}</span>
-                            <span style={{ fontSize: '24px', fontWeight: '800', color: 'var(--primary)' }}>{formatVND(calculatedNet.net)}</span>
-                          </div>
-                        </div>
-
-                        <button 
-                          onClick={handleGenerateSlip} 
-                          className="btn btn-primary" 
-                          style={{ width: '100%', marginTop: '16px', padding: '16px', fontSize: '16px', fontWeight: 'bold', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}
-                          disabled={monthCalculations.isPaid}
-                        >
-                          <Printer size={20} /> {monthCalculations.isPaid ? t('alreadyPaidViewSlip') || 'Paid — View Payslip' : t('generateFinalPayslip')}
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </div>
               )}
             </div>
@@ -1731,6 +1956,184 @@ const Payroll = () => {
             </div>
           );
         })()}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showPaymentModal && (
+          <div className="proof-modal-overlay" style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(15, 23, 42, 0.4)',
+            backdropFilter: 'blur(12px)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 9999,
+            padding: '20px'
+          }}>
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+              className="glass-card"
+              style={{ 
+                maxWidth: '500px', 
+                width: '100%', 
+                padding: '32px', 
+                border: '1px solid var(--border)', 
+                background: 'var(--surface-bright)',
+                boxShadow: 'var(--shadow-lg)',
+                borderRadius: '24px'
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', borderBottom: '1px solid var(--border)', paddingBottom: '16px' }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '800', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+                    {t('processPayrollPayment', 'Process Payroll Payment')}
+                  </h3>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                    {t('submitTransactionDetails', 'Enter transaction ID and upload payment receipt')}
+                  </p>
+                </div>
+                <button 
+                  onClick={() => { setShowPaymentModal(false); setTransactionId(''); setReceiptFile(null); setReceiptPreview(''); }} 
+                  style={{ background: 'var(--surface-hover)', border: '1px solid var(--border)', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', borderRadius: '50%', transition: 'all 0.2s' }}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Employee Bank Account Details */}
+              {(selectedEmployeeRecord?.employee?.bankName || selectedEmployeeRecord?.employee?.accountNumber) && (
+                <div style={{ 
+                  background: 'var(--surface-hover)', 
+                  border: '1px solid var(--border)', 
+                  borderRadius: '16px', 
+                  padding: '16px', 
+                  marginBottom: '10px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px'
+                }}>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    {t('employeeBankDetails', 'Employee Bank Details')}
+                  </span>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 16px', fontSize: '13px' }}>
+                    <div>
+                      <span style={{ color: 'var(--text-secondary)', display: 'block', fontSize: '11px' }}>{t('bankName', 'Bank Name')}</span>
+                      <strong style={{ color: 'var(--text-primary)' }}>{selectedEmployeeRecord?.employee?.bankName || '—'}</strong>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--text-secondary)', display: 'block', fontSize: '11px' }}>{t('accountNumber', 'Account Number')}</span>
+                      <strong style={{ color: 'var(--text-primary)' }}>{selectedEmployeeRecord?.employee?.accountNumber || '—'}</strong>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--text-secondary)', display: 'block', fontSize: '11px' }}>{t('accountHolder', 'Account Holder')}</span>
+                      <strong style={{ color: 'var(--text-primary)' }}>{selectedEmployeeRecord?.employee?.accountHolderName || '—'}</strong>
+                    </div>
+                    {selectedEmployeeRecord?.employee?.swiftCode && (
+                      <div>
+                        <span style={{ color: 'var(--text-secondary)', display: 'block', fontSize: '11px' }}>{t('swiftCode', 'SWIFT Code')}</span>
+                        <strong style={{ color: 'var(--text-primary)' }}>{selectedEmployeeRecord?.employee?.swiftCode}</strong>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <form onSubmit={handlePaySubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', marginBottom: '8px', color: 'var(--text-secondary)' }}>
+                    {t('transactionIdLabel', 'Transaction ID')} <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <input 
+                    type="text" 
+                    placeholder={t('enterTransactionId', 'Enter transaction reference number')}
+                    style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--border)', background: 'var(--surface-bright)', color: 'var(--text-primary)', fontSize: '14px', outline: 'none' }}
+                    value={transactionId}
+                    onChange={(e) => setTransactionId(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', marginBottom: '8px', color: 'var(--text-secondary)' }}>
+                    {t('transferReceiptLabel', 'Transfer Receipt (Optional)')}
+                  </label>
+                  <div 
+                    onClick={() => document.getElementById('receipt-upload-input')?.click()}
+                    style={{ 
+                      width: '100%', 
+                      height: '180px', 
+                      borderRadius: '16px', 
+                      border: '2px dashed var(--border)', 
+                      background: 'var(--surface-hover)', 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      justifyContent: 'center', 
+                      alignItems: 'center', 
+                      cursor: 'pointer', 
+                      transition: 'all 0.2s',
+                      position: 'relative',
+                      overflow: 'hidden'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--primary)'}
+                    onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
+                  >
+                    {receiptPreview ? (
+                      <img src={receiptPreview} alt="Receipt Preview" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                    ) : (
+                      <>
+                        <Camera size={32} style={{ color: 'var(--text-dim)', marginBottom: '8px' }} />
+                        <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>{t('uploadReceiptText', 'Upload receipt image')}</span>
+                        <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px' }}>PNG, JPG or JPEG</span>
+                      </>
+                    )}
+                  </div>
+                  <input 
+                    id="receipt-upload-input"
+                    type="file" 
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setReceiptFile(file);
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          setReceiptPreview(reader.result as string);
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
+                  <button 
+                    type="button" 
+                    className="btn btn-ghost" 
+                    onClick={() => { setShowPaymentModal(false); setTransactionId(''); setReceiptFile(null); setReceiptPreview(''); }} 
+                    style={{ flex: 1, padding: '12px', borderRadius: '12px', fontWeight: '700' }}
+                  >
+                    {t('cancel', 'Cancel')}
+                  </button>
+                  <button 
+                    type="submit" 
+                    className="btn btn-primary" 
+                    style={{ flex: 1, padding: '12px', borderRadius: '12px', fontWeight: '700' }}
+                  >
+                    {t('submitPayment', 'Confirm Payment')}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
       </AnimatePresence>
     </div>
   );

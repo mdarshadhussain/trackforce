@@ -42,7 +42,8 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 app.use(morgan('combined'));
 
 // Static File Server
@@ -90,6 +91,7 @@ const storage = multer.diskStorage({
     else if (file.fieldname === 'cv') typeDir = 'cv';
     else if (file.fieldname === 'idDoc') typeDir = 'passport_id';
     else if (file.fieldname === 'biometricProof') typeDir = 'attendance';
+    else if (file.fieldname === 'receipt') typeDir = 'receipts';
 
     const userDir = path.join(UPLOADS_DIR, folderId, typeDir);
 
@@ -105,6 +107,7 @@ const storage = multer.diskStorage({
     else if (file.fieldname === 'cv') prefix = 'resume';
     else if (file.fieldname === 'idDoc') prefix = 'id_proof';
     else if (file.fieldname === 'biometricProof') prefix = 'proof';
+    else if (file.fieldname === 'receipt') prefix = 'receipt';
 
     cb(null, `${prefix}_${sanitizedOriginal}`);
   }
@@ -153,6 +156,7 @@ cron.schedule('*/30 * * * *', async () => {
       where: {
         clockOut: null,
         clockIn: {
+          not: null,
           lt: fifteenHoursAgo
         }
       }
@@ -163,7 +167,7 @@ cron.schedule('*/30 * * * *', async () => {
       
       for (const session of stalledSessions) {
         // Automatically set clock-out to 8 hours after clock-in
-        const autoClockOut = new Date(session.clockIn.getTime() + (8 * 60 * 60 * 1000));
+        const autoClockOut = new Date(session.clockIn!.getTime() + (8 * 60 * 60 * 1000));
         
         await prisma.attendance.update({
           where: { id: session.id },
@@ -189,6 +193,40 @@ cron.schedule('*/30 * * * *', async () => {
     }
   } catch (err) {
     console.error('❌ [Auto-Checkout Protocol Error]:', err);
+  }
+});
+
+// 48-Hour Auto-Approval Protocol
+// Runs every 30 minutes to automatically approve any PENDING attendance older than 48 hours
+cron.schedule('*/30 * * * *', async () => {
+  console.log('🔄 [Auto-Approval Protocol]: Scanning for pending attendance exceeding 48 hours...');
+  const fortyEightHoursAgo = new Date(Date.now() - (48 * 60 * 60 * 1000));
+
+  try {
+    const pendingAttendances = await prisma.attendance.findMany({
+      where: {
+        status: 'PENDING',
+        createdAt: {
+          lt: fortyEightHoursAgo
+        }
+      }
+    });
+
+    if (pendingAttendances.length > 0) {
+      console.log(`🚀 [Auto-Approval Protocol]: Auto-approving ${pendingAttendances.length} pending attendance records...`);
+      
+      for (const record of pendingAttendances) {
+        await prisma.attendance.update({
+          where: { id: record.id },
+          data: {
+            status: 'APPROVED'
+          }
+        });
+      }
+      console.log('✅ [Auto-Approval Protocol]: Successfully approved stalled/pending sessions.');
+    }
+  } catch (err) {
+    console.error('❌ [Auto-Approval Protocol Error]:', err);
   }
 });
 
@@ -230,7 +268,13 @@ function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
 
 // Helper: Calculate rounded duration in minutes
 // Implements the "30-minute block" rule: any partial time < 30 mins is rounded down
-function calculateRoundedDuration(clockIn: Date, clockOut: Date, breaks: any[] = []) {
+function calculateRoundedDuration(
+  clockIn: Date, 
+  clockOut: Date, 
+  breaks: any[] = [], 
+  lunchStartTime?: string | null, 
+  lunchEndTime?: string | null
+) {
   let durationMs = clockOut.getTime() - clockIn.getTime();
   
   // Subtract break durations
@@ -242,12 +286,39 @@ function calculateRoundedDuration(clockIn: Date, clockOut: Date, breaks: any[] =
     });
   }
 
+  // Subtract lunch break if overlap exists
+  if (clockIn && clockOut) {
+    const startOfDay = new Date(clockIn);
+    startOfDay.setHours(0, 0, 0, 0);
+    const [lS_HH, lS_MM] = (lunchStartTime || "12:00").split(":").map(Number);
+    const [lE_HH, lE_MM] = (lunchEndTime || "13:00").split(":").map(Number);
+    
+    const lunchStart = new Date(startOfDay);
+    lunchStart.setHours(lS_HH, lS_MM, 0, 0);
+    
+    const lunchEnd = new Date(startOfDay);
+    lunchEnd.setHours(lE_HH, lE_MM, 0, 0);
+
+    const overlapStart = new Date(Math.max(clockIn.getTime(), lunchStart.getTime()));
+    const overlapEnd = new Date(Math.min(clockOut.getTime(), lunchEnd.getTime()));
+    const overlapMs = Math.max(0, overlapEnd.getTime() - overlapStart.getTime());
+    
+    durationMs -= overlapMs;
+  }
+
   const durationMins = Math.max(0, durationMs / (1000 * 60));
   // Round down to the nearest 30-minute block (e.g., 5:10 -> 5:00, 5:35 -> 5:30)
   return Math.floor(durationMins / 30) * 30;
 }
 
-function calculateAdjustedDuration(clockIn: Date, clockOut: Date, breaks: any[] = [], workingStartTime?: string | null) {
+function calculateAdjustedDuration(
+  clockIn: Date, 
+  clockOut: Date, 
+  breaks: any[] = [], 
+  workingStartTime?: string | null,
+  lunchStartTime?: string | null,
+  lunchEndTime?: string | null
+) {
   let start = new Date(clockIn);
   if (workingStartTime) {
     const expectedStart = new Date(clockIn);
@@ -277,6 +348,26 @@ function calculateAdjustedDuration(clockIn: Date, clockOut: Date, breaks: any[] 
         durationMs -= (new Date(b.endTime).getTime() - new Date(b.startTime).getTime());
       }
     });
+  }
+
+  // Subtract lunch break if overlap exists
+  if (start && clockOut) {
+    const startOfDay = new Date(start);
+    startOfDay.setHours(0, 0, 0, 0);
+    const [lS_HH, lS_MM] = (lunchStartTime || "12:00").split(":").map(Number);
+    const [lE_HH, lE_MM] = (lunchEndTime || "13:00").split(":").map(Number);
+    
+    const lunchStart = new Date(startOfDay);
+    lunchStart.setHours(lS_HH, lS_MM, 0, 0);
+    
+    const lunchEnd = new Date(startOfDay);
+    lunchEnd.setHours(lE_HH, lE_MM, 0, 0);
+
+    const overlapStart = new Date(Math.max(start.getTime(), lunchStart.getTime()));
+    const overlapEnd = new Date(Math.min(clockOut.getTime(), lunchEnd.getTime()));
+    const overlapMs = Math.max(0, overlapEnd.getTime() - overlapStart.getTime());
+    
+    durationMs -= overlapMs;
   }
 
   const durationMins = Math.max(0, durationMs / (1000 * 60));
@@ -481,7 +572,7 @@ app.get('/api/employees/:id/full-profile', authenticateToken, async (req: any, r
     
     employee.attendance.forEach(log => {
       if (log.clockIn && log.clockOut) {
-        const d = calculateAdjustedDuration(new Date(log.clockIn), new Date(log.clockOut), log.breaks, employee.site?.workingStartTime);
+        const d = calculateAdjustedDuration(new Date(log.clockIn), new Date(log.clockOut), log.breaks, employee.site?.workingStartTime, employee.site?.lunchStartTime, employee.site?.lunchEndTime);
         totalMinutes += d;
 
         const logDate = new Date(log.date || log.clockIn);
@@ -636,7 +727,7 @@ app.post('/api/attendance/clock-in/:id', authenticateToken, upload.single('biome
     if (!employee) return res.status(404).json({ error: 'Employee not found' });
     if (!employee.site) return res.status(400).json({ error: 'No operational site assigned to your profile. Please contact admin.' });
 
-    // Restrict to max 5 clock-ins per day
+    // Restrict to max 2 clock-ins per day
     const todayStr = new Date().toISOString().split('T')[0];
     const todayLogsCount = await prisma.attendance.count({
       where: {
@@ -646,8 +737,8 @@ app.post('/api/attendance/clock-in/:id', authenticateToken, upload.single('biome
         }
       }
     });
-    if (todayLogsCount >= 5) {
-      return res.status(400).json({ error: 'Daily clock-in limit reached. You can only clock in up to five times per day.' });
+    if (todayLogsCount >= 2) {
+      return res.status(400).json({ error: 'Daily clock-in limit reached. You can only clock in up to two times per day.' });
     }
     
     const distance = getDistance(parseFloat(latitude), parseFloat(longitude), employee.site.latitude || 0, employee.site.longitude || 0);
@@ -823,7 +914,7 @@ app.get('/api/attendance', authenticateToken, async (req: any, res) => {
           role: { not: 'ADMIN' }
         }
       },
-      include: { employee: true, breaks: true },
+      include: { employee: true, breaks: true, site: true },
       orderBy: { date: 'desc' }
     });
     res.json(logs);
@@ -968,40 +1059,76 @@ app.post('/api/attendance/manual', authenticateToken, requireManagement, async (
     if (!employee) return res.status(404).json({ error: 'Employee not found' });
 
     let checkInPath = 'MANUAL';
-    let checkOutPath = null;
-
-    if (biometricProof && biometricProof.startsWith('data:image')) {
-      try {
-        const base64Data = biometricProof.replace(/^data:image\/\w+;base64,/, "");
-        const buffer = Buffer.from(base64Data, 'base64');
-        const filename = `manual_in_${employee.employeeId}_${Date.now()}.jpg`;
-        const userDir = path.join(UPLOADS_DIR, employee.employeeId, 'attendance');
-        if (!fs.existsSync(userDir)) {
-          fs.mkdirSync(userDir, { recursive: true });
+    if (biometricProof) {
+      if (biometricProof.startsWith('data:image')) {
+        try {
+          const base64Data = biometricProof.replace(/^data:image\/\w+;base64,/, "");
+          const buffer = Buffer.from(base64Data, 'base64');
+          const filename = `manual_in_${employee.employeeId}_${Date.now()}.jpg`;
+          const userDir = path.join(UPLOADS_DIR, employee.employeeId, 'attendance');
+          if (!fs.existsSync(userDir)) {
+            fs.mkdirSync(userDir, { recursive: true });
+          }
+          const filePath = path.join(userDir, filename);
+          fs.writeFileSync(filePath, buffer);
+          checkInPath = `/uploads/${employee.employeeId}/attendance/${filename}`;
+        } catch (err) {
+          console.error("Manual check-in save error:", err);
         }
-        const filePath = path.join(userDir, filename);
-        fs.writeFileSync(filePath, buffer);
-        checkInPath = `/uploads/${employee.employeeId}/attendance/${filename}`;
-      } catch (err) {
-        console.error("Manual check-in save error:", err);
+      } else {
+        try {
+          const urlObj = new URL(biometricProof);
+          checkInPath = urlObj.pathname;
+        } catch (e) {
+          checkInPath = biometricProof;
+        }
       }
     }
 
-    if (biometricProofOut && biometricProofOut.startsWith('data:image')) {
-      try {
-        const base64Data = biometricProofOut.replace(/^data:image\/\w+;base64,/, "");
-        const buffer = Buffer.from(base64Data, 'base64');
-        const filename = `manual_out_${employee.employeeId}_${Date.now()}.jpg`;
-        const userDir = path.join(UPLOADS_DIR, employee.employeeId, 'attendance');
-        if (!fs.existsSync(userDir)) {
-          fs.mkdirSync(userDir, { recursive: true });
+    let checkOutPath = null;
+    if (biometricProofOut) {
+      if (biometricProofOut.startsWith('data:image')) {
+        try {
+          const base64Data = biometricProofOut.replace(/^data:image\/\w+;base64,/, "");
+          const buffer = Buffer.from(base64Data, 'base64');
+          const filename = `manual_out_${employee.employeeId}_${Date.now()}.jpg`;
+          const userDir = path.join(UPLOADS_DIR, employee.employeeId, 'attendance');
+          if (!fs.existsSync(userDir)) {
+            fs.mkdirSync(userDir, { recursive: true });
+          }
+          const filePath = path.join(userDir, filename);
+          fs.writeFileSync(filePath, buffer);
+          checkOutPath = `/uploads/${employee.employeeId}/attendance/${filename}`;
+        } catch (err) {
+          console.error("Manual check-out save error:", err);
         }
-        const filePath = path.join(userDir, filename);
-        fs.writeFileSync(filePath, buffer);
-        checkOutPath = `/uploads/${employee.employeeId}/attendance/${filename}`;
-      } catch (err) {
-        console.error("Manual check-out save error:", err);
+      } else {
+        try {
+          const urlObj = new URL(biometricProofOut);
+          checkOutPath = urlObj.pathname;
+        } catch (e) {
+          checkOutPath = biometricProofOut;
+        }
       }
+    }
+
+    const active = await prisma.attendance.findFirst({
+      where: { employeeId, clockOut: null },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    if (active) {
+      const updated = await prisma.attendance.update({
+        where: { id: active.id },
+        data: {
+          clockIn: new Date(clockIn),
+          clockOut: clockOut ? new Date(clockOut) : null,
+          biometricProof: checkInPath !== 'MANUAL' ? checkInPath : active.biometricProof,
+          biometricProofOut: checkOutPath || active.biometricProofOut,
+          status: status || active.status
+        }
+      });
+      return res.json(updated);
     }
 
     const att = await prisma.attendance.create({ 
@@ -1010,7 +1137,7 @@ app.post('/api/attendance/manual', authenticateToken, requireManagement, async (
         siteId, 
         clockIn: new Date(clockIn), 
         clockOut: clockOut ? new Date(clockOut) : null, 
-        date: new Date(date), 
+        date: new Date(clockIn), 
         status: status || 'PRESENT', 
         biometricProof: checkInPath,
         biometricProofOut: checkOutPath
@@ -1089,9 +1216,9 @@ app.get('/api/payroll', authenticateToken, async (req: any, res: Response) => {
     const data = employees.map(emp => {
       let regMins = 0, otMins = 0, rate = emp.hourlyRate || 25;
       emp.attendance.forEach(log => {
-        const d = calculateAdjustedDuration(new Date(log.clockIn), new Date(log.clockOut!), log.breaks, emp.site?.workingStartTime);
+        const d = calculateAdjustedDuration(new Date(log.clockIn!), new Date(log.clockOut!), log.breaks, emp.site?.workingStartTime, emp.site?.lunchStartTime, emp.site?.lunchEndTime);
         
-        const logDate = new Date(log.date || log.clockIn);
+        const logDate = new Date(log.date || log.clockIn!);
         const isSunday = logDate.getDay() === 0;
         const isHoliday = holidays.some(h => {
           const hDate = new Date(h.date);
@@ -1150,6 +1277,170 @@ app.post('/api/payroll/generate/:employeeId', authenticateToken, requireManageme
   }
 });
 
+app.post('/api/payroll/payslips/generate', authenticateToken, requireManagement, async (req, res) => {
+  try {
+    const { 
+      employeeId, month, regularHours, overtimeHours, grossPay, netPay,
+      foodAllowance, otherAllowance, taxRate, taxAmount, insurance,
+      advancePayment, otherDeductions
+    } = req.body;
+
+    const payslip = await prisma.payslip.upsert({
+      where: {
+        employeeId_month: { employeeId, month }
+      },
+      update: {
+        regularHours: parseFloat(regularHours) || 0,
+        overtimeHours: parseFloat(overtimeHours) || 0,
+        grossPay: parseFloat(grossPay) || 0,
+        netPay: parseFloat(netPay) || 0,
+        foodAllowance: parseFloat(foodAllowance) || 0,
+        otherAllowance: parseFloat(otherAllowance) || 0,
+        taxRate: parseFloat(taxRate) || 0,
+        taxAmount: parseFloat(taxAmount) || 0,
+        insurance: parseFloat(insurance) || 0,
+        advancePayment: parseFloat(advancePayment) || 0,
+        otherDeductions: parseFloat(otherDeductions) || 0,
+        status: 'GENERATED'
+      },
+      create: {
+        employeeId,
+        month,
+        regularHours: parseFloat(regularHours) || 0,
+        overtimeHours: parseFloat(overtimeHours) || 0,
+        grossPay: parseFloat(grossPay) || 0,
+        netPay: parseFloat(netPay) || 0,
+        foodAllowance: parseFloat(foodAllowance) || 0,
+        otherAllowance: parseFloat(otherAllowance) || 0,
+        taxRate: parseFloat(taxRate) || 0,
+        taxAmount: parseFloat(taxAmount) || 0,
+        insurance: parseFloat(insurance) || 0,
+        advancePayment: parseFloat(advancePayment) || 0,
+        otherDeductions: parseFloat(otherDeductions) || 0,
+        status: 'GENERATED'
+      }
+    });
+
+    res.json(payslip);
+  } catch (error) {
+    console.error("Generate payslip error:", error);
+    res.status(500).json({ error: 'Failed to generate payslip' });
+  }
+});
+
+app.post('/api/payroll/payslips/finalize', authenticateToken, requireManagement, async (req, res) => {
+  try {
+    const { payslipId } = req.body;
+    const payslip = await prisma.payslip.update({
+      where: { id: payslipId },
+      data: { status: 'FINALIZED' }
+    });
+    res.json(payslip);
+  } catch (error) {
+    console.error("Finalize payslip error:", error);
+    res.status(500).json({ error: 'Failed to finalize payslip' });
+  }
+});
+
+app.post('/api/payroll/payslips/pay', authenticateToken, requireManagement, upload.single('receipt'), async (req: any, res) => {
+  try {
+    const { payslipId, transactionId } = req.body;
+    if (!transactionId) {
+      return res.status(400).json({ error: 'Transaction ID is required' });
+    }
+
+    const existingPayslip = await prisma.payslip.findUnique({
+      where: { id: payslipId },
+      include: { employee: true }
+    });
+
+    if (!existingPayslip) {
+      return res.status(404).json({ error: 'Payslip not found' });
+    }
+
+    let receiptPath = null;
+    if (req.file) {
+      receiptPath = `/uploads/${existingPayslip.employee.employeeId}/receipts/${req.file.filename}`;
+    }
+
+    const payslip = await prisma.payslip.update({
+      where: { id: payslipId },
+      data: {
+        status: 'PAID',
+        transactionId,
+        receiptPath: receiptPath || undefined
+      }
+    });
+
+    // Update all attendance records of the employee for that month to PAID
+    const startOfMonth = new Date(`${payslip.month}-01T00:00:00`);
+    const endOfMonth = new Date(startOfMonth.getFullYear(), startOfMonth.getMonth() + 1, 0, 23, 59, 59, 999);
+
+    await prisma.attendance.updateMany({
+      where: {
+        employeeId: payslip.employeeId,
+        date: {
+          gte: startOfMonth,
+          lte: endOfMonth
+        },
+        status: { in: ['PENDING', 'PRESENT', 'APPROVED', 'LATE'] }
+      },
+      data: { status: 'PAID' }
+    });
+
+    res.json(payslip);
+  } catch (error) {
+    console.error("Pay payslip error:", error);
+    res.status(500).json({ error: 'Failed to process payslip payment' });
+  }
+});
+
+app.get('/api/payroll/payslips/:employeeId', authenticateToken, async (req, res) => {
+  try {
+    const { employeeId } = req.params;
+    const payslips = await prisma.payslip.findMany({
+      where: { employeeId }
+    });
+    res.json(payslips);
+  } catch (error) {
+    console.error("Fetch payslips error:", error);
+    res.status(500).json({ error: 'Failed to fetch payslips' });
+  }
+});
+
+app.post('/api/payroll/payslips/update-status', authenticateToken, requireManagement, async (req, res) => {
+  try {
+    const { payslipId, status } = req.body;
+    const payslip = await prisma.payslip.update({
+      where: { id: payslipId },
+      data: { status }
+    });
+
+    if (status === 'PAID') {
+      const startOfMonth = new Date(`${payslip.month}-01T00:00:00`);
+      const endOfMonth = new Date(startOfMonth.getFullYear(), startOfMonth.getMonth() + 1, 0, 23, 59, 59, 999);
+
+      await prisma.attendance.updateMany({
+        where: {
+          employeeId: payslip.employeeId,
+          date: {
+            gte: startOfMonth,
+            lte: endOfMonth
+          },
+          status: { in: ['PENDING', 'PRESENT', 'APPROVED', 'LATE'] }
+        },
+        data: { status: 'PAID' }
+      });
+    }
+
+    res.json(payslip);
+  } catch (error) {
+    console.error("Update payslip status error:", error);
+    res.status(500).json({ error: 'Failed to update payslip status' });
+  }
+});
+
+
 app.get('/api/payroll/stats', authenticateToken, async (req: any, res: Response) => {
   try {
     const isAdmin = req.user.role === 'ADMIN';
@@ -1174,8 +1465,8 @@ app.get('/api/payroll/stats', authenticateToken, async (req: any, res: Response)
 
     let cost = 0, hours = 0;
     logs.forEach(l => {
-      if (!l.employee) return;
-      const d = calculateAdjustedDuration(new Date(l.clockIn), new Date(l.clockOut!), l.breaks, l.employee.site?.workingStartTime);
+      if (!l.employee || !l.clockIn || !l.clockOut) return;
+      const d = calculateAdjustedDuration(new Date(l.clockIn), new Date(l.clockOut), l.breaks, l.employee.site?.workingStartTime, l.employee.site?.lunchStartTime, l.employee.site?.lunchEndTime);
       
       const logDate = new Date(l.date || l.clockIn);
       const isSunday = logDate.getDay() === 0;
@@ -1322,7 +1613,7 @@ app.get('/api/stats', authenticateToken, async (req: any, res: Response) => {
           },
           include: { breaks: true }
         });
-        const dayMins = dayLogs.reduce((acc, curr) => acc + (curr.clockOut ? calculateAdjustedDuration(new Date(curr.clockIn), new Date(curr.clockOut), curr.breaks, employee?.site?.workingStartTime) : 0), 0);
+        const dayMins = dayLogs.reduce((acc, curr) => acc + (curr.clockOut && curr.clockIn ? calculateAdjustedDuration(new Date(curr.clockIn), new Date(curr.clockOut), curr.breaks, employee?.site?.workingStartTime, employee?.site?.lunchStartTime, employee?.site?.lunchEndTime) : 0), 0);
         const dayHours = dayMins / 60;
         
         trend.push({
@@ -1354,7 +1645,7 @@ app.get('/api/stats', authenticateToken, async (req: any, res: Response) => {
         recentLogs.push({
           type: 'LOG',
           title: l.clockOut ? 'Shift Completed' : 'Session Active',
-          message: `Check-in recorded at ${new Date(l.clockIn).toLocaleTimeString()}`,
+          message: `Check-in recorded at ${l.clockIn ? new Date(l.clockIn).toLocaleTimeString() : 'N/A'}`,
           time: l.createdAt
         });
       });
@@ -1373,17 +1664,18 @@ app.get('/api/stats', authenticateToken, async (req: any, res: Response) => {
       // Calculate weekly hours (shifts started in the last 7 days)
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-      const weeklyLogs = attendance.filter(l => new Date(l.date || l.clockIn) >= sevenDaysAgo);
-      const weeklyMins = weeklyLogs.reduce((acc, curr) => acc + (curr.clockOut ? calculateAdjustedDuration(new Date(curr.clockIn), new Date(curr.clockOut), curr.breaks, employee?.site?.workingStartTime) : 0), 0);
+      const weeklyLogs = attendance.filter(l => l.clockIn && new Date(l.date || l.clockIn) >= sevenDaysAgo);
+      const weeklyMins = weeklyLogs.reduce((acc, curr) => acc + (curr.clockOut && curr.clockIn ? calculateAdjustedDuration(new Date(curr.clockIn), new Date(curr.clockOut), curr.breaks, employee?.site?.workingStartTime, employee?.site?.lunchStartTime, employee?.site?.lunchEndTime) : 0), 0);
       const weeklyHoursVal = weeklyMins / 60;
 
       // Calculate monthly hours (shifts started in the current calendar month)
       const now = new Date();
       const currentMonthLogs = attendance.filter(l => {
+        if (!l.clockIn) return false;
         const d = new Date(l.date || l.clockIn);
         return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
       });
-      const monthlyMins = currentMonthLogs.reduce((acc, curr) => acc + (curr.clockOut ? calculateAdjustedDuration(new Date(curr.clockIn), new Date(curr.clockOut), curr.breaks, employee?.site?.workingStartTime) : 0), 0);
+      const monthlyMins = currentMonthLogs.reduce((acc, curr) => acc + (curr.clockOut && curr.clockIn ? calculateAdjustedDuration(new Date(curr.clockIn), new Date(curr.clockOut), curr.breaks, employee?.site?.workingStartTime, employee?.site?.lunchStartTime, employee?.site?.lunchEndTime) : 0), 0);
       const monthlyHoursVal = monthlyMins / 60;
 
       // Calculate actual earnings for current month (with OT rates!)
@@ -1391,7 +1683,7 @@ app.get('/api/stats', authenticateToken, async (req: any, res: Response) => {
       let monthlyEarnings = 0;
       currentMonthLogs.forEach(l => {
         if (l.clockIn && l.clockOut) {
-          const d = calculateAdjustedDuration(new Date(l.clockIn), new Date(l.clockOut), l.breaks, employee?.site?.workingStartTime);
+          const d = calculateAdjustedDuration(new Date(l.clockIn), new Date(l.clockOut), l.breaks, employee?.site?.workingStartTime, employee?.site?.lunchStartTime, employee?.site?.lunchEndTime);
           const logDate = new Date(l.date || l.clockIn);
           const isSunday = logDate.getDay() === 0;
           const isHoliday = holidays.some(h => {

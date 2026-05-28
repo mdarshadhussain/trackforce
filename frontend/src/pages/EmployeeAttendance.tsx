@@ -17,6 +17,8 @@ import { clockIn, clockOut, fetchTodayLogs, fetchAllLogs, createSecurityAlert, f
 import { loadFaceApiModels, areModelsLoaded } from '../utils/aiModels';
 import './EmployeeAttendance.css';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
   const R = 6371e3; // meters
   const φ1 = lat1 * Math.PI / 180;
@@ -40,6 +42,74 @@ const base64ToBlob = (base64: string) => {
   }
   return new Blob([ab], { type: mimeString });
 };
+
+function playSound(type: 'success' | 'error' | 'location' | 'facial' | 'biometric_success' | 'biometric_fail') {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const oscillator = ctx.createOscillator();
+    const gain = ctx.createGain();
+    oscillator.connect(gain);
+    gain.connect(ctx.destination);
+    
+    if (type === 'success') {
+      // Pleasant double-beep or rising chime
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
+      oscillator.frequency.setValueAtTime(659.25, ctx.currentTime + 0.1); // E5
+      gain.gain.setValueAtTime(0.1, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+      oscillator.start();
+      oscillator.stop(ctx.currentTime + 0.25);
+    } else if (type === 'error') {
+      // Low buzz / double fall
+      oscillator.type = 'sawtooth';
+      oscillator.frequency.setValueAtTime(150, ctx.currentTime);
+      oscillator.frequency.setValueAtTime(120, ctx.currentTime + 0.1);
+      gain.gain.setValueAtTime(0.1, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+      oscillator.start();
+      oscillator.stop(ctx.currentTime + 0.25);
+    } else if (type === 'location') {
+      // Short neutral blip for location checking
+      oscillator.type = 'sine';
+      oscillator.frequency.value = 600; // Hz
+      gain.gain.setValueAtTime(0.05, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+      oscillator.start();
+      oscillator.stop(ctx.currentTime + 0.1);
+    } else if (type === 'facial') {
+      // Short neutral sweep for scanning facial descriptor
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(800, ctx.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.05, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+      oscillator.start();
+      oscillator.stop(ctx.currentTime + 0.15);
+    } else if (type === 'biometric_success') {
+      // Bright high pitch double-beep
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(880, ctx.currentTime); // A5
+      oscillator.frequency.setValueAtTime(1046.50, ctx.currentTime + 0.1); // C6
+      gain.gain.setValueAtTime(0.1, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+      oscillator.start();
+      oscillator.stop(ctx.currentTime + 0.25);
+    } else if (type === 'biometric_fail') {
+      // Low warning tone
+      oscillator.type = 'triangle';
+      oscillator.frequency.setValueAtTime(220, ctx.currentTime); // A3
+      oscillator.frequency.setValueAtTime(180, ctx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.12, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+      oscillator.start();
+      oscillator.stop(ctx.currentTime + 0.3);
+    }
+  } catch (e) {
+    console.error("Audio Context playback failed", e);
+  }
+}
+
 const EmployeeAttendance = () => {
   const { user } = useAuth();
   const { t, i18n } = useTranslation();
@@ -190,6 +260,7 @@ const EmployeeAttendance = () => {
     
     // Get geolocation
     if (navigator.geolocation) {
+      playSound('location'); // Play location checking sound cue
       try {
         const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
           navigator.geolocation.getCurrentPosition(resolve, reject, { 
@@ -201,6 +272,7 @@ const EmployeeAttendance = () => {
         currentCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setCoords(currentCoords);
       } catch (e: any) {
+        playSound('error'); // Location acquisition failure beep
         console.error("Geolocation error", e);
         let errorMsg = "Unable to acquire your GPS location.";
         if (e.code === 1) {
@@ -216,6 +288,7 @@ const EmployeeAttendance = () => {
         return;
       }
     } else {
+      playSound('error'); // Location unsupported beep
       setStep('location_failed');
       setErrorDetail("Your browser does not support geolocation.");
       setIsProcessing(false);
@@ -228,6 +301,7 @@ const EmployeeAttendance = () => {
       const emp = await fetchEmployeeById(user.id);
       
       if (!emp || !emp.site) {
+        playSound('error'); // Boundary checking config error beep
         setStep('location_failed');
         setErrorDetail("No operational site assigned to your profile. Please contact admin.");
         setIsProcessing(false);
@@ -243,6 +317,7 @@ const EmployeeAttendance = () => {
       const radius = emp.site.geofenceRadius || 500;
 
       if (distance > radius && user.role === 'EMPLOYEE' && type === 'IN') {
+        playSound('error'); // Geofence mismatch warning beep
         await createSecurityAlert({
           type: 'GEOFENCE_VIOLATION',
           message: `${user.firstName} tried to clock in from ${Math.round(distance)}m away from ${emp.site.name}.`,
@@ -257,6 +332,7 @@ const EmployeeAttendance = () => {
         return;
       }
 
+      playSound('success'); // Location boundaries check success beep
       setStep('location_success');
       setStatusMessage(`Within boundary of "${emp.site.name}"!`);
 
@@ -267,6 +343,7 @@ const EmployeeAttendance = () => {
       }, 1500);
 
     } catch (err: any) {
+      playSound('error'); // Operational boundary error beep
       console.error("Verification error", err);
       setStep('location_failed');
       setErrorDetail(err.message || "Failed to verify location with operational server.");
@@ -274,56 +351,21 @@ const EmployeeAttendance = () => {
     }
   };
 
-  const handleSimulateGPS = async () => {
-    if (!user || !activeAction) return;
-    setIsProcessing(true);
-    setStep('checking_location');
-    setStatusMessage("Simulating GPS coordinates...");
-    setErrorDetail("");
-    
-    try {
-      const emp = await fetchEmployeeById(user.id);
-      if (!emp || !emp.site) {
-        setStep('location_failed');
-        setErrorDetail("No operational site assigned to your profile. Cannot simulate GPS.");
-        setIsProcessing(false);
-        return;
-      }
-      
-      const simulatedCoords = {
-        lat: emp.site.latitude || 37.7749,
-        lng: emp.site.longitude || -122.4194
-      };
-      
-      setCoords(simulatedCoords);
-      setStep('location_success');
-      setStatusMessage(`[SIMULATED] Located at "${emp.site.name}"`);
-      
-      setTimeout(() => {
-        setStep('facial_scanning');
-        setStatusMessage("Initializing camera for biometric verification...");
-        triggerBiometricVerification(activeAction, simulatedCoords);
-      }, 1500);
-      
-    } catch (err: any) {
-      console.error("Simulation error", err);
-      setStep('location_failed');
-      setErrorDetail("Failed to retrieve site coordinates for simulation.");
-      setIsProcessing(false);
-    }
-  };
+
 
   const triggerBiometricVerification = async (type: 'IN' | 'OUT', currentCoords: {lat: number, lng: number} | null) => {
     if (!user) return;
     try {
       const cameraStarted = await startCamera();
       if (!cameraStarted) {
+        playSound('biometric_fail'); // Camera failed to start beep
         setStep('failed');
         setErrorDetail("Could not access camera. Please check webcam permissions.");
         setIsProcessing(false);
         return;
       }
 
+      playSound('facial'); // Play facial scanning sound cue
       // Allow stabilization, then capture and process face
       setTimeout(async () => {
         try {
@@ -334,9 +376,9 @@ const EmployeeAttendance = () => {
 
           setStatusMessage("Analyzing face biometrics...");
           let isMatch = true;
-          const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
           if (modelsLoaded && user?.avatar) {
+            isMatch = false; // Must match successfully if avatar exists
             try {
               const avatarUrl = user.avatar.startsWith('http') ? user.avatar : `${API_URL}${user.avatar}`;
               const referenceImg = await faceapi.fetchImage(avatarUrl);
@@ -348,13 +390,17 @@ const EmployeeAttendance = () => {
               if (refDetection?.descriptor && capDetection?.descriptor) {
                 const distance = faceapi.euclideanDistance(refDetection.descriptor, capDetection.descriptor);
                 isMatch = distance < 0.6;
+              } else {
+                throw new Error("Face not clearly detected. Ensure your face is centered and well-lit.");
               }
-            } catch (err) {
+            } catch (err: any) {
               console.error("Biometric matching error:", err);
+              throw new Error(err.message || "Face verification failed.");
             }
           }
 
           if (!isMatch) {
+            playSound('biometric_fail'); // Play biometric fail warning tone
             await createSecurityAlert({
               type: 'BIOMETRIC_MISMATCH',
               message: `Unauthorized attempt: Biometric mismatch for ${user.firstName} ${user.lastName}.`,
@@ -368,6 +414,8 @@ const EmployeeAttendance = () => {
             setIsProcessing(false);
             return;
           }
+
+          playSound('biometric_success'); // Play biometric match success beep
 
           setStatusMessage("Logging attendance details...");
           const formData = new FormData();
@@ -387,6 +435,7 @@ const EmployeeAttendance = () => {
           }
 
           stopCamera();
+          playSound('success'); // Play check-in/out final success chime
           setStep('complete');
           setStatusMessage(type === 'IN' ? "Clock In Success!" : "Clock Out Success!");
           setIsProcessing(false);
@@ -397,6 +446,7 @@ const EmployeeAttendance = () => {
           }, 2000);
 
         } catch (err: any) {
+          playSound('error'); // Final clock action fail buzzer
           console.error("Attendance API Error:", err);
           stopCamera();
           setStep('failed');
@@ -406,6 +456,7 @@ const EmployeeAttendance = () => {
       }, 3000);
 
     } catch (err) {
+      playSound('biometric_fail'); // Play biometric scanner failure beep
       console.error("Biometric startup error:", err);
       stopCamera();
       setStep('failed');
@@ -484,7 +535,16 @@ const EmployeeAttendance = () => {
       <header className="att-header-premium">
         <div className="employee-profile-summary">
           <div className="avatar-frame">
-            <img src={user?.avatar || "https://api.dicebear.com/7.x/avataaars/svg?seed=Staff"} alt="Avatar" />
+            <img 
+              src={
+                user?.avatar 
+                  ? (user.avatar.startsWith('http') || user.avatar.startsWith('data:') 
+                      ? user.avatar 
+                      : `${API_URL}${user.avatar.startsWith('/') ? user.avatar : `/${user.avatar}`}`) 
+                  : "https://api.dicebear.com/7.x/avataaars/svg?seed=Staff"
+              } 
+              alt="Avatar" 
+            />
             <div className="avatar-ring"></div>
           </div>
           <div className="name-stack">
@@ -554,12 +614,12 @@ const EmployeeAttendance = () => {
                   <motion.button 
                     whileHover={{ scale: 1.02 }} 
                     whileTap={{ scale: 0.98 }} 
-                    className={`big-btn in ${(isClockedIn || (logs.length >= 5 && !isClockedIn)) ? 'disabled' : ''}`} 
-                    onClick={() => !isClockedIn && logs.length < 5 && handleAction('IN')} 
-                    disabled={isClockedIn || (logs.length >= 5 && !isClockedIn)}
+                    className={`big-btn in ${(isClockedIn || (logs.length >= 2 && !isClockedIn)) ? 'disabled' : ''}`} 
+                    onClick={() => !isClockedIn && logs.length < 2 && handleAction('IN')} 
+                    disabled={isClockedIn || (logs.length >= 2 && !isClockedIn)}
                   >
                     <Clock size={28} /> 
-                    <span>{logs.length >= 5 && !isClockedIn ? t('target').toUpperCase() : t('clockIn').toUpperCase()}</span>
+                    <span>{logs.length >= 2 && !isClockedIn ? t('target').toUpperCase() : t('clockIn').toUpperCase()}</span>
                   </motion.button>
                   
                   <motion.button 
@@ -631,9 +691,6 @@ const EmployeeAttendance = () => {
                       <p className="step-detail">{errorDetail}</p>
                       <div className="stepper-actions">
                         <button className="btn-stepper-retry" onClick={() => handleAction(activeAction!)}>Retry GPS Check</button>
-                        {(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (
-                          <button className="btn-stepper-simulate" onClick={handleSimulateGPS}>Simulate GPS</button>
-                        )}
                         <button className="btn-stepper-cancel" onClick={resetVerification}>{t('cancel')}</button>
                       </div>
                     </div>

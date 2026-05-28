@@ -281,6 +281,64 @@ export const generatePayslip = async (employeeId: string) => {
   return response.json();
 };
 
+export const generateMonthlyPayslip = async (payload: any) => {
+  const response = await fetch(`${BASE_URL}/payroll/payslips/generate`, {
+    method: 'POST',
+    headers: {
+      ...getAuthHeaders(),
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload)
+  });
+  if (!response.ok) throw new Error('Failed to generate monthly payslip');
+  return response.json();
+};
+
+export const finalizeMonthlyPayslip = async (payslipId: string) => {
+  const response = await fetch(`${BASE_URL}/payroll/payslips/finalize`, {
+    method: 'POST',
+    headers: {
+      ...getAuthHeaders(),
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ payslipId })
+  });
+  if (!response.ok) throw new Error('Failed to finalize monthly payslip');
+  return response.json();
+};
+
+export const payMonthlyPayslip = async (formData: FormData) => {
+  const response = await fetch(`${BASE_URL}/payroll/payslips/pay`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: formData
+  });
+  if (!response.ok) throw new Error('Failed to submit payslip payment');
+  return response.json();
+};
+
+export const fetchEmployeePayslips = async (employeeId: string) => {
+  const response = await fetch(`${BASE_URL}/payroll/payslips/${employeeId}`, {
+    headers: getAuthHeaders()
+  });
+  if (!response.ok) throw new Error('Failed to fetch employee payslips');
+  return response.json();
+};
+
+export const updatePayslipStatus = async (payslipId: string, status: string) => {
+  const response = await fetch(`${BASE_URL}/payroll/payslips/update-status`, {
+    method: 'POST',
+    headers: {
+      ...getAuthHeaders(),
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ payslipId, status })
+  });
+  if (!response.ok) throw new Error('Failed to update payslip status');
+  return response.json();
+};
+
+
 export const fetchSecurityAlerts = async () => {
   const response = await fetch(`${BASE_URL}/security/alerts`, {
     headers: getAuthHeaders()

@@ -38,17 +38,71 @@ import type { ToastType } from '../components/Toast';
 import { loadFaceApiModels, areModelsLoaded } from '../utils/aiModels';
 
 // Simple sound feedback using Web Audio API
-function playSound(type: 'success' | 'error') {
-  const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-  const oscillator = ctx.createOscillator();
-  const gain = ctx.createGain();
-  oscillator.connect(gain);
-  gain.connect(ctx.destination);
-  oscillator.type = 'sine';
-  oscillator.frequency.value = type === 'success' ? 440 : 200; // Hz
-  gain.gain.setValueAtTime(0.1, ctx.currentTime);
-  oscillator.start();
-  oscillator.stop(ctx.currentTime + 0.2); // 200ms beep
+function playSound(type: 'success' | 'error' | 'location' | 'facial' | 'biometric_success' | 'biometric_fail') {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const oscillator = ctx.createOscillator();
+    const gain = ctx.createGain();
+    oscillator.connect(gain);
+    gain.connect(ctx.destination);
+    
+    if (type === 'success') {
+      // Pleasant double-beep or rising chime
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
+      oscillator.frequency.setValueAtTime(659.25, ctx.currentTime + 0.1); // E5
+      gain.gain.setValueAtTime(0.1, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+      oscillator.start();
+      oscillator.stop(ctx.currentTime + 0.25);
+    } else if (type === 'error') {
+      // Low buzz / double fall
+      oscillator.type = 'sawtooth';
+      oscillator.frequency.setValueAtTime(150, ctx.currentTime);
+      oscillator.frequency.setValueAtTime(120, ctx.currentTime + 0.1);
+      gain.gain.setValueAtTime(0.1, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+      oscillator.start();
+      oscillator.stop(ctx.currentTime + 0.25);
+    } else if (type === 'location') {
+      // Short neutral blip for location checking
+      oscillator.type = 'sine';
+      oscillator.frequency.value = 600; // Hz
+      gain.gain.setValueAtTime(0.05, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+      oscillator.start();
+      oscillator.stop(ctx.currentTime + 0.1);
+    } else if (type === 'facial') {
+      // Short neutral sweep for scanning facial descriptor
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(800, ctx.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.05, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+      oscillator.start();
+      oscillator.stop(ctx.currentTime + 0.15);
+    } else if (type === 'biometric_success') {
+      // Bright high pitch double-beep
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(880, ctx.currentTime); // A5
+      oscillator.frequency.setValueAtTime(1046.50, ctx.currentTime + 0.1); // C6
+      gain.gain.setValueAtTime(0.1, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+      oscillator.start();
+      oscillator.stop(ctx.currentTime + 0.25);
+    } else if (type === 'biometric_fail') {
+      // Low warning tone
+      oscillator.type = 'triangle';
+      oscillator.frequency.setValueAtTime(220, ctx.currentTime); // A3
+      oscillator.frequency.setValueAtTime(180, ctx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.12, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+      oscillator.start();
+      oscillator.stop(ctx.currentTime + 0.3);
+    }
+  } catch (e) {
+    console.error("Audio Context playback failed", e);
+  }
 }
 
 import './Attendance.css';
@@ -394,6 +448,8 @@ const Attendance = () => {
     biometricProofOut: ''
   });
 
+  const lastAutoDetectedRef = useRef({ clockIn: '', siteId: '' });
+
   const [showCorrectionModal, setShowCorrectionModal] = useState(false);
   const [correctionData, setCorrectionData] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -442,6 +498,32 @@ const Attendance = () => {
     }
     return () => stopCamera();
   }, [showScanner]);
+
+  useEffect(() => {
+    if (!manualData.clockIn || !manualData.siteId) return;
+
+    // Check if clockIn or siteId actually changed
+    const clockInChanged = lastAutoDetectedRef.current.clockIn !== manualData.clockIn;
+    const siteIdChanged = lastAutoDetectedRef.current.siteId !== manualData.siteId;
+
+    if (clockInChanged || siteIdChanged) {
+      const selectedSiteObj = sites.find((s: any) => s.id === manualData.siteId);
+      const workingStartTime = selectedSiteObj?.workingStartTime || '07:00';
+
+      const [inH, inM] = manualData.clockIn.split(':').map(Number);
+      const [startH, startM] = workingStartTime.split(':').map(Number);
+
+      const isLate = (inH > startH) || (inH === startH && inM > startM);
+      const newStatus = isLate ? 'LATE' : 'PRESENT';
+
+      lastAutoDetectedRef.current = { clockIn: manualData.clockIn, siteId: manualData.siteId };
+
+      setManualData(prev => ({
+        ...prev,
+        status: newStatus
+      }));
+    }
+  }, [manualData.clockIn, manualData.siteId, sites]);
 
   const startCamera = async () => {
     try {
@@ -692,6 +774,8 @@ const Attendance = () => {
         setTimeout(() => reject(new Error("AI Detection Timed Out - Please check lighting")), 15000)
       );
 
+      playSound('facial'); // Checking facial
+
       const detectionsPromise = (async () => {
         const referenceImg = await faceapi.fetchImage(avatarUrl);
         const capturedImg = await faceapi.fetchImage(biometricProof);
@@ -706,12 +790,14 @@ const Attendance = () => {
       if (refDetection?.descriptor && capDetection?.descriptor) {
         const distance = faceapi.euclideanDistance(refDetection.descriptor, capDetection.descriptor);
         if (distance < 0.6) {
+          playSound('biometric_success'); // Biometric scan success beep
           const updatedUser = await enrollBiometric(user.id, Array.from(capDetection.descriptor));
           updateUser(updatedUser);
           setScanStatus('success');
           addToast(t('enrollmentSuccess'), 'success');
           setTimeout(() => window.location.reload(), 1500);
         } else {
+          playSound('biometric_fail'); // Biometric scan fail beep
           await createSecurityAlert({
             type: 'BIOMETRIC_MISMATCH',
             message: `Enrollment Failed: Biometric mismatch for ${user.firstName} ${user.lastName}.`,
@@ -722,10 +808,12 @@ const Attendance = () => {
           setScanStatus('idle');
         }
       } else {
+        playSound('biometric_fail'); // Biometric scan fail beep
         addToast("Face not clearly detected. Ensure your face is centered and well-lit.", 'warning');
         setScanStatus('idle');
       }
     } catch (err: any) {
+      playSound('biometric_fail'); // Biometric scan fail beep
       addToast(err.message || "AI Engine busy - please retry", 'error');
       setScanStatus('idle');
     } finally {
@@ -753,6 +841,7 @@ const Attendance = () => {
     }
 
     let isMatch = false;
+    playSound('facial'); // Play facial scanning sound cue
     if (modelsLoaded && user?.avatar) {
       try {
         const avatarUrl = user.avatar.startsWith('http') ? user.avatar : `${API_URL}${user.avatar}`;
@@ -783,6 +872,7 @@ const Attendance = () => {
     }
 
     if (!isMatch) {
+      playSound('biometric_fail'); // Play biometric fail warning tone
       await createSecurityAlert({
         type: 'BIOMETRIC_MISMATCH',
         message: `Clock-in Failed: Biometric mismatch for ${user.firstName} ${user.lastName}.`,
@@ -796,6 +886,8 @@ const Attendance = () => {
       return;
     }
 
+    playSound('biometric_success'); // Play biometric match success beep
+
     if (!navigator.geolocation) {
       addToast("Geolocation is not supported by your browser", 'error');
       setScanStatus('idle');
@@ -803,6 +895,7 @@ const Attendance = () => {
       return;
     }
 
+    playSound('location'); // Play location checking sound cue
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
@@ -840,6 +933,7 @@ const Attendance = () => {
         }
       },
       (err) => {
+        playSound('error'); // Play location error beep
         const msg = err.code === 1 ? "Location permission denied." : "Location request timed out.";
         addToast(msg, 'warning');
         setScanStatus('idle');
@@ -1059,7 +1153,7 @@ const Attendance = () => {
                     <SearchableSelect 
                       options={[
                         { value: 'PRESENT', label: t('presentLabel') },
-                        { value: 'LATE', label: t('lateLabel', 'LATE') },
+                        { value: 'LATE', label: t('lateLabel', 'Late') },
                         { value: 'ABSENT', label: t('absentLabel') }
                       ]}
                       placeholder={t('selectStatus')}
@@ -1123,22 +1217,24 @@ const Attendance = () => {
                     <label>{t('checkinImageOptional')}</label>
                     <label className="file-upload-premium" style={{
                       display: 'flex',
+                      flexDirection: 'column',
                       alignItems: 'center',
                       justifyContent: 'center',
                       gap: '8px',
-                      height: '46px',
-                      padding: '12px 16px',
+                      height: '80px',
+                      padding: '16px',
                       background: 'var(--surface-hover)',
-                      border: '1px dashed var(--border)',
+                      border: '1.5px dashed var(--border)',
                       borderRadius: '12px',
                       cursor: 'pointer',
-                      color: manualData.biometricProof ? 'var(--success)' : 'var(--text-secondary)',
-                      fontSize: '13px',
+                      color: manualData.biometricProof ? '#10b981' : 'var(--text-secondary)',
+                      fontSize: '12px',
                       width: '100%',
                       boxSizing: 'border-box',
                       transition: 'all 0.2s ease',
+                      textAlign: 'center'
                     }}>
-                      <Camera size={14} style={{ color: manualData.biometricProof ? 'var(--success)' : 'var(--primary)' }} />
+                      <Camera size={18} style={{ color: manualData.biometricProof ? '#10b981' : 'var(--primary)' }} />
                       <span style={{ fontWeight: 600 }}>{manualData.biometricProof ? t('checkinPhotoSelected') : t('uploadCheckinPhoto')}</span>
                       <input 
                         type="file" 
@@ -1152,22 +1248,24 @@ const Attendance = () => {
                     <label>{t('checkoutImageOptional')}</label>
                     <label className="file-upload-premium" style={{
                       display: 'flex',
+                      flexDirection: 'column',
                       alignItems: 'center',
                       justifyContent: 'center',
                       gap: '8px',
-                      height: '46px',
-                      padding: '12px 16px',
+                      height: '80px',
+                      padding: '16px',
                       background: 'var(--surface-hover)',
-                      border: '1px dashed var(--border)',
+                      border: '1.5px dashed var(--border)',
                       borderRadius: '12px',
                       cursor: 'pointer',
-                      color: manualData.biometricProofOut ? 'var(--success)' : 'var(--text-secondary)',
-                      fontSize: '13px',
+                      color: manualData.biometricProofOut ? '#10b981' : 'var(--text-secondary)',
+                      fontSize: '12px',
                       width: '100%',
                       boxSizing: 'border-box',
                       transition: 'all 0.2s ease',
+                      textAlign: 'center'
                     }}>
-                      <Camera size={14} style={{ color: manualData.biometricProofOut ? 'var(--success)' : 'var(--primary)' }} />
+                      <Camera size={18} style={{ color: manualData.biometricProofOut ? '#10b981' : 'var(--primary)' }} />
                       <span style={{ fontWeight: 600 }}>{manualData.biometricProofOut ? t('checkoutPhotoSelected') : t('uploadCheckoutPhoto')}</span>
                       <input 
                         type="file" 
@@ -1179,11 +1277,11 @@ const Attendance = () => {
                   </div>
                 </div>
 
-                <div className="modal-actions-premium" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '8px' }}>
-                  <button type="submit" className="btn btn-primary btn-block btn-lg" style={{ height: '48px', borderRadius: '12px' }}>
+                <div className="modal-actions-premium" style={{ display: 'flex', gap: '12px', marginTop: '16px', flexDirection: 'row' }}>
+                  <button type="submit" className="btn btn-primary btn-block btn-lg" style={{ height: '48px', borderRadius: '12px', flex: 1, margin: 0 }}>
                     {t('logOfficialRecord')}
                   </button>
-                  <button type="button" className="btn btn-ghost btn-block" style={{ height: '48px', borderRadius: '12px' }} onClick={() => setShowManualLog(false)}>
+                  <button type="button" className="btn btn-ghost btn-block" style={{ height: '48px', borderRadius: '12px', flex: 1, margin: 0 }} onClick={() => setShowManualLog(false)}>
                     {t('discard')}
                   </button>
                 </div>

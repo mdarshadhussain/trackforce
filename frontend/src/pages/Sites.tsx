@@ -165,8 +165,19 @@ const Sites = () => {
 
       <div className="sites-layout">
         <div className="sites-list-section">
-          
-
+          {isAdmin && (
+            <div className="sites-actions-top" style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
+              <button 
+                className="watt-btn primary" 
+                onClick={() => {
+                  setEditingSite(null);
+                  setIsModalOpen(true);
+                }}
+              >
+                <span>{i18n.language === 'vi' ? 'Thêm địa điểm mới' : 'Add New Site'}</span>
+              </button>
+            </div>
+          )}
           <div className="sites-grid">
             {loading ? (
               <div className="loading-state-site">
@@ -248,6 +259,15 @@ const Sites = () => {
                           <div className="intel-text">
                             <span className="intel-value">{site.workingStartTime || '07:00'}</span>
                             <span className="intel-label">{t('startTimeLabel')}</span>
+                          </div>
+                        </div>
+                        <div className="intel-item-premium">
+                          <Clock size={16} style={{ opacity: 0.8 }} />
+                          <div className="intel-text">
+                            <span className="intel-value" style={{ fontSize: '11px' }}>
+                              {site.lunchStartTime || '12:00'} - {site.lunchEndTime || '13:00'}
+                            </span>
+                            <span className="intel-label">{i18n.language === 'vi' ? 'Nghỉ trưa' : 'Lunch Break'}</span>
                           </div>
                         </div>
                       </div>

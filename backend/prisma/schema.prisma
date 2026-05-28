@@ -52,6 +52,7 @@ model Employee {
   
   isBiometricEnrolled Boolean @default(false)
   biometricToken      String?  // Store a hash of facial features or public key
+  payslips            Payslip[]
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -67,6 +68,8 @@ model Site {
   geofenceRadius  Float        @default(500) // Configurable radius in meters
   managerName     String?
   workingStartTime String?      @default("07:00")
+  lunchStartTime   String?      @default("12:00")
+  lunchEndTime     String?      @default("13:00")
   
   // Relations
   employees       Employee[]
@@ -92,7 +95,7 @@ model Attendance {
   siteId      String?
   site        Site?     @relation(fields: [siteId], references: [id])
   date        DateTime  @default(now())
-  clockIn     DateTime  @default(now())
+  clockIn     DateTime?  @default(now())
   clockOut    DateTime?
   clockInLat  Float?
   clockInLong Float?
@@ -151,4 +154,29 @@ model SecurityAlert {
   employeeId  String?
   siteId      String?
   timestamp   DateTime @default(now())
+}
+
+model Payslip {
+  id              String   @id @default(uuid())
+  employeeId      String
+  employee        Employee @relation(fields: [employeeId], references: [id])
+  month           String   // e.g., "2026-05"
+  regularHours    Float
+  overtimeHours   Float
+  grossPay        Float
+  netPay          Float
+  foodAllowance   Float
+  otherAllowance  Float
+  taxRate         Float
+  taxAmount       Float
+  insurance       Float
+  advancePayment  Float
+  otherDeductions Float
+  status          String   @default("GENERATED") // "GENERATED", "FINALIZED", "PAID"
+  transactionId   String?
+  receiptPath     String?  // File path to the upload transfer receipt
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([employeeId, month])
 }

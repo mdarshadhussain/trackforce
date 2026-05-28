@@ -471,13 +471,47 @@
     gap: 8px;
   }
   .map-header {
-    padding: 12px 16px;
+    padding: 10px 16px;
+  }
+  .map-header h3 {
+    margin: 0;
+    font-size: 15px;
   }
   .map-legend {
     display: none;
   }
   .map-footer-info {
     display: none;
+  }
+  .site-card-header-premium {
+    padding: 10px 12px;
+  }
+  .site-icon-premium {
+    width: 32px;
+    height: 32px;
+  }
+  .site-title-group h3 {
+    font-size: 14px;
+  }
+  .site-card-content-premium {
+    padding: 0 12px 10px;
+  }
+  .intel-item-premium {
+    padding: 6px 10px;
+    gap: 8px;
+  }
+  .intel-value {
+    font-size: 12px;
+  }
+  .intel-label {
+    font-size: 8px;
+  }
+  .site-card-footer-premium {
+    padding: 8px 12px;
+  }
+  .btn-center-map {
+    padding: 6px;
+    font-size: 11px;
   }
 }
 

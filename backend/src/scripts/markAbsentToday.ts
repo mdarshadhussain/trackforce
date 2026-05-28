@@ -4,6 +4,7 @@ const prisma = new PrismaClient();
 
 async function markAbsentForToday() {
   const now = new Date();
+  if (now.getDay() === 0) return; // Skip Sundays
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
   const todayEnd = new Date();

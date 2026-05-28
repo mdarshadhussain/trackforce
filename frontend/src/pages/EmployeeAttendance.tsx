@@ -523,7 +523,7 @@ const EmployeeAttendance = () => {
           status = dayLogs.some(l => l.status === 'APPROVED' || l.status === 'PRESENT') ? 'approved' : 'pending';
         }
         hours = dayLogs.reduce((acc, l) => l.clockIn && l.clockOut ? acc + (new Date(l.clockOut).getTime() - new Date(l.clockIn).getTime()) / 3600000 : acc, 0);
-      } else if (isPast && dateObj.getDay() !== 0 && dateObj.getDay() !== 6) status = 'absent';
+      } else if (isPast && dateObj.getDay() !== 0) status = 'absent';
       
       cells.push(
         <motion.div key={d} className={`cal-dot-box ${status || ''} ${new Date().toDateString() === dateObj.toDateString() ? 'today' : ''}`} whileHover={{ scale: 1.05 }}>

@@ -838,6 +838,7 @@ app.post('/api/attendance/clock-out/:id', authenticateToken, upload.single('biom
 const autoMarkAbsents = async () => {
   try {
     const now = new Date();
+    if (now.getDay() === 0) return; // Skip Sundays
     if (now.getHours() >= 17) {
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);

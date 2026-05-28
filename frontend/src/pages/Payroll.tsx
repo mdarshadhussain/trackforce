@@ -323,10 +323,10 @@ const Payroll = () => {
     }
   };
 
-  const loadEmployeePayslips = async () => {
-    if (!selectedEmployeeId) return;
+  const loadEmployeePayslips = async (idToLoad: string) => {
+    if (!idToLoad) return;
     try {
-      const slips = await fetchEmployeePayslips(selectedEmployeeId);
+      const slips = await fetchEmployeePayslips(idToLoad);
       setEmployeePayslips(slips);
     } catch (err) {
       console.error("Failed to load employee payslips", err);
@@ -334,12 +334,20 @@ const Payroll = () => {
   };
 
   useEffect(() => {
-    if (selectedEmployeeId) {
-      loadEmployeePayslips();
-    } else {
+    // If Admin/Manager is viewing a specific employee
+    if (selectedEmployeeId && !isEmployee) {
+      loadEmployeePayslips(selectedEmployeeId);
+    } else if (!selectedEmployeeId && !isEmployee) {
       setEmployeePayslips([]);
     }
-  }, [selectedEmployeeId]);
+  }, [selectedEmployeeId, isEmployee]);
+
+  useEffect(() => {
+    // If logged in as an Employee, ALWAYS fetch for their own user.id
+    if (isEmployee && user?.id) {
+      loadEmployeePayslips(user.id);
+    }
+  }, [isEmployee, user?.id]);
 
   const handleViewSlip = (payslip: any) => {
     const slipPayload = {
@@ -391,7 +399,7 @@ const Payroll = () => {
       });
       
       addToast(t('paymentsProcessedSuccess') || "Payslip generated successfully!", 'success');
-      await loadEmployeePayslips();
+      await loadEmployeePayslips(selectedEmployeeId!);
       loadPayrollData();
       
       // Auto view the payslip
@@ -405,7 +413,7 @@ const Payroll = () => {
     try {
       await finalizeMonthlyPayslip(payslipId);
       addToast("Payslip finalized successfully!", 'success');
-      await loadEmployeePayslips();
+      await loadEmployeePayslips(selectedEmployeeId!);
       loadPayrollData();
     } catch (err: any) {
       addToast(err.message, 'error');
@@ -431,7 +439,7 @@ const Payroll = () => {
       setReceiptFile(null);
       setReceiptPreview('');
       setPaymentPayslipId('');
-      await loadEmployeePayslips();
+      await loadEmployeePayslips(selectedEmployeeId!);
       loadPayrollData();
     } catch (err: any) {
       addToast(err.message, 'error');

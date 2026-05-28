@@ -21,6 +21,7 @@ import {
 } from 'recharts';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { exportToCSV } from '../utils/export';
 import './Dashboard.css';
 
 import { useEffect, useState, useRef } from 'react';
@@ -817,32 +818,32 @@ const Dashboard = () => {
 
   return (
     <div className="dashboard-watt">
-      {isManagement ? (
-        <header className="dashboard-header">
-          <div className="header-titles">
-            <div className="identity-section-watt">
-              <div className="welcome-group-watt">
-                <div className="welcome-top-line">
-                  <h1 className="page-title">{t('welcomeBack')}, <span className="text-gradient">{user?.firstName}</span></h1>
-                </div>
-                <div className="role-chip-watt">
-                  <Activity size={12} />
-                  <span>{user?.role} {t('optimizedStatus')}</span>
-                </div>
+      <header className="dashboard-header">
+        <div className="header-titles">
+          <div className="identity-section-watt">
+            <div className="welcome-group-watt">
+              <div className="welcome-top-line">
+                <h1 className="page-title">{t('welcomeBack')}, <span className="text-gradient">{user?.firstName}</span></h1>
               </div>
-              <motion.div 
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className="user-avatar-watt"
-              >
-                <img src={avatarSrc} alt="" />
-                <div className="status-ring-watt"></div>
-              </motion.div>
+              <div className="role-chip-watt">
+                <Activity size={12} />
+                <span>{user?.role} {t('optimizedStatus')}</span>
+              </div>
             </div>
+            <motion.div 
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="user-avatar-watt"
+            >
+              <img src={avatarSrc} alt="" />
+              <div className="status-ring-watt"></div>
+            </motion.div>
           </div>
+        </div>
 
-          {/* Filters and Controls */}
-          <div className="dashboard-controls-block">
+        {/* Filters and Controls */}
+        <div className="dashboard-controls-block">
+          {isManagement && (
             <div className="dashboard-filters-deck">
               {/* Dropdown vs Search Toggle */}
               {user?.role === 'ADMIN' && (
@@ -974,121 +975,139 @@ const Dashboard = () => {
                 </div>
               )}
             </div>
-          </div>
-        </header>
-      ) : (
-        <header className="emp-dashboard-header">
-          <h1 className="emp-page-title">Dashboard</h1>
-          <motion.div 
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="emp-user-avatar"
-          >
-            <img src={avatarSrc} alt="" />
-          </motion.div>
-        </header>
-      )}
-
-      {isManagement ? (
-        <>
-          {/* Attendance Quick Banner for Managers */}
-          {user && user.role === 'MANAGER' && (
-            <div className="attendance-prompt-banner" onClick={() => setShowAttendancePrompt(true)}>
-              <div className="banner-left">
-                <Clock className="banner-icon-pulse" size={20} />
-                <div className="banner-text">
-                  <h3>{t('verifyShiftAttendance')}</h3>
-                  <p>{t('verifyShiftAttendanceDesc')}</p>
-                </div>
-              </div>
-              <button className="banner-btn">{t('recordAttendanceBtn')}</button>
-            </div>
           )}
 
-          {/* Stats Cards */}
-          <section className="stats-grid-watt">
-            <StatCard
-              icon={<Users size={20} />}
-              label={t('totalWorkforce')}
-              value={computedTotalWorkforce}
-              color="#3B82F6"
-              description={t('workersUnit')}
-            />
-            <StatCard
-              icon={<Activity size={20} />}
-              label={t('activeNow')}
-              value={computedActiveNow}
-              color="#10B981"
-              description={t('activeUnit')}
-            />
-            <StatCard
-              icon={<TrendingUp size={20} />}
-              label={t('globalEfficiency')}
-              value={computedEfficiency}
-              color="#F59E0B"
-              description="%"
-              trendLabel={t('optimalLabel')}
-            />
-            <StatCard
-              icon={<Wallet size={20} />}
-              label={t('estPayroll')}
-              value={formattedPayrollValue}
-              color="#8B5CF6"
-              description={formattedPayrollDesc}
-              trendLabel={t('calculatedLabel')}
-            />
-          </section>
+        </div>
+      </header>
 
-          {/* Charts Grid */}
-          <div className="main-charts-grid">
-            <div className="watt-card chart-main">
-              <div className="card-header-watt">
-                <h3 className="card-title">{t('workforceActivityTime')}</h3>
-                <div className="chart-legend-watt">
+      {/* Attendance Quick Banner (Big Blue Card Style) */}
+      {user && (user.role === 'EMPLOYEE' || user.role === 'MANAGER') && (
+        <div className="featured-blue-card">
+          <div className="fbc-top">
+            <p className="fbc-subtitle">{t('todaySchedule') || "Today's Activity"}</p>
+            <div className="fbc-main-stat">
+              <span className="fbc-number">{(stats?.weeklyHours ?? "0.0")}</span>
+              <span className="fbc-unit">{t('hoursLogged') || "hours logged this week"}</span>
+            </div>
+          </div>
+          <div className="fbc-divider"></div>
+          <div className="fbc-bottom">
+            <div className="fbc-callout">
+              <Clock className="fbc-icon" size={24} />
+              <p>{t('verifyShiftAttendanceDesc') || "Ready to log your shift?"}</p>
+            </div>
+            <button className="fbc-action-btn" onClick={() => setShowAttendancePrompt(true)}>
+              {t('attendance') || "Attendance"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Stats Cards (2x2 Grid) */}
+      <section className="stats-grid-watt">
+        <div className="ref-stat-card">
+          <div className="ref-stat-header">
+            <h4>{isManagement ? t('totalWorkforce') : t('efficiencyLabel')}</h4>
+            <p className="ref-stat-sub">{isManagement ? 'Active count' : 'Past 30 days'}</p>
+          </div>
+          <div className="ref-stat-body">
+            <h2>{isManagement ? computedTotalWorkforce : `${stats?.efficiency ?? 0}%`}</h2>
+            <div className="ref-progress-track">
+              <div className="ref-progress-fill" style={{ width: `${Math.min(stats?.efficiency ?? 0, 100)}%` }}></div>
+            </div>
+          </div>
+        </div>
+
+        <div className="ref-stat-card">
+          <div className="ref-stat-header">
+            <h4>{isManagement ? t('activeNow') : t('monthlyHoursLabel')}</h4>
+            <p className="ref-stat-sub">{isManagement ? 'Current shift' : 'Past 30 days'}</p>
+          </div>
+          <div className="ref-stat-body">
+            <h2>{isManagement ? computedActiveNow : (stats?.monthlyHours ?? "0.0")}</h2>
+            <div className="ref-progress-track">
+              <div className="ref-progress-fill" style={{ width: '45%' }}></div>
+            </div>
+          </div>
+        </div>
+
+        <div className="ref-stat-card wide-card">
+          <div className="ref-wide-content">
+            <h4>{isManagement ? t('estPayroll') : t('totalEarnings')}</h4>
+            <p className="ref-stat-sub">{isManagement ? formattedPayrollDesc : (stats?.currencySymbol || "₫")}</p>
+            <h2>{isManagement ? formattedPayrollValue : (stats?.earnings ?? 0).toLocaleString()}</h2>
+          </div>
+          <div className="ref-wide-icon">
+            <Wallet size={48} opacity={0.2} />
+          </div>
+        </div>
+      </section>
+
+      {/* Charts Grid */}
+      <div className="main-charts-grid">
+        <div className="watt-card chart-main">
+          <div className="card-header-watt">
+            <h3 className="card-title">{isManagement ? t('workforceActivityTime') : t('personalPerformanceTrend')}</h3>
+            <div className="chart-legend-watt">
+              {isManagement ? (
+                <>
                   <span className="legend-item"><span className="dot active" style={{ backgroundColor: '#3B82F6' }}></span> {t('overallHours')}</span>
                   <span className="legend-item"><span className="dot baseline" style={{ backgroundColor: '#F59E0B' }}></span> {t('overtimeHours')}</span>
                   <span className="legend-item"><span className="dot baseline" style={{ backgroundColor: '#10B981' }}></span> {t('totalPresent')}</span>
-                </div>
-              </div>
-              <div className="chart-wrapper-watt" style={{ minHeight: '320px' }}>
-                {computedChartData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={320}>
-                    <AreaChart data={computedChartData}>
-                      <defs>
-                        <linearGradient id="overallGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.1} />
-                          <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
-                        </linearGradient>
-                        <linearGradient id="overtimeGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.1} />
-                          <stop offset="95%" stopColor="#F59E0B" stopOpacity={0} />
-                        </linearGradient>
-                        <linearGradient id="presentGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#10B981" stopOpacity={0.1} />
-                          <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                      <XAxis 
-                        dataKey="name" 
-                        axisLine={false} 
-                        tickLine={false} 
-                        tick={{fill: '#64748B', fontSize: 12, fontWeight: 500}} 
-                        dy={10}
-                      />
-                      <YAxis 
-                        axisLine={false} 
-                        tickLine={false} 
-                        tick={{fill: '#64748B', fontSize: 12, fontWeight: 500}} 
-                      />
-                      <Tooltip 
-                        contentStyle={{ 
-                          borderRadius: '12px', 
-                          border: 'none', 
-                          boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
-                          padding: '12px'
-                        }} 
-                      />
+                </>
+              ) : (
+                <>
+                  <span className="legend-item"><span className="dot active"></span> {t('efficiencyLabel')}</span>
+                  <span className="legend-item"><span className="dot baseline"></span> {t('baseload')}</span>
+                </>
+              )}
+            </div>
+          </div>
+          <div className="chart-wrapper-watt" style={{ minHeight: '320px' }}>
+            {(isManagement ? computedChartData : (stats?.weeklyTrend || [])).length > 0 ? (
+              <ResponsiveContainer width="100%" height={320}>
+                <AreaChart data={isManagement ? computedChartData : (stats?.weeklyTrend || [])}>
+                  <defs>
+                    <linearGradient id="overallGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.1} />
+                      <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="overtimeGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.1} />
+                      <stop offset="95%" stopColor="#F59E0B" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="presentGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10B981" stopOpacity={0.1} />
+                      <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="wattBlue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={isManagement ? "#3B82F6" : "#10B981"} stopOpacity={0.1} />
+                      <stop offset="95%" stopColor={isManagement ? "#3B82F6" : "#10B981"} stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                  <XAxis 
+                    dataKey="name" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{fill: '#64748B', fontSize: 12, fontWeight: 500}} 
+                    dy={10}
+                  />
+                  <YAxis 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{fill: '#64748B', fontSize: 12, fontWeight: 500}} 
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      borderRadius: '12px', 
+                      border: 'none', 
+                      boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+                      padding: '12px'
+                    }} 
+                  />
+                  {isManagement ? (
+                    <>
                       <Area 
                         type="monotone" 
                         dataKey="totalHours" 
@@ -1116,171 +1135,117 @@ const Dashboard = () => {
                         fillOpacity={1} 
                         fill="url(#presentGrad)" 
                       />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="empty-chart-state">{t('noTrendData')}</div>
-                )}
-              </div>
-            </div>
-
-            <div className="watt-card asset-distribution">
-              <div className="card-header-watt">
-                <h3 className="card-title">{t('activityBySite')}</h3>
-              </div>
-              <div className="asset-list">
-                {computedSitePerformance.length > 0 ? computedSitePerformance.map((site: any, idx: number) => (
-                  <div key={idx} className="asset-item">
-                    <div className="asset-info">
-                      <span className="asset-name">{site.name}</span>
-                      <span className="asset-value">
-                        {site.presentCount} / {site.totalAssigned} {i18n.language === 'vi' ? 'ĐÃ CÓ MẶT' : 'PRESENT'}
-                      </span>
-                    </div>
-                    <div className="asset-progress-bg">
-                      <motion.div 
-                        initial={{ width: 0 }}
-                        animate={{ width: `${site.totalAssigned > 0 ? (site.presentCount / site.totalAssigned) * 100 : 0}%` }}
-                        className="asset-progress-fill"
-                        transition={{ duration: 1, ease: "easeOut" }}
-                      />
-                    </div>
-                  </div>
-                )) : (
-                  <div className="empty-asset-state">{t('noActiveSiteSessions')}</div>
-                )}
-              </div>
-            </div>
+                    </>
+                  ) : (
+                    <Area 
+                      type="monotone" 
+                      dataKey="attendance" 
+                      stroke="#10B981" 
+                      strokeWidth={3}
+                      fillOpacity={1} 
+                      fill="url(#wattBlue)" 
+                    />
+                  )}
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="empty-chart-state">{t('noTrendData')}</div>
+            )}
           </div>
-
-          {/* Recent Activity Table */}
-          <div className="watt-card recent-events">
-            <div className="card-header-watt">
-              <h3 className="card-title">{t('recentActivityLogs')}</h3>
-            </div>
-            <div className="events-table-wrapper">
-              {computedTableLogs.length > 0 ? (
-              <table className="events-table">
-                <thead>
-                  <tr>
-                    <th>{t('timestampHeader')}</th>
-                    <th>{t('entityHeader')}</th>
-                    <th>{t('eventTypeHeader')}</th>
-                    <th>{t('statusHeader')}</th>
-                    <th>{t('actionHeader')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {computedTableLogs.map((log: any, idx: number) => (
-                    <tr key={idx}>
-                      <td className="timestamp" data-label={t('timestampHeader')}>{formatTime(log.time)}</td>
-                      <td className="entity" data-label={t('entityHeader')}>{log.title}</td>
-                      <td className="event-type" data-label={t('eventTypeHeader')}>{log.type}</td>
-                      <td data-label={t('statusHeader')}>
-                        <span className={`status-pill ${log.type === 'ALERT' || log.status === 'PENDING' ? 'warning' : 'success'}`}>
-                          {log.type === 'ALERT' || log.status === 'PENDING' ? t('pendingLabel') : t('verifiedLabel')}
-                        </span>
-                      </td>
-                      <td data-label={t('actionHeader')}>
-                        {user?.role === 'ADMIN' && (
-                          <button className="table-action-btn" onClick={() => navigate(`/employees/${log.entityId || ''}`)}>{t('viewDetailsBtn')}</button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              ) : (
-                <div className="empty-table-state">{t('noRecentActivityLogged')}</div>
-              )}
-            </div>
-          </div>
-        </>
-      ) : (
-        /* =========================================
-           NEW EMPLOYEE MOBILE DASHBOARD
-           ========================================= */
-        <div className="employee-mobile-dashboard">
-          
-          {/* Hero Card */}
-          <div className="emp-hero-card">
-            <div className="emp-hero-top">
-              <span className="emp-month">{new Date().toLocaleString('default', { month: 'long' })}</span>
-              <div className="emp-hero-trend">
-                <TrendingUp size={16} />
-                <span>{stats?.efficiency ?? 0}%</span>
-              </div>
-            </div>
-            <div className="emp-earnings">
-              <span className="currency-symbol">{stats?.currencySymbol || "$ "}</span>
-              <span className="amount">{(stats?.earnings ?? 0).toLocaleString()}</span>
-            </div>
-            <div className="emp-progress-wrapper">
-              <div className="emp-progress-bar">
-                <div className="emp-progress-fill" style={{ width: `${Math.min(stats?.efficiency ?? 0, 100)}%` }}></div>
-              </div>
-              <div className="emp-progress-labels">
-                <span>Daily target: 8h</span>
-                <span>{stats?.weeklyHours || "0"}h log</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Recent Logs */}
-          <div className="emp-section">
-            <div className="emp-section-header">
-              <h3>RECENT LOGS</h3>
-              <button className="emp-see-all" onClick={() => navigate('/attendance')}>See All</button>
-            </div>
-            <div className="emp-card-list">
-              {(stats?.recentLogs || []).slice(0, 3).map((log: any, idx: number) => (
-                <div key={idx} className="emp-list-item">
-                  <div className={`emp-list-icon ${log.title === 'Clock In' ? 'in' : 'out'}`}>
-                    {log.title === 'Clock In' ? <CheckCircle2 size={20} /> : <Clock size={20} />}
-                  </div>
-                  <div className="emp-list-details">
-                    <span className="emp-list-title">{log.message || log.siteName || log.title}</span>
-                    <span className="emp-list-subtitle">{(stats?.earnings ?? 0) > 0 ? (stats?.currencySymbol || "$ ") + (stats?.earnings ? (stats.earnings / 20).toFixed(2) : "0") : log.status}</span>
-                  </div>
-                  <div className="emp-list-right">
-                    <span className="emp-list-status">{formatTime(log.time)}</span>
-                    <span className="emp-list-date">{new Date(log.time).toLocaleDateString([], { day: '2-digit', month: 'short' })}</span>
-                  </div>
-                </div>
-              ))}
-              {(!stats?.recentLogs || stats.recentLogs.length === 0) && (
-                <div className="emp-empty-state">No recent logs</div>
-              )}
-            </div>
-          </div>
-
-          {/* Quick Actions */}
-          <div className="emp-section">
-            <div className="emp-section-header">
-              <h3>QUICK ACTIONS</h3>
-            </div>
-            <div className="emp-horizontal-scroll">
-              <button className="emp-action-btn action-in" onClick={() => setShowAttendancePrompt(true)}>
-                <div className="action-icon-wrapper"><CheckCircle2 size={24} /></div>
-                <span>Clock In</span>
-              </button>
-              <button className="emp-action-btn action-out" onClick={() => setShowAttendancePrompt(true)}>
-                <div className="action-icon-wrapper"><Clock size={24} /></div>
-                <span>Clock Out</span>
-              </button>
-              <button className="emp-action-btn action-pay" onClick={() => navigate('/payroll')}>
-                <div className="action-icon-wrapper"><Wallet size={24} /></div>
-                <span>Payroll</span>
-              </button>
-              <button className="emp-action-btn action-site" onClick={() => navigate('/sites')}>
-                <div className="action-icon-wrapper"><Layers size={24} /></div>
-                <span>Sites</span>
-              </button>
-            </div>
-          </div>
-
         </div>
-      )}
+
+        <div className="watt-card asset-distribution">
+          <div className="card-header-watt">
+            <h3 className="card-title">{isManagement ? t('activityBySite') : t('recentActivityFeed')}</h3>
+          </div>
+          <div className="asset-list">
+            {isManagement ? (
+              computedSitePerformance.length > 0 ? computedSitePerformance.map((site: any, idx: number) => (
+                <div key={idx} className="asset-item">
+                  <div className="asset-info">
+                    <span className="asset-name">{site.name}</span>
+                    <span className="asset-value">
+                      {site.presentCount} / {site.totalAssigned} {i18n.language === 'vi' ? 'ĐÃ CÓ MẶT' : 'PRESENT'}
+                    </span>
+                  </div>
+                  <div className="asset-progress-bg">
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${site.totalAssigned > 0 ? (site.presentCount / site.totalAssigned) * 100 : 0}%` }}
+                      className="asset-progress-fill"
+                      transition={{ duration: 1, ease: "easeOut" }}
+                    />
+                  </div>
+                  </div>
+              )) : (
+                <div className="empty-asset-state">{t('noActiveSiteSessions')}</div>
+              )
+            ) : (
+              <div className="notifications-list-watt">
+                {(stats?.recentLogs || []).length > 0 ? (
+                  stats.recentLogs.slice(0, 5).map((log: any, idx: number) => (
+                    <div key={idx} className="notification-item-watt">
+                      <div className={`n-icon-watt ${log.type === 'ALERT' ? 'alert' : 'approved'}`}>
+                        {log.type === 'ALERT' ? <Clock size={14} /> : <CheckCircle2 size={14} />}
+                      </div>
+                      <div className="n-text-watt">
+                        <strong>{log.title}</strong>
+                        <p>{log.message}</p>
+                        <span>{formatTime(log.time)}</span>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="empty-state-watt">{i18n.language === 'vi' ? 'Không phát hiện hoạt động gần đây' : 'No recent activity detected'}</div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Recent Activity Table */}
+      <div className="watt-card recent-events">
+        <div className="card-header-watt">
+          <h3 className="card-title">{t('recentActivityLogs')}</h3>
+        </div>
+        <div className="events-table-wrapper">
+          {(isManagement ? computedTableLogs : (stats?.recentLogs || [])).length > 0 ? (
+          <table className="events-table">
+            <thead>
+              <tr>
+                <th>{t('timestampHeader')}</th>
+                <th>{t('entityHeader')}</th>
+                <th>{t('eventTypeHeader')}</th>
+                <th>{t('statusHeader')}</th>
+                <th>{t('actionHeader')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(isManagement ? computedTableLogs : (stats?.recentLogs || [])).map((log: any, idx: number) => (
+                <tr key={idx}>
+                  <td className="timestamp" data-label={t('timestampHeader')}>{formatTime(log.time)}</td>
+                  <td className="entity" data-label={t('entityHeader')}>{log.title}</td>
+                  <td className="event-type" data-label={t('eventTypeHeader')}>{log.type}</td>
+                  <td data-label={t('statusHeader')}>
+                    <span className={`status-pill ${log.type === 'ALERT' || log.status === 'PENDING' ? 'warning' : 'success'}`}>
+                      {log.type === 'ALERT' || log.status === 'PENDING' ? t('pendingLabel') : t('verifiedLabel')}
+                    </span>
+                  </td>
+                  <td data-label={t('actionHeader')}>
+                    {user?.role === 'ADMIN' && (
+                      <button className="table-action-btn" onClick={() => navigate(`/employees/${log.entityId || ''}`)}>{t('viewDetailsBtn')}</button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          ) : (
+            <div className="empty-table-state">{t('noRecentActivityLogged')}</div>
+          )}
+        </div>
+      </div>
 
       <AnimatePresence>
         {showAttendancePrompt && (

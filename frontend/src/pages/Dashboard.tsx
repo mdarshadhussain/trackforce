@@ -207,62 +207,37 @@ const CustomDateDropdown = ({
   );
 };
 
-const StatCard = ({ icon, label, value, trend, color, description, trendLabel }: any) => {
-  const isLightText = color !== '#FFFFFF' && color !== '#F3F4F6';
-  
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="watt-card stat-card"
-      style={{ backgroundColor: color, border: 'none' }}
-    >
-      <div className="stat-card-top">
-        <span className="stat-label" style={{ color: isLightText ? 'rgba(255,255,255,0.9)' : 'var(--text-secondary)' }}>
-          {label}
-        </span>
-        <div className="stat-icon-box" style={{ 
-          backgroundColor: isLightText ? 'rgba(255,255,255,0.2)' : `${color}15`, 
-          color: isLightText ? '#FFFFFF' : color,
-          boxShadow: 'none'
-        }}>
-          {icon}
-        </div>
+const StatCard = ({ icon, label, value, trend, color, description, trendLabel }: any) => (
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    className="watt-card stat-card"
+  >
+    <div className="stat-card-top">
+      <div className="stat-icon-box" style={{ backgroundColor: `${color}15`, color: color }}>
+        {icon}
       </div>
-      <div className="stat-card-bottom">
-        <div className="stat-value-group">
-          <h2 className="stat-value" style={{ color: isLightText ? '#FFFFFF' : 'var(--text-primary)' }}>
-            {value}
-          </h2>
-          {description && (
-            <span className="stat-unit" style={{ color: isLightText ? 'rgba(255,255,255,0.7)' : 'var(--text-tertiary)' }}>
-              {description}
-            </span>
-          )}
+      {trend !== undefined && (
+        <div className="stat-trend-badge" style={{ backgroundColor: trend > 0 ? '#10B98115' : '#EF444415', color: trend > 0 ? '#10B981' : '#EF4444' }}>
+          <TrendingUp size={12} style={{ transform: trend > 0 ? 'none' : 'rotate(180deg)' }} />
+          <span>{Math.abs(trend)}%</span>
         </div>
-        
-        {trend !== undefined && (
-          <div className="stat-trend-badge" style={{ 
-            backgroundColor: isLightText ? 'rgba(255,255,255,0.2)' : (trend > 0 ? '#10B98115' : '#EF444415'), 
-            color: isLightText ? '#FFFFFF' : (trend > 0 ? '#10B981' : '#EF4444') 
-          }}>
-            <TrendingUp size={12} style={{ transform: trend > 0 ? 'none' : 'rotate(180deg)' }} />
-            <span>{Math.abs(trend)}%</span>
-          </div>
-        )}
-        
-        {trendLabel && (
-          <div className="stat-trend-label" style={{ 
-            backgroundColor: isLightText ? 'rgba(255,255,255,0.2)' : 'var(--surface-hover)',
-            color: isLightText ? '#FFFFFF' : 'var(--text-tertiary)'
-          }}>
-            {trendLabel}
-          </div>
-        )}
+      )}
+      {trendLabel && (
+        <div className="stat-trend-label" style={{ display: 'inline-block' }}>
+          {trendLabel}
+        </div>
+      )}
+    </div>
+    <div className="stat-card-content">
+      <span className="stat-label">{label}</span>
+      <div className="stat-value-group">
+        <h2 className="stat-value">{value}</h2>
+        {description && <span className="stat-unit">{description}</span>}
       </div>
-    </motion.div>
-  );
-};
+    </div>
+  </motion.div>
+);
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -1026,7 +1001,7 @@ const Dashboard = () => {
           label={isManagement ? t('totalWorkforce') : t('weeklyHoursLabel')}
           value={isManagement ? computedTotalWorkforce : (stats?.weeklyHours ?? "0.0")}
           trend={isManagement ? undefined : 4.2}
-          color="#34D399" /* Light Green */
+          color="#3B82F6"
           description={isManagement ? t('workersUnit') : t('hoursUnit')}
         />
         <StatCard
@@ -1034,14 +1009,14 @@ const Dashboard = () => {
           label={isManagement ? t('activeNow') : t('efficiencyLabel')}
           value={isManagement ? computedActiveNow : `${stats?.efficiency ?? 0}%`}
           trend={isManagement ? undefined : 1.8}
-          color="#1F2937" /* Dark Grey */
+          color="#10B981"
           description={isManagement ? t('activeUnit') : ""}
         />
         <StatCard
           icon={<TrendingUp size={20} />}
           label={isManagement ? t('globalEfficiency') : t('monthlyHoursLabel')}
           value={isManagement ? computedEfficiency : (stats?.monthlyHours ?? "0.0")}
-          color="#111827" /* Darker Black */
+          color="#F59E0B"
           description={isManagement ? "%" : t('hoursUnit')}
           trendLabel={isManagement ? t('optimalLabel') : t('filterThisMonth')}
         />
@@ -1049,7 +1024,7 @@ const Dashboard = () => {
           icon={<Wallet size={20} />}
           label={isManagement ? t('estPayroll') : t('totalEarnings')}
           value={isManagement ? formattedPayrollValue : (stats?.earnings ?? 0).toLocaleString()}
-          color="#FBBF24" /* Yellow/Orange */
+          color="#8B5CF6"
           description={isManagement ? formattedPayrollDesc : (stats?.currencySymbol || "₫")}
           trendLabel={isManagement ? t('calculatedLabel') : `${i18n.language === 'vi' ? 'Đơn giá: ' : 'Rate: '}${stats?.hourlyRate?.toLocaleString() || '50,000'} ₫/hr`}
         />

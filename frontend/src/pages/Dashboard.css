@@ -240,26 +240,19 @@
 .stat-card-top {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
 }
 
 .stat-icon-box {
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: var(--surface-hover);
   border: 1px solid var(--border);
   box-shadow: inset 0 2px 4px rgba(255,255,255,0.1);
-}
-
-.stat-card-bottom {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  margin-top: auto;
 }
 
 .stat-trend-badge {
@@ -293,15 +286,15 @@
 }
 
 .stat-label {
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 600;
   color: var(--text-secondary);
 }
 
 .stat-value-group {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: baseline;
+  gap: 6px;
 }
 
 .stat-value {
@@ -310,7 +303,6 @@
   color: var(--text-primary);
   margin: 0;
   letter-spacing: -1px;
-  line-height: 1;
 }
 
 .stat-unit {

@@ -1063,10 +1063,13 @@ const Dashboard = () => {
               )}
             </div>
           </div>
-          <div className="chart-wrapper-watt" style={{ minHeight: '320px' }}>
+          <div className="chart-wrapper-watt">
             {(isManagement ? computedChartData : (stats?.weeklyTrend || [])).length > 0 ? (
-              <ResponsiveContainer width="100%" height={320}>
-                <AreaChart data={isManagement ? computedChartData : (stats?.weeklyTrend || [])}>
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart 
+                  data={isManagement ? computedChartData : (stats?.weeklyTrend || [])}
+                  margin={{ top: 10, right: 5, left: -25, bottom: 0 }}
+                >
                   <defs>
                     <linearGradient id="overallGrad" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.1} />

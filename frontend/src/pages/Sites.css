@@ -473,7 +473,7 @@
     overflow-x: auto;
     scroll-snap-type: x mandatory;
     gap: 16px; 
-    padding: 0 16px; /* Move side padding here */
+    padding: 16px 16px 8px 16px; /* Added top padding to prevent badge clipping */
     scrollbar-width: none;
   }
   .sites-grid::-webkit-scrollbar {
@@ -481,6 +481,7 @@
   }
   .site-card { 
     min-width: calc(100vw - 32px); /* Full width minus padding */
+    flex-shrink: 0; /* Prevent cards from squashing together */
     scroll-snap-align: center;
     min-height: auto; 
     border-radius: 20px;

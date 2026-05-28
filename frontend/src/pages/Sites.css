@@ -184,13 +184,13 @@
 }
 
 .intel-item-premium {
-  background: var(--surface-hover);
+  background: var(--surface);
   border: 1px solid var(--border);
-  padding: 6px 10px;
+  padding: 10px 14px;
   border-radius: 8px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   transition: all 0.3s ease;
 }
 
@@ -225,9 +225,8 @@
 }
 
 .site-card-footer-premium {
-  padding: 8px 16px;
-  background: var(--surface-hover);
-  border-top: 1px solid var(--border);
+  padding: 12px 16px;
+  background: transparent;
   margin-top: auto;
   border-bottom-left-radius: 20px;
   border-bottom-right-radius: 20px;
@@ -291,19 +290,19 @@
 
 .assigned-badge-on-border {
   position: absolute;
-  top: 0;
+  top: -12px;
   left: 50%;
-  transform: translate(-50%, -50%);
-  background: var(--primary); /* Blue color as requested */
-  color: #fff;
+  transform: translateX(-50%);
+  background: var(--primary);
+  color: white;
   padding: 4px 16px;
   border-radius: 20px;
   font-size: 10px;
-  font-weight: 900;
+  font-weight: 800;
+  text-transform: uppercase;
   letter-spacing: 0.1em;
-  z-index: 100; /* Higher z-index to stay on top */
-  box-shadow: 0 4px 10px var(--primary-glow);
-  white-space: nowrap;
+  box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);
+  z-index: 10;
 }
 
 .icon-btn-premium.edit:hover {
@@ -391,9 +390,8 @@
   align-items: center;
   gap: 12px;
   font-size: 12px;
-  color: var(--text-dim);
+  color: var(--text-secondary);
   background: var(--surface);
-  border-top: 1px solid var(--border);
 }
 
 @media (max-width: 1200px) {
@@ -422,23 +420,34 @@
 
 @media (max-width: 768px) {
   .sites-page { 
-    padding: 12px;
+    padding: 16px;
   }
   .map-preview-section {
-    height: 420px;
+    height: 380px;
+    padding: 0;
+    margin-bottom: 24px;
   }
   .search-filter-card {
     margin-bottom: 16px;
   }
   .sites-grid { 
     grid-template-columns: 1fr; 
-    gap: 16px; 
+    gap: 24px; 
   }
   .site-card { 
     min-height: auto; 
+    border-radius: 16px;
   }
   .intel-row-premium {
     grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .map-header {
+    padding: 16px 20px;
+  }
+  .map-preview-card {
+    border-radius: 16px;
+    overflow: hidden;
   }
 }
 

@@ -182,6 +182,8 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
+  align-items: center;
+  text-align: center;
   gap: 6px;
 }
 
@@ -225,6 +227,7 @@
 .manager-card .manager-header {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   color: #93c5fd;
 }

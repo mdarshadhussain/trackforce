@@ -144,7 +144,7 @@ const Profile = () => {
               <div className="hero-indicator-card manager-card">
                 <div className="manager-header">
                   <User size={11} />
-                  <label>{t('roleStatus')}</label>
+                  <label>ASSIGNED MANAGER</label>
                 </div>
                 <span>{fullProfile?.employee?.site?.managerName || t('admin')}</span>
               </div>

@@ -844,10 +844,10 @@ const Payroll = () => {
                       </div>
                       <div className="ps-metrics">
                         <div className="ps-metric">
-                          <Clock size={14}/> {slip.regularHours}h Reg
+                          <Clock size={14}/> {Number(slip.regularHours).toFixed(1)}h Reg
                         </div>
                         <div className="ps-metric">
-                          <Activity size={14}/> {slip.overtimeHours}h OT
+                          <Activity size={14}/> {Number(slip.overtimeHours).toFixed(1)}h OT
                         </div>
                       </div>
                       <div className="ps-net">

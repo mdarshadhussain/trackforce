@@ -651,7 +651,7 @@
     font-size: 32px;
   }
 
-  .hero-meta-badges {
+  .hero-meta-badges, .badge-row {
     justify-content: center;
     flex-wrap: wrap;
   }

@@ -13,6 +13,8 @@ import './Topbar.css';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 const Topbar = ({ onMenuClick, hideMenuBtn = false }: { onMenuClick?: () => void; hideMenuBtn?: boolean }) => {
   const { user } = useAuth();
   const { theme, toggleTheme } = useTheme();
@@ -83,7 +85,13 @@ const Topbar = ({ onMenuClick, hideMenuBtn = false }: { onMenuClick?: () => void
           
           <div className="user-profile-mini">
             <img 
-              src={user?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.firstName}`} 
+              src={
+                user?.avatar
+                  ? (user.avatar.startsWith('http') || user.avatar.startsWith('data:')
+                      ? user.avatar
+                      : `${API_URL}${user.avatar.startsWith('/') ? user.avatar : `/${user.avatar}`}`)
+                  : `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.firstName || 'User'}`
+              }
               alt="User" 
               className="user-avatar-mini"
             />

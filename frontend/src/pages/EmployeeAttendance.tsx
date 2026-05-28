@@ -552,7 +552,7 @@ const EmployeeAttendance = () => {
             <div className="profile-details-row">
               <span className="p-role">{t('employee')}</span>
               <span className="details-dot">•</span>
-              <span className="p-id">#TF-{user?.id.slice(-4).toUpperCase()}</span>
+              <span className="p-id">#{user?.employeeId || `TF-${user?.id?.slice(-4).toUpperCase()}`}</span>
               <span className="details-dot">•</span>
               <div className={`status-badge-inline ${isClockedIn ? 'online' : 'offline'}`}>
                 <span className="status-dot"></span>
@@ -565,7 +565,6 @@ const EmployeeAttendance = () => {
         <div className="live-clock-widget-glass">
           <div className="clock-wrapper">
              <span className="live-time">{currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-             <span className="live-seconds">{currentTime.getSeconds().toString().padStart(2, '0')}</span>
           </div>
           <span className="live-date">{currentTime.toLocaleDateString(i18n.language === 'vi' ? 'vi-VN' : [], { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase()}</span>
         </div>

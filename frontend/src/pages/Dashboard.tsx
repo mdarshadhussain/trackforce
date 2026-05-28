@@ -8,7 +8,9 @@ import {
   Wallet,
   Calendar,
   Layers,
-  Search
+  ChevronRight,
+  Star,
+  MapPin
 } from 'lucide-react';
 import {
   XAxis,

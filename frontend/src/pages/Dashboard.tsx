@@ -207,34 +207,62 @@ const CustomDateDropdown = ({
   );
 };
 
-const StatCard = ({ icon, label, value, trend, color, description, trendLabel }: any) => (
+const StatCard = ({ label, value, trend, trendLabel, description, children, customStyle, trendIcon, trendText, trendColor }: any) => (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
-    className="watt-card stat-card"
+    className="watt-card stat-card modern-stat-card"
+    style={customStyle}
   >
     <div className="stat-card-top">
-      <div className="stat-icon-box" style={{ backgroundColor: `${color}15`, color: color }}>
-        {icon}
-      </div>
-      {trend !== undefined && (
-        <div className="stat-trend-badge" style={{ backgroundColor: trend > 0 ? '#10B98115' : '#EF444415', color: trend > 0 ? '#10B981' : '#EF4444' }}>
-          <TrendingUp size={12} style={{ transform: trend > 0 ? 'none' : 'rotate(180deg)' }} />
-          <span>{Math.abs(trend)}%</span>
-        </div>
-      )}
+      <span className="stat-label">{label}</span>
       {trendLabel && (
-        <div className="stat-trend-label" style={{ display: 'inline-block' }}>
+        <div className="stat-trend-label modern-badge" style={{ display: 'inline-block', color: trendColor || 'var(--text-tertiary)' }}>
           {trendLabel}
         </div>
       )}
     </div>
     <div className="stat-card-content">
-      <span className="stat-label">{label}</span>
       <div className="stat-value-group">
         <h2 className="stat-value">{value}</h2>
         {description && <span className="stat-unit">{description}</span>}
       </div>
+      
+      {(trend !== undefined || trendText) && (
+        <div className="stat-trend-text">
+          {trendIcon || (trend && <TrendingUp size={12} style={{ transform: trend > 0 ? 'none' : 'rotate(180deg)' }} />)}
+          <span>{trendText || `${Math.abs(trend || 0)} vs last week`}</span>
+        </div>
+      )}
+      
+      <div className="stat-children-wrapper">
+        {children}
+      </div>
+    </div>
+  </motion.div>
+);
+
+const HorizontalCard = ({ icon, title, value, subtext, rightContent, iconColor }: any) => (
+  <motion.div
+    initial={{ opacity: 0, x: -10 }}
+    animate={{ opacity: 1, x: 0 }}
+    className="watt-card horizontal-card"
+  >
+    <div className="hc-left">
+      <div className="hc-icon" style={{ color: iconColor || 'var(--text-primary)' }}>
+        {icon}
+      </div>
+      <div className="hc-content">
+        <span className="hc-title">{title}</span>
+        <div className="hc-value-group">
+          <span className="hc-value">{value}</span>
+          {subtext && <span className="hc-subtext">{subtext}</span>}
+        </div>
+      </div>
+    </div>
+    <div className="hc-right">
+      {rightContent}
+      <ChevronRight size={16} color="var(--text-tertiary)" className="hc-arrow" />
     </div>
   </motion.div>
 );
@@ -818,225 +846,251 @@ const Dashboard = () => {
 
   return (
     <div className="dashboard-watt">
-      <header className="dashboard-header">
-        <div className="header-titles">
-          <div className="identity-section-watt">
-            <div className="welcome-group-watt">
-              <div className="welcome-top-line">
-                <h1 className="page-title">{user?.firstName} {user?.lastName}</h1>
-              </div>
-            </div>
-            <motion.div 
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="user-avatar-watt"
-            >
-              <img src={avatarSrc} alt="" />
-              <div className="status-ring-watt"></div>
-            </motion.div>
-          </div>
-        </div>
-
-        {/* Filters and Controls */}
-        <div className="dashboard-controls-block">
-          {isManagement && (
-            <div className="dashboard-filters-deck">
-              {/* Dropdown vs Search Toggle */}
-              {user?.role === 'ADMIN' && (
-                <div className="filter-mode-toggle">
-                  <button 
-                    type="button"
-                    className={"toggle-btn " + (projectFilterMode === 'DROPDOWN' ? 'active' : '')}
-                    onClick={() => {
-                      setProjectFilterMode('DROPDOWN');
-                      setSearchVal('');
-                    }}
-                  >
-                    <span>{i18n.language === 'vi' ? 'Danh sách' : 'Dropdown'}</span>
-                  </button>
-                  <button 
-                    type="button"
-                    className={"toggle-btn " + (projectFilterMode === 'SEARCH' ? 'active' : '')}
-                    onClick={() => {
-                      setProjectFilterMode('SEARCH');
-                      setSelectedSiteId('ALL');
-                    }}
-                  >
-                    <span>{i18n.language === 'vi' ? 'Tìm kiếm' : 'Search'}</span>
-                  </button>
-                </div>
-              )}
-
-              {/* Toggleable Project Selector or Global Search Input */}
-              {projectFilterMode === 'DROPDOWN' ? (
-                user?.role === 'ADMIN' && (
-                  <SearchableProjectDropdown 
-                    sites={sites} 
-                    selectedSiteId={selectedSiteId} 
-                    onSelectSite={setSelectedSiteId} 
-                  />
-                )
-              ) : (
-                <div className="global-search-input-wrapper">
-                  <Search size={14} className="search-icon-global" />
-                  <input 
-                    type="text" 
-                    placeholder={i18n.language === 'vi' ? 'Tìm kiếm trong tất cả dự án...' : 'Search in all projects...'} 
-                    value={searchVal}
-                    onChange={(e) => setSearchVal(e.target.value)}
-                    className="global-search-input"
-                  />
-                  {searchVal && (
-                    <button 
-                      type="button" 
-                      className="search-clear-btn" 
-                      onClick={() => setSearchVal('')}
-                    >
-                      ×
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {/* Custom Date Dropdown */}
-              <CustomDateDropdown 
-                value={dateFilter} 
-                onChange={setDateFilter} 
-              />
-
-              {/* Custom Date Options panel */}
-              {dateFilter === 'CUSTOM' && (
-                <div className="custom-date-sub-deck">
-                  <div className="date-type-selector">
-                    <button 
-                      type="button"
-                      className={"sub-pill-btn " + (customDateType === 'SINGLE' ? 'active' : '')}
-                      onClick={() => setCustomDateType('SINGLE')}
-                    >
-                      {t('filterSubDay')}
-                    </button>
-                    <button 
-                      type="button"
-                      className={"sub-pill-btn " + (customDateType === 'RANGE' ? 'active' : '')}
-                      onClick={() => setCustomDateType('RANGE')}
-                    >
-                      {t('filterSubRange')}
-                    </button>
-                    <button 
-                      type="button"
-                      className={"sub-pill-btn " + (customDateType === 'MONTH' ? 'active' : '')}
-                      onClick={() => setCustomDateType('MONTH')}
-                    >
-                      {t('filterSubMonth')}
-                    </button>
-                  </div>
-
-                  <div className="date-inputs-wrapper">
-                    {customDateType === 'SINGLE' && (
-                      <input 
-                        type="date" 
-                        value={customSingleDate} 
-                        onChange={(e) => setCustomSingleDate(e.target.value)}
-                        className="filter-date-input"
-                      />
-                    )}
-
-                    {customDateType === 'RANGE' && (
-                      <div className="range-inputs-group">
-                        <input 
-                          type="date" 
-                          value={customRangeStart} 
-                          onChange={(e) => setCustomRangeStart(e.target.value)}
-                          className="filter-date-input range-input"
-                        />
-                        <span className="range-separator">{t('filterSeparatorTo')}</span>
-                        <input 
-                          type="date" 
-                          value={customRangeEnd} 
-                          onChange={(e) => setCustomRangeEnd(e.target.value)}
-                          className="filter-date-input range-input"
-                        />
-                      </div>
-                    )}
-
-                    {customDateType === 'MONTH' && (
-                      <input 
-                        type="month" 
-                        value={customMonth} 
-                        onChange={(e) => setCustomMonth(e.target.value)}
-                        className="filter-date-input"
-                      />
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
+      <header className="dashboard-header-modern">
+        <h1 className="dashboard-hero-title">{user?.firstName}</h1>
+        
+        <div className="header-filter-group">
+          <CustomDateDropdown 
+            value={dateFilter} 
+            onChange={setDateFilter} 
+          />
         </div>
       </header>
-
-      {/* Attendance Quick Banner (Big Blue Card Style) */}
-      {user && (user.role === 'EMPLOYEE' || user.role === 'MANAGER') && (
-        <div className="featured-blue-card">
-          <div className="fbc-top">
-            <p className="fbc-subtitle">Today's schedule</p>
-            <div className="fbc-main-stat">
-              <span className="fbc-number">{(stats?.weeklyHours ?? "0.0")}</span>
-              <span className="fbc-unit">hours logged</span>
-            </div>
-          </div>
-          <div className="fbc-divider"></div>
-          <div className="fbc-bottom">
-            <div className="fbc-callout">
-              <Clock className="fbc-icon" size={24} />
-              <p>Ready to log your shift?</p>
-            </div>
-            <button className="fbc-action-btn" onClick={() => setShowAttendancePrompt(true)}>
-              {t('attendance') || "Attendance"}
+      
+      {dateFilter === 'CUSTOM' && (
+        <div className="custom-date-sub-deck modern-deck">
+          <div className="date-type-selector">
+            <button 
+              type="button"
+              className={"sub-pill-btn " + (customDateType === 'SINGLE' ? 'active' : '')}
+              onClick={() => setCustomDateType('SINGLE')}
+            >
+              {t('filterSubDay')}
             </button>
+            <button 
+              type="button"
+              className={"sub-pill-btn " + (customDateType === 'RANGE' ? 'active' : '')}
+              onClick={() => setCustomDateType('RANGE')}
+            >
+              {t('filterSubRange')}
+            </button>
+            <button 
+              type="button"
+              className={"sub-pill-btn " + (customDateType === 'MONTH' ? 'active' : '')}
+              onClick={() => setCustomDateType('MONTH')}
+            >
+              {t('filterSubMonth')}
+            </button>
+          </div>
+
+          <div className="date-inputs-wrapper">
+            {customDateType === 'SINGLE' && (
+              <input 
+                type="date" 
+                value={customSingleDate} 
+                onChange={(e) => setCustomSingleDate(e.target.value)}
+                className="filter-date-input"
+              />
+            )}
+
+            {customDateType === 'RANGE' && (
+              <div className="range-inputs-group">
+                <input 
+                  type="date" 
+                  value={customRangeStart} 
+                  onChange={(e) => setCustomRangeStart(e.target.value)}
+                  className="filter-date-input range-input"
+                />
+                <span className="range-separator">{t('filterSeparatorTo')}</span>
+                <input 
+                  type="date" 
+                  value={customRangeEnd} 
+                  onChange={(e) => setCustomRangeEnd(e.target.value)}
+                  className="filter-date-input range-input"
+                />
+              </div>
+            )}
+
+            {customDateType === 'MONTH' && (
+              <input 
+                type="month" 
+                value={customMonth} 
+                onChange={(e) => setCustomMonth(e.target.value)}
+                className="filter-date-input"
+              />
+            )}
           </div>
         </div>
       )}
 
-      {/* Stats Cards (2x2 Grid) */}
+      {isManagement && (
+        <div className="dashboard-controls-block modern-controls">
+          <div className="dashboard-filters-deck">
+            {user?.role === 'ADMIN' && (
+              <div className="filter-mode-toggle">
+                <button 
+                  type="button"
+                  className={"toggle-btn " + (projectFilterMode === 'DROPDOWN' ? 'active' : '')}
+                  onClick={() => {
+                    setProjectFilterMode('DROPDOWN');
+                    setSearchVal('');
+                  }}
+                >
+                  <span>{i18n.language === 'vi' ? 'Danh sách' : 'Dropdown'}</span>
+                </button>
+                <button 
+                  type="button"
+                  className={"toggle-btn " + (projectFilterMode === 'SEARCH' ? 'active' : '')}
+                  onClick={() => {
+                    setProjectFilterMode('SEARCH');
+                    setSelectedSiteId('ALL');
+                  }}
+                >
+                  <span>{i18n.language === 'vi' ? 'Tìm kiếm' : 'Search'}</span>
+                </button>
+              </div>
+            )}
+
+            {projectFilterMode === 'DROPDOWN' ? (
+              user?.role === 'ADMIN' && (
+                <SearchableProjectDropdown 
+                  sites={sites} 
+                  selectedSiteId={selectedSiteId} 
+                  onSelectSite={setSelectedSiteId} 
+                />
+              )
+            ) : (
+              <div className="global-search-input-wrapper">
+                <Search size={14} className="search-icon-global" />
+                <input 
+                  type="text" 
+                  placeholder={i18n.language === 'vi' ? 'Tìm kiếm trong tất cả dự án...' : 'Search in all projects...'} 
+                  value={searchVal}
+                  onChange={(e) => setSearchVal(e.target.value)}
+                  className="global-search-input"
+                />
+                {searchVal && (
+                  <button 
+                    type="button" 
+                    className="search-clear-btn" 
+                    onClick={() => setSearchVal('')}
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+
+
+      {/* Attendance Quick Banner */}
+      {user && (user.role === 'EMPLOYEE' || user.role === 'MANAGER') && (
+        <div className="attendance-prompt-banner" onClick={() => setShowAttendancePrompt(true)}>
+          <div className="banner-left">
+            <Clock className="banner-icon-pulse" size={20} />
+            <div className="banner-text">
+              <h3>{t('verifyShiftAttendance')}</h3>
+              <p>{t('verifyShiftAttendanceDesc')}</p>
+            </div>
+          </div>
+          <button className="banner-btn">{t('recordAttendanceBtn')}</button>
+        </div>
+      )}
+
+      {/* Stats Cards */}
       <section className="stats-grid-watt">
-        <div className="ref-stat-card">
-          <div className="ref-stat-header">
-            <h4>{isManagement ? t('totalWorkforce') : t('efficiencyLabel')}</h4>
-            <p className="ref-stat-sub">{isManagement ? 'Active count' : 'Past 30 days'}</p>
+        <StatCard
+          label={isManagement ? t('totalWorkforce') : t('weeklyHoursLabel')}
+          value={isManagement ? computedTotalWorkforce : (stats?.weeklyHours ?? "0.0")}
+          description={isManagement ? "" : "hours"}
+          trendText={isManagement ? "Total assigned workers" : "↓ 1.2 hrs vs last week"}
+          trendIcon={isManagement ? <Users size={12}/> : <TrendingUp size={12} style={{transform: 'rotate(180deg)'}}/>}
+        />
+        <StatCard
+          label={isManagement ? t('activeNow') : "Total present"}
+          value={isManagement ? computedActiveNow : (stats?.weeklyTrend?.length || "0")}
+          description={isManagement ? "" : "days"}
+          trendIcon={<span style={{fontSize: '14px'}}>🏆</span>}
+          trendText="Great consistency!"
+        />
+        <StatCard
+          label={isManagement ? t('estPayroll') : t('totalEarnings')}
+          value={isManagement ? formattedPayrollValue : `$${(stats?.earnings ?? 0).toLocaleString()}`}
+          trendLabel="Good"
+          trendColor="#10B981"
+          customStyle={{ paddingBottom: '16px' }}
+        >
+          <div style={{ height: '50px', marginTop: '16px' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={isManagement ? computedChartData : (stats?.weeklyTrend || [])}>
+                <defs>
+                  <linearGradient id="sparklineGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.2} />
+                    <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <Area 
+                  type="monotone" 
+                  dataKey={isManagement ? "totalHours" : "attendance"}
+                  stroke="#3B82F6" 
+                  strokeWidth={3}
+                  fillOpacity={1} 
+                  fill="url(#sparklineGrad)" 
+                />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
-          <div className="ref-stat-body">
-            <h2>{isManagement ? computedTotalWorkforce : `${stats?.efficiency ?? 0}%`}</h2>
-            <div className="ref-progress-track">
-              <div className="ref-progress-fill" style={{ width: `${Math.min(stats?.efficiency ?? 0, 100)}%` }}></div>
-            </div>
-          </div>
-        </div>
+        </StatCard>
+        <StatCard
+          label={t('efficiencyLabel')}
+          value={isManagement ? computedEfficiency : `${stats?.efficiency ?? 0}`}
+          description={isManagement ? "%" : "pts/hr"}
+          trendText="↑ 2.4 vs last week"
+          trendIcon={<TrendingUp size={12} />}
+        />
+      </section>
 
-        <div className="ref-stat-card">
-          <div className="ref-stat-header">
-            <h4>{isManagement ? t('activeNow') : t('monthlyHoursLabel')}</h4>
-            <p className="ref-stat-sub">{isManagement ? 'Current shift' : 'Past 30 days'}</p>
-          </div>
-          <div className="ref-stat-body">
-            <h2>{isManagement ? computedActiveNow : (stats?.monthlyHours ?? "0.0")}</h2>
-            <div className="ref-progress-track">
-              <div className="ref-progress-fill" style={{ width: '45%' }}></div>
+      {/* Horizontal List Cards */}
+      <section className="horizontal-list-watt">
+        <HorizontalCard
+          icon={<Clock size={16} />}
+          iconColor="#F97316"
+          title="Active Days"
+          value={isManagement ? computedActiveNow : (stats?.weeklyTrend?.length || "5")}
+          subtext="/7 days"
+          rightContent={
+            <div className="hc-bar-chart">
+              {[1, 2, 3, 2, 4, 1, 3].map((h, i) => (
+                <div key={i} className="hc-bar" style={{ height: `${h * 6}px`, opacity: i === 6 ? 1 : 0.3, background: i === 6 ? '#F97316' : '#94A3B8' }} />
+              ))}
             </div>
-          </div>
-        </div>
-
-        <div className="ref-stat-card wide-card">
-          <div className="ref-wide-content">
-            <h4>{isManagement ? t('estPayroll') : t('totalEarnings')}</h4>
-            <p className="ref-stat-sub">{isManagement ? formattedPayrollDesc : (stats?.currencySymbol || "₫")}</p>
-            <h2>{isManagement ? formattedPayrollValue : (stats?.earnings ?? 0).toLocaleString()}</h2>
-          </div>
-          <div className="ref-wide-icon">
-            <Wallet size={48} opacity={0.2} />
-          </div>
-        </div>
+          }
+        />
+        <HorizontalCard
+          icon={<Star size={16} />}
+          iconColor="#EAB308"
+          title="Performance Rating"
+          value="4.8"
+          subtext="stars"
+          rightContent={<Star size={28} color="#EAB308" fill="#EAB308" style={{marginRight: '12px'}} />}
+        />
+        <HorizontalCard
+          icon={<MapPin size={16} />}
+          iconColor="#3B82F6"
+          title={isManagement ? "Sites Covered" : "Total Distance"}
+          value={isManagement ? computedSitePerformance.length : "112"}
+          subtext={isManagement ? "sites" : "km"}
+          rightContent={
+            <div className="hc-bar-chart">
+              {[2, 1, 3, 4].map((h, i) => (
+                <div key={i} className="hc-bar" style={{ height: `${h * 6}px`, opacity: i === 3 ? 1 : 0.3, background: i === 3 ? '#3B82F6' : '#94A3B8' }} />
+              ))}
+            </div>
+          }
+        />
       </section>
 
       {/* Charts Grid */}

@@ -59,7 +59,6 @@ const MobileNav = () => {
               {tab.icon}
               {isActive && <span className="nav-active-dot" />}
             </div>
-            <span className="mobile-nav-label">{tab.label}</span>
           </Link>
         );
       })}

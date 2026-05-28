@@ -219,7 +219,7 @@ const Landing = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.6 }}
-              className="hero-social-proof"
+              className="hero-trust-badge"
             >
               <div className="proof-avatars">
                 {[1,2,3,4,5].map(i => (

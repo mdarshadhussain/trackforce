@@ -27,11 +27,10 @@ const MobileNav = () => {
         { icon: <Building2 size={22} />, label: t('sites'), path: '/sites' },
         { icon: <User size={22} />, label: t('profile'), path: '/profile' },
       ]
-    : isManager
+    : user?.role === 'MANAGER'
     ? [
-        { icon: <LayoutDashboard size={22} />, label: t('dashboard'), path: '/dashboard' },
-        { icon: <UserCheck size={22} />, label: t('siteAttendance'), path: '/attendance/manager' },
         { icon: <Calendar size={22} />, label: t('attendance'), path: '/attendance' },
+        { icon: <UserCheck size={22} />, label: t('siteAttendance'), path: '/attendance/manager' },
         { icon: <Building2 size={22} />, label: t('sites'), path: '/sites' },
         { icon: <User size={22} />, label: t('profile'), path: '/profile' },
       ]

@@ -1206,13 +1206,13 @@ const Dashboard = () => {
           </div>
         </div>
 
-        <div className="watt-card asset-distribution">
-          <div className="card-header-watt">
-            <h3 className="card-title">{isManagement ? t('activityBySite') : t('recentActivityFeed')}</h3>
-          </div>
-          <div className="asset-list">
-            {isManagement ? (
-              computedSitePerformance.length > 0 ? computedSitePerformance.map((site: any, idx: number) => (
+        {isManagement && (
+          <div className="watt-card asset-distribution">
+            <div className="card-header-watt">
+              <h3 className="card-title">{t('activityBySite')}</h3>
+            </div>
+            <div className="asset-list">
+              {computedSitePerformance.length > 0 ? computedSitePerformance.map((site: any, idx: number) => (
                 <div key={idx} className="asset-item">
                   <div className="asset-info">
                     <span className="asset-name">{site.name}</span>
@@ -1228,76 +1228,59 @@ const Dashboard = () => {
                       transition={{ duration: 1, ease: "easeOut" }}
                     />
                   </div>
-                  </div>
+                </div>
               )) : (
                 <div className="empty-asset-state">{t('noActiveSiteSessions')}</div>
-              )
-            ) : (
-              <div className="notifications-list-watt">
-                {(stats?.recentLogs || []).length > 0 ? (
-                  stats.recentLogs.slice(0, 5).map((log: any, idx: number) => (
-                    <div key={idx} className="notification-item-watt">
-                      <div className={`n-icon-watt ${log.type === 'ALERT' ? 'alert' : 'approved'}`}>
-                        {log.type === 'ALERT' ? <Clock size={14} /> : <CheckCircle2 size={14} />}
-                      </div>
-                      <div className="n-text-watt">
-                        <strong>{log.title}</strong>
-                        <p>{log.message}</p>
-                        <span>{formatTime(log.time)}</span>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="empty-state-watt">{i18n.language === 'vi' ? 'Không phát hiện hoạt động gần đây' : 'No recent activity detected'}</div>
-                )}
-              </div>
-            )}
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Recent Activity Table */}
-      <div className="watt-card recent-events">
-        <div className="card-header-watt">
-          <h3 className="card-title">{t('recentActivityLogs')}</h3>
-        </div>
-        <div className="events-table-wrapper">
-          {(isManagement ? computedTableLogs : (stats?.recentLogs || [])).length > 0 ? (
-          <table className="events-table">
-            <thead>
-              <tr>
-                <th>{t('timestampHeader')}</th>
-                <th>{t('entityHeader')}</th>
-                <th>{t('eventTypeHeader')}</th>
-                <th>{t('statusHeader')}</th>
-                <th>{t('actionHeader')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(isManagement ? computedTableLogs : (stats?.recentLogs || [])).map((log: any, idx: number) => (
-                <tr key={idx}>
-                  <td className="timestamp" data-label={t('timestampHeader')}>{formatTime(log.time)}</td>
-                  <td className="entity" data-label={t('entityHeader')}>{log.title}</td>
-                  <td className="event-type" data-label={t('eventTypeHeader')}>{log.type}</td>
-                  <td data-label={t('statusHeader')}>
-                    <span className={`status-pill ${log.type === 'ALERT' || log.status === 'PENDING' ? 'warning' : 'success'}`}>
-                      {log.type === 'ALERT' || log.status === 'PENDING' ? t('pendingLabel') : t('verifiedLabel')}
-                    </span>
-                  </td>
-                  <td data-label={t('actionHeader')}>
-                    {user?.role === 'ADMIN' && (
-                      <button className="table-action-btn" onClick={() => navigate(`/employees/${log.entityId || ''}`)}>{t('viewDetailsBtn')}</button>
-                    )}
-                  </td>
+      {isManagement && (
+        <div className="watt-card recent-events">
+          <div className="card-header-watt">
+            <h3 className="card-title">{t('recentActivityLogs')}</h3>
+          </div>
+          <div className="events-table-wrapper">
+            {(isManagement ? computedTableLogs : (stats?.recentLogs || [])).length > 0 ? (
+            <table className="events-table">
+              <thead>
+                <tr>
+                  <th>{t('timestampHeader')}</th>
+                  <th>{t('entityHeader')}</th>
+                  <th>{t('eventTypeHeader')}</th>
+                  <th>{t('statusHeader')}</th>
+                  <th>{t('actionHeader')}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          ) : (
-            <div className="empty-table-state">{t('noRecentActivityLogged')}</div>
-          )}
+              </thead>
+              <tbody>
+                {(isManagement ? computedTableLogs : (stats?.recentLogs || [])).map((log: any, idx: number) => (
+                  <tr key={idx}>
+                    <td className="timestamp" data-label={t('timestampHeader')}>{formatTime(log.time)}</td>
+                    <td className="entity" data-label={t('entityHeader')}>{log.title}</td>
+                    <td className="event-type" data-label={t('eventTypeHeader')}>{log.type}</td>
+                    <td data-label={t('statusHeader')}>
+                      <span className={`status-pill ${log.type === 'ALERT' || log.status === 'PENDING' ? 'warning' : 'success'}`}>
+                        {log.type === 'ALERT' || log.status === 'PENDING' ? t('pendingLabel') : t('verifiedLabel')}
+                      </span>
+                    </td>
+                    <td data-label={t('actionHeader')}>
+                      {user?.role === 'ADMIN' && (
+                        <button className="table-action-btn" onClick={() => navigate(`/employees/${log.entityId || ''}`)}>{t('viewDetailsBtn')}</button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            ) : (
+              <div className="empty-table-state">{t('noRecentActivityLogged')}</div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       <AnimatePresence>
         {showAttendancePrompt && (

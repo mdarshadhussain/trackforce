@@ -1205,47 +1205,49 @@ const Dashboard = () => {
       </div>
 
       {/* Recent Activity Table */}
-      <div className="watt-card recent-events">
-        <div className="card-header-watt">
-          <h3 className="card-title">{t('recentActivityLogs')}</h3>
-        </div>
-        <div className="events-table-wrapper">
-          {(isManagement ? computedTableLogs : (stats?.recentLogs || [])).length > 0 ? (
-          <table className="events-table">
-            <thead>
-              <tr>
-                <th>{t('timestampHeader')}</th>
-                <th>{t('entityHeader')}</th>
-                <th>{t('eventTypeHeader')}</th>
-                <th>{t('statusHeader')}</th>
-                <th>{t('actionHeader')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(isManagement ? computedTableLogs : (stats?.recentLogs || [])).map((log: any, idx: number) => (
-                <tr key={idx}>
-                  <td className="timestamp" data-label={t('timestampHeader')}>{formatTime(log.time)}</td>
-                  <td className="entity" data-label={t('entityHeader')}>{log.title}</td>
-                  <td className="event-type" data-label={t('eventTypeHeader')}>{log.type}</td>
-                  <td data-label={t('statusHeader')}>
-                    <span className={`status-pill ${log.type === 'ALERT' || log.status === 'PENDING' ? 'warning' : 'success'}`}>
-                      {log.type === 'ALERT' || log.status === 'PENDING' ? t('pendingLabel') : t('verifiedLabel')}
-                    </span>
-                  </td>
-                  <td data-label={t('actionHeader')}>
-                    {user?.role === 'ADMIN' && (
-                      <button className="table-action-btn" onClick={() => navigate(`/employees/${log.entityId || ''}`)}>{t('viewDetailsBtn')}</button>
-                    )}
-                  </td>
+      {isManagement && (
+        <div className="watt-card recent-events">
+          <div className="card-header-watt">
+            <h3 className="card-title">{t('recentActivityLogs')}</h3>
+          </div>
+          <div className="events-table-wrapper">
+            {(isManagement ? computedTableLogs : (stats?.recentLogs || [])).length > 0 ? (
+            <table className="events-table">
+              <thead>
+                <tr>
+                  <th>{t('timestampHeader')}</th>
+                  <th>{t('entityHeader')}</th>
+                  <th>{t('eventTypeHeader')}</th>
+                  <th>{t('statusHeader')}</th>
+                  <th>{t('actionHeader')}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          ) : (
-            <div className="empty-table-state">{t('noRecentActivityLogged')}</div>
-          )}
+              </thead>
+              <tbody>
+                {(isManagement ? computedTableLogs : (stats?.recentLogs || [])).map((log: any, idx: number) => (
+                  <tr key={idx}>
+                    <td className="timestamp" data-label={t('timestampHeader')}>{formatTime(log.time)}</td>
+                    <td className="entity" data-label={t('entityHeader')}>{log.title}</td>
+                    <td className="event-type" data-label={t('eventTypeHeader')}>{log.type}</td>
+                    <td data-label={t('statusHeader')}>
+                      <span className={`status-pill ${log.type === 'ALERT' || log.status === 'PENDING' ? 'warning' : 'success'}`}>
+                        {log.type === 'ALERT' || log.status === 'PENDING' ? t('pendingLabel') : t('verifiedLabel')}
+                      </span>
+                    </td>
+                    <td data-label={t('actionHeader')}>
+                      {user?.role === 'ADMIN' && (
+                        <button className="table-action-btn" onClick={() => navigate(`/employees/${log.entityId || ''}`)}>{t('viewDetailsBtn')}</button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            ) : (
+              <div className="empty-table-state">{t('noRecentActivityLogged')}</div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       <AnimatePresence>
         {showAttendancePrompt && (

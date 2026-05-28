@@ -545,43 +545,45 @@ const EmployeeAttendance = () => {
   return (
     <div className="employee-att-container">
       {/* Sleek Profile & Clock Header */}
-      <header className="att-header-premium">
-        <div className="employee-profile-summary">
-          <div className="avatar-frame">
-            <img 
-              src={
-                user?.avatar 
-                  ? (user.avatar.startsWith('http') || user.avatar.startsWith('data:') 
-                      ? user.avatar 
-                      : `${API_URL}${user.avatar.startsWith('/') ? user.avatar : `/${user.avatar}`}`) 
-                  : "https://api.dicebear.com/7.x/avataaars/svg?seed=Staff"
-              } 
-              alt="Avatar" 
-            />
-            <div className="avatar-ring"></div>
-          </div>
-          <div className="name-stack">
-            <h1>{t('hi')}, {user?.firstName}</h1>
-            <div className="profile-details-row">
-              <span className="p-role">{t('employee')}</span>
-              <span className="details-dot">•</span>
-              <span className="p-id">#{user?.employeeId || `TF-${user?.id?.slice(-4).toUpperCase()}`}</span>
-              <span className="details-dot">•</span>
-              <div className={`status-badge-inline ${isClockedIn ? 'online' : 'offline'}`}>
-                <span className="status-dot"></span>
-                <span>{isClockedIn ? t('active').toUpperCase() : t('offline').toUpperCase()}</span>
+      <div className="hero-greeting-section">
+        <div className="hero-greeting-card">
+          <div className="hero-card-left">
+            <div className="hero-avatar-wrapper">
+              <img 
+                src={
+                  user?.avatar 
+                    ? (user.avatar.startsWith('http') || user.avatar.startsWith('data:') 
+                        ? user.avatar 
+                        : `${API_URL}${user.avatar.startsWith('/') ? user.avatar : `/${user.avatar}`}`) 
+                    : "https://api.dicebear.com/7.x/avataaars/svg?seed=Staff"
+                } 
+                alt="Avatar" 
+              />
+              <div className={`hero-status-ring ${isClockedIn ? 'online' : 'offline'}`}></div>
+            </div>
+            <div className="hero-user-info">
+              <span className="hero-greeting-text">{t('hi')},</span>
+              <h1 className="hero-user-name">{user?.firstName}</h1>
+              <div className="hero-user-meta">
+                <span className="hero-badge-role">{t('employee')}</span>
+                <span className="hero-dot">•</span>
+                <span className="hero-badge-id">#{user?.employeeId || `TF-${user?.id?.slice(-4).toUpperCase()}`}</span>
               </div>
             </div>
           </div>
-        </div>
 
-        <div className="live-clock-widget-glass">
-          <div className="clock-wrapper">
-             <span className="live-time">{currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+          <div className="hero-card-right">
+            <div className="hero-clock-display">
+              <span className="hero-time">{currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+              <span className="hero-date">{currentTime.toLocaleDateString(i18n.language === 'vi' ? 'vi-VN' : [], { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase()}</span>
+            </div>
+            <div className={`hero-status-pill ${isClockedIn ? 'online' : 'offline'}`}>
+              <div className="pill-dot"></div>
+              {isClockedIn ? t('active') : t('offline')}
+            </div>
           </div>
-          <span className="live-date">{currentTime.toLocaleDateString(i18n.language === 'vi' ? 'vi-VN' : [], { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase()}</span>
         </div>
-      </header>
+      </div>
 
       {/* Main Grid Layout */}
       <div className="att-dashboard-grid">

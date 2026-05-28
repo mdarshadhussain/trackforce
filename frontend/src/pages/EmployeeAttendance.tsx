@@ -115,7 +115,6 @@ const EmployeeAttendance = () => {
   const { user } = useAuth();
   const { t, i18n } = useTranslation();
   const location = useLocation();
-  const [currentTime, setCurrentTime] = useState(new Date());
   const [logs, setLogs] = useState<any[]>([]);
   const [allLogs, setAllLogs] = useState<any[]>([]);
   const [isClockedIn, setIsClockedIn] = useState(false);
@@ -180,10 +179,6 @@ const EmployeeAttendance = () => {
     return () => clearInterval(intervalId);
   }, [isClockedIn, logs]);
 
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   const loadData = async () => {
     if (!user) return;
@@ -544,44 +539,31 @@ const EmployeeAttendance = () => {
 
   return (
     <div className="employee-att-container">
-      {/* Sleek Profile & Clock Header */}
-      <div className="hero-greeting-section">
-        <div className="hero-greeting-card">
-          <div className="hero-card-left">
-            <div className="hero-avatar-wrapper">
-              <img 
-                src={
-                  user?.avatar 
-                    ? (user.avatar.startsWith('http') || user.avatar.startsWith('data:') 
-                        ? user.avatar 
-                        : `${API_URL}${user.avatar.startsWith('/') ? user.avatar : `/${user.avatar}`}`) 
-                    : "https://api.dicebear.com/7.x/avataaars/svg?seed=Staff"
-                } 
-                alt="Avatar" 
-              />
-              <div className={`hero-status-ring ${isClockedIn ? 'online' : 'offline'}`}></div>
-            </div>
-            <div className="hero-user-info">
-              <span className="hero-greeting-text">{t('hi')},</span>
-              <h1 className="hero-user-name">{user?.firstName}</h1>
-              <div className="hero-user-meta">
-                <span className="hero-badge-role">{t('employee')}</span>
-                <span className="hero-dot">•</span>
-                <span className="hero-badge-id">#{user?.employeeId || `TF-${user?.id?.slice(-4).toUpperCase()}`}</span>
-              </div>
-            </div>
+      {/* Vertical Profile Header */}
+      <div className="vertical-profile-header">
+        <div className="vp-avatar-container">
+          <img 
+            className="vp-avatar"
+            src={
+              user?.avatar 
+                ? (user.avatar.startsWith('http') || user.avatar.startsWith('data:') 
+                    ? user.avatar 
+                    : `${API_URL}${user.avatar.startsWith('/') ? user.avatar : `/${user.avatar}`}`) 
+                : "https://api.dicebear.com/7.x/avataaars/svg?seed=Staff"
+            } 
+            alt="Avatar" 
+          />
+          <div className="vp-role-badge">
+            {user?.role === 'MANAGER' ? 'MANAGER' : 'EMPLOYEE'}
           </div>
+        </div>
 
-          <div className="hero-card-right">
-            <div className="hero-clock-display">
-              <span className="hero-time">{currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-              <span className="hero-date">{currentTime.toLocaleDateString(i18n.language === 'vi' ? 'vi-VN' : [], { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase()}</span>
-            </div>
-            <div className={`hero-status-pill ${isClockedIn ? 'online' : 'offline'}`}>
-              <div className="pill-dot"></div>
-              {isClockedIn ? t('active') : t('offline')}
-            </div>
-          </div>
+        <h1 className="vp-name">{user?.firstName} {user?.lastName}</h1>
+        <p className="vp-designation">{user?.designation || (user?.role === 'MANAGER' ? 'System Administrator' : 'Staff Member')}</p>
+
+        <div className="vp-security-badge">
+          <svg className="vp-shield-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+          BIOMETRIC SECURED
         </div>
       </div>
 

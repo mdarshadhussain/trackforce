@@ -785,7 +785,6 @@ const Payroll = () => {
     return (
       <div className="payroll-page">
         <div className="employee-payroll-history">
-          <h2 className="history-section-title"><Calendar size={20} style={{marginRight: '8px', color: 'var(--primary)'}} /> Active Cycle (Unfinalized)</h2>
           {personalRecord && (
             <div className="active-cycle-card">
                <div className="cycle-header">

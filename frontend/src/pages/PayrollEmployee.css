@@ -205,9 +205,9 @@
 .btn-view-slip {
   width: 100%;
   padding: 10px;
-  border: 1px solid #bfdbfe;
-  background: #eff6ff;
-  color: #3b82f6;
+  border: none;
+  background: var(--primary, #3b82f6);
+  color: #ffffff;
   border-radius: 12px;
   font-weight: 700;
   font-size: 13px;
@@ -220,8 +220,8 @@
 }
 
 .btn-view-slip:hover {
-  background: var(--primary);
-  color: #fff;
+  background: #2563eb;
+  transform: translateY(-1px);
 }
 
 @media (max-width: 768px) {

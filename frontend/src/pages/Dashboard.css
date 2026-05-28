@@ -1368,3 +1368,63 @@
   margin-bottom: 20px;
 }
 
+/* Mobile View adjustments (2x2 Stats grid & Redesigned chart) */
+@media (max-width: 768px) {
+  .stats-grid-watt {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
+  
+  .watt-card {
+    padding: 14px !important;
+    border-radius: 12px !important;
+  }
+
+  .stat-card {
+    gap: 12px !important;
+  }
+
+  .stat-icon-box {
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 8px !important;
+  }
+
+  .stat-icon-box svg {
+    width: 16px !important;
+    height: 16px !important;
+  }
+
+  .stat-value {
+    font-size: 20px !important;
+    letter-spacing: -0.5px !important;
+  }
+
+  .stat-label {
+    font-size: 11px !important;
+  }
+
+  .stat-trend-badge, .stat-trend-label {
+    padding: 2px 6px !important;
+    font-size: 10px !important;
+  }
+
+  .card-header-watt {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+    margin-bottom: 16px !important;
+  }
+
+  .chart-legend-watt {
+    flex-wrap: wrap !important;
+    gap: 8px 12px !important;
+  }
+
+  .chart-wrapper-watt {
+    height: 220px !important;
+    min-height: 220px !important;
+  }
+}
+
+

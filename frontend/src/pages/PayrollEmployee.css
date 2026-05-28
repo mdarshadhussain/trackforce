@@ -148,13 +148,17 @@
   text-transform: uppercase;
 }
 
-.ps-status.paid {
-  background: var(--success);
-  color: #fff;
+.ps-status.pending {
+  background: var(--warning-bg, #fef08a);
+  color: var(--warning, #854d0e);
 }
-.ps-status.unpaid {
-  background: var(--error-bg);
-  color: var(--error);
+.ps-status.processing {
+  background: #bfdbfe;
+  color: #1e40af;
+}
+.ps-status.paid {
+  background: var(--success, #bbf7d0);
+  color: #fff;
 }
 
 .ps-metrics {
@@ -201,12 +205,12 @@
 .btn-view-slip {
   width: 100%;
   padding: 10px;
-  border: 1px solid var(--primary);
-  background: transparent;
-  color: var(--primary);
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #3b82f6;
   border-radius: 12px;
   font-weight: 700;
-  font-size: 12px;
+  font-size: 13px;
   cursor: pointer;
   display: flex;
   justify-content: center;

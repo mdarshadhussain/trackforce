@@ -817,38 +817,52 @@ const Payroll = () => {
             </div>
           ) : (
             <div className="payslip-history-grid">
-              {employeePayslips.map((slip: any, idx: number) => (
-                <motion.div 
-                  key={slip.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: idx * 0.05 }}
-                  className="payslip-card-premium"
-                >
-                  <div className="ps-header">
-                    <div className="ps-month">{slip.month}</div>
-                    <span className={`ps-status ${slip.status.toLowerCase()}`}>{slip.status}</span>
-                  </div>
-                  <div className="ps-metrics">
-                    <div className="ps-metric">
-                      <Clock size={14}/> {slip.regularHours}h Reg
-                    </div>
-                    <div className="ps-metric">
-                      <Activity size={14}/> {slip.overtimeHours}h OT
-                    </div>
-                  </div>
-                  <div className="ps-net">
-                    <label>Net Pay</label>
-                    <div className="ps-amount">{formatVND(slip.netPay)}</div>
-                  </div>
-                  <button 
-                    className="btn-view-slip"
-                    onClick={() => handleViewSlip(slip)}
-                  >
-                    <FileText size={16} /> View Full Payslip
-                  </button>
-                </motion.div>
-              ))}
+              {[...employeePayslips]
+                .sort((a: any, b: any) => b.month.localeCompare(a.month))
+                .map((slip: any, idx: number) => {
+                  let displayStatus = 'Paid';
+                  let statusClass = 'paid';
+                  if (slip.status === 'GENERATED') {
+                    displayStatus = 'Pending';
+                    statusClass = 'pending';
+                  } else if (slip.status === 'FINALIZED') {
+                    displayStatus = 'Processing';
+                    statusClass = 'processing';
+                  }
+
+                  return (
+                    <motion.div 
+                      key={slip.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.05 }}
+                      className="payslip-card-premium"
+                    >
+                      <div className="ps-header">
+                        <div className="ps-month">{slip.month}</div>
+                        <span className={`ps-status ${statusClass}`}>{displayStatus}</span>
+                      </div>
+                      <div className="ps-metrics">
+                        <div className="ps-metric">
+                          <Clock size={14}/> {slip.regularHours}h Reg
+                        </div>
+                        <div className="ps-metric">
+                          <Activity size={14}/> {slip.overtimeHours}h OT
+                        </div>
+                      </div>
+                      <div className="ps-net">
+                        <label>Net Pay</label>
+                        <div className="ps-amount">{formatVND(slip.netPay)}</div>
+                      </div>
+                      <button 
+                        className="btn-view-slip"
+                        onClick={() => handleViewSlip(slip)}
+                      >
+                        <FileText size={16} /> View Full Payslip
+                      </button>
+                    </motion.div>
+                  );
+              })}
             </div>
           )}
         </div>

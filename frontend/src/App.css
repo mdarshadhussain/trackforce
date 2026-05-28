@@ -97,6 +97,18 @@
   }
 }
 
+/* On mobile, add bottom padding for the fixed nav bar */
+@media (max-width: 1024px) {
+  .main-stage {
+    padding-bottom: 66px;
+  }
+
+  /* Hide the sidebar hamburger — bottom nav handles navigation */
+  .mobile-menu-btn {
+    display: none !important;
+  }
+}
+
 
 /* Page Transitions */
 .page-enter {

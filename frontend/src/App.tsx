@@ -17,6 +17,7 @@ import CompleteProfile from './pages/CompleteProfile.tsx';
 import Holidays from './pages/Holidays.tsx';
 import Sidebar from './layout/Sidebar';
 import Topbar from './layout/Topbar';
+import MobileNav from './layout/MobileNav';
 import './App.css';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -67,6 +68,7 @@ const PlatformLayout = ({ children, hideSidebar = false }: { children: React.Rea
             {children}
           </div>
         </main>
+        {!hideSidebar && <MobileNav />}
       </div>
     </div>
   );

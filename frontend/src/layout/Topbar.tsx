@@ -48,12 +48,12 @@ const Topbar = ({ onMenuClick, hideMenuBtn = false }: { onMenuClick?: () => void
             {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
           </button>
 
-          <button className="icon-btn">
+          <button className="icon-btn bell-btn">
             <Bell size={20} />
             <span className="notification-dot"></span>
           </button>
 
-          <button className="icon-btn">
+          <button className="icon-btn help-btn">
             <HelpCircle size={20} />
           </button>
 

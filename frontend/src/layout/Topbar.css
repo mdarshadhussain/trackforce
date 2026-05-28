@@ -131,43 +131,58 @@
   margin-right: 8px;
 }
 
+/* ── Mobile Topbar: Compact App Header ── */
 @media (max-width: 1024px) {
-  .mobile-menu-btn {
+  .topbar {
+    height: 60px;
+  }
+
+  .topbar-inner {
+    padding: 0 16px;
+  }
+
+  /* Show a centered "TrackForce" app title on mobile */
+  .topbar-spacer {
     display: flex;
     align-items: center;
     justify-content: center;
   }
-}
-@media (max-width: 768px) {
-  .topbar {
-    padding: 0 12px;
+
+  .topbar-spacer::before {
+    content: 'TrackForce';
+    font-size: 17px;
+    font-weight: 800;
+    color: var(--text-primary);
+    letter-spacing: -0.01em;
   }
-  
-  .user-profile-mini { display: none; }
-  
-  .topbar-actions {
-    gap: 8px;
+
+  /* Only keep dark mode toggle + language on mobile */
+  .icon-btn.bell-btn,
+  .icon-btn.help-btn {
+    display: none;
+  }
+
+  /* Show avatar — it's the profile quick link */
+  .user-profile-mini {
+    display: block;
+    margin-left: 4px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
   }
 
   .icon-btn {
     width: 36px;
     height: 36px;
-    border-radius: 10px;
   }
 }
 
 @media (max-width: 480px) {
-  .topbar {
-    padding: 0 10px;
+  .topbar-inner {
+    padding: 0 12px;
   }
 
   .topbar-actions {
     gap: 4px;
-  }
-
-  .mobile-menu-btn {
-    margin-right: 8px;
-    width: 36px;
-    height: 36px;
   }
 }

@@ -818,178 +818,180 @@ const Dashboard = () => {
 
   return (
     <div className={`dashboard-watt ${!isManagement ? 'employee-dashboard-view' : ''}`}>
-      <header className="dashboard-header">
-        <div className="header-titles">
-          <div className="identity-section-watt">
-            <motion.div 
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="user-avatar-watt"
-            >
-              <img src={avatarSrc} alt="" />
-              <div className="status-ring-watt"></div>
-            </motion.div>
-            <div className="welcome-group-watt">
-              <h1 className="page-title">{t('welcomeBack')}, {user?.firstName}</h1>
-              <div className="role-chip-watt">
-                <Activity size={12} />
-                <span>{user?.role} {t('optimizedStatus')}</span>
+      {isManagement && (
+        <header className="dashboard-header">
+          <div className="header-titles">
+            <div className="identity-section-watt">
+              <motion.div 
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="user-avatar-watt"
+              >
+                <img src={avatarSrc} alt="" />
+                <div className="status-ring-watt"></div>
+              </motion.div>
+              <div className="welcome-group-watt">
+                <h1 className="page-title">{t('welcomeBack')}, {user?.firstName}</h1>
+                <div className="role-chip-watt">
+                  <Activity size={12} />
+                  <span>{user?.role} {t('optimizedStatus')}</span>
+                </div>
               </div>
             </div>
+            {isManagement && <p className="page-subtitle">{t('realtimeGridIntel')}</p>}
           </div>
-          {isManagement && <p className="page-subtitle">{t('realtimeGridIntel')}</p>}
-        </div>
 
-        {/* Filters and Controls */}
-        <div className="dashboard-controls-block">
-          {isManagement && (
-            <div className="dashboard-filters-deck">
-              {/* Dropdown vs Search Toggle */}
-              {user?.role === 'ADMIN' && (
-                <div className="filter-mode-toggle">
-                  <button 
-                    type="button"
-                    className={"toggle-btn " + (projectFilterMode === 'DROPDOWN' ? 'active' : '')}
-                    onClick={() => {
-                      setProjectFilterMode('DROPDOWN');
-                      setSearchVal('');
-                    }}
-                  >
-                    <span>{i18n.language === 'vi' ? 'Danh sách' : 'Dropdown'}</span>
-                  </button>
-                  <button 
-                    type="button"
-                    className={"toggle-btn " + (projectFilterMode === 'SEARCH' ? 'active' : '')}
-                    onClick={() => {
-                      setProjectFilterMode('SEARCH');
-                      setSelectedSiteId('ALL');
-                    }}
-                  >
-                    <span>{i18n.language === 'vi' ? 'Tìm kiếm' : 'Search'}</span>
-                  </button>
-                </div>
-              )}
-
-              {/* Toggleable Project Selector or Global Search Input */}
-              {projectFilterMode === 'DROPDOWN' ? (
-                user?.role === 'ADMIN' && (
-                  <SearchableProjectDropdown 
-                    sites={sites} 
-                    selectedSiteId={selectedSiteId} 
-                    onSelectSite={setSelectedSiteId} 
-                  />
-                )
-              ) : (
-                <div className="global-search-input-wrapper">
-                  <Search size={14} className="search-icon-global" />
-                  <input 
-                    type="text" 
-                    placeholder={i18n.language === 'vi' ? 'Tìm kiếm trong tất cả dự án...' : 'Search in all projects...'} 
-                    value={searchVal}
-                    onChange={(e) => setSearchVal(e.target.value)}
-                    className="global-search-input"
-                  />
-                  {searchVal && (
-                    <button 
-                      type="button" 
-                      className="search-clear-btn" 
-                      onClick={() => setSearchVal('')}
-                    >
-                      ×
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {/* Date Interval Selector */}
-              <CustomDateDropdown 
-                value={dateFilter} 
-                onChange={setDateFilter} 
-              />
-
-              {/* Custom Date Sub-deck for specific selections */}
-              {dateFilter === 'CUSTOM' && (
-                <div className="custom-date-sub-deck">
-                  {/* Selector for Single vs Range vs Month */}
-                  <div className="filter-mode-toggle mini">
+          {/* Filters and Controls */}
+          <div className="dashboard-controls-block">
+            {isManagement && (
+              <div className="dashboard-filters-deck">
+                {/* Dropdown vs Search Toggle */}
+                {user?.role === 'ADMIN' && (
+                  <div className="filter-mode-toggle">
                     <button 
                       type="button"
-                      className={"toggle-btn " + (customDateType === 'SINGLE' ? 'active' : '')}
-                      onClick={() => setCustomDateType('SINGLE')}
+                      className={"toggle-btn " + (projectFilterMode === 'DROPDOWN' ? 'active' : '')}
+                      onClick={() => {
+                        setProjectFilterMode('DROPDOWN');
+                        setSearchVal('');
+                      }}
                     >
-                      <span>{i18n.language === 'vi' ? 'Ngày' : 'Date'}</span>
+                      <span>{i18n.language === 'vi' ? 'Danh sách' : 'Dropdown'}</span>
                     </button>
                     <button 
                       type="button"
-                      className={"toggle-btn " + (customDateType === 'RANGE' ? 'active' : '')}
-                      onClick={() => setCustomDateType('RANGE')}
+                      className={"toggle-btn " + (projectFilterMode === 'SEARCH' ? 'active' : '')}
+                      onClick={() => {
+                        setProjectFilterMode('SEARCH');
+                        setSelectedSiteId('ALL');
+                      }}
                     >
-                      <span>{i18n.language === 'vi' ? 'Khoảng' : 'Range'}</span>
-                    </button>
-                    <button 
-                      type="button"
-                      className={"toggle-btn " + (customDateType === 'MONTH' ? 'active' : '')}
-                      onClick={() => setCustomDateType('MONTH')}
-                    >
-                      <span>{i18n.language === 'vi' ? 'Tháng' : 'Month'}</span>
+                      <span>{i18n.language === 'vi' ? 'Tìm kiếm' : 'Search'}</span>
                     </button>
                   </div>
+                )}
 
-                  <div className="date-inputs-wrapper">
-                    {customDateType === 'SINGLE' && (
-                      <input 
-                        type="date" 
-                        value={customSingleDate} 
-                        onChange={(e) => setCustomSingleDate(e.target.value)}
-                        className="filter-date-input"
-                      />
-                    )}
-
-                    {customDateType === 'RANGE' && (
-                      <div className="range-inputs-group">
-                        <input 
-                          type="date" 
-                          value={customRangeStart} 
-                          onChange={(e) => setCustomRangeStart(e.target.value)}
-                          className="filter-date-input range-input"
-                        />
-                        <span className="range-separator">→</span>
-                        <input 
-                          type="date" 
-                          value={customRangeEnd} 
-                          onChange={(e) => setCustomRangeEnd(e.target.value)}
-                          className="filter-date-input range-input"
-                        />
-                      </div>
-                    )}
-
-                    {customDateType === 'MONTH' && (
-                      <input 
-                        type="month" 
-                        value={customMonth} 
-                        onChange={(e) => setCustomMonth(e.target.value)}
-                        className="filter-date-input"
-                      />
+                {/* Toggleable Project Selector or Global Search Input */}
+                {projectFilterMode === 'DROPDOWN' ? (
+                  user?.role === 'ADMIN' && (
+                    <SearchableProjectDropdown 
+                      sites={sites} 
+                      selectedSiteId={selectedSiteId} 
+                      onSelectSite={setSelectedSiteId} 
+                    />
+                  )
+                ) : (
+                  <div className="global-search-input-wrapper">
+                    <Search size={14} className="search-icon-global" />
+                    <input 
+                      type="text" 
+                      placeholder={i18n.language === 'vi' ? 'Tìm kiếm trong tất cả dự án...' : 'Search in all projects...'} 
+                      value={searchVal}
+                      onChange={(e) => setSearchVal(e.target.value)}
+                      className="global-search-input"
+                    />
+                    {searchVal && (
+                      <button 
+                        type="button" 
+                        className="search-clear-btn" 
+                        onClick={() => setSearchVal('')}
+                      >
+                        ×
+                      </button>
                     )}
                   </div>
-                </div>
-              )}
-            </div>
-          )}
+                )}
 
-          {isManagement && (
-            <div className="header-actions">
-              <button 
-                className="watt-btn primary" 
-                onClick={() => exportToCSV(isManagement ? computedTableLogs : (stats?.recentLogs || []), 'Dashboard_Stats')}
-              >
-                <CheckCircle2 size={18} />
-                <span>{t('exportData')}</span>
-              </button>
-            </div>
-          )}
-        </div>
-      </header>
+                {/* Date Interval Selector */}
+                <CustomDateDropdown 
+                  value={dateFilter} 
+                  onChange={setDateFilter} 
+                />
+
+                {/* Custom Date Sub-deck for specific selections */}
+                {dateFilter === 'CUSTOM' && (
+                  <div className="custom-date-sub-deck">
+                    {/* Selector for Single vs Range vs Month */}
+                    <div className="filter-mode-toggle mini">
+                      <button 
+                        type="button"
+                        className={"toggle-btn " + (customDateType === 'SINGLE' ? 'active' : '')}
+                        onClick={() => setCustomDateType('SINGLE')}
+                      >
+                        <span>{i18n.language === 'vi' ? 'Ngày' : 'Date'}</span>
+                      </button>
+                      <button 
+                        type="button"
+                        className={"toggle-btn " + (customDateType === 'RANGE' ? 'active' : '')}
+                        onClick={() => setCustomDateType('RANGE')}
+                      >
+                        <span>{i18n.language === 'vi' ? 'Khoảng' : 'Range'}</span>
+                      </button>
+                      <button 
+                        type="button"
+                        className={"toggle-btn " + (customDateType === 'MONTH' ? 'active' : '')}
+                        onClick={() => setCustomDateType('MONTH')}
+                      >
+                        <span>{i18n.language === 'vi' ? 'Tháng' : 'Month'}</span>
+                      </button>
+                    </div>
+
+                    <div className="date-inputs-wrapper">
+                      {customDateType === 'SINGLE' && (
+                        <input 
+                          type="date" 
+                          value={customSingleDate} 
+                          onChange={(e) => setCustomSingleDate(e.target.value)}
+                          className="filter-date-input"
+                        />
+                      )}
+
+                      {customDateType === 'RANGE' && (
+                        <div className="range-inputs-group">
+                          <input 
+                            type="date" 
+                            value={customRangeStart} 
+                            onChange={(e) => setCustomRangeStart(e.target.value)}
+                            className="filter-date-input range-input"
+                          />
+                          <span className="range-separator">→</span>
+                          <input 
+                            type="date" 
+                            value={customRangeEnd} 
+                            onChange={(e) => setCustomRangeEnd(e.target.value)}
+                            className="filter-date-input range-input"
+                          />
+                        </div>
+                      )}
+
+                      {customDateType === 'MONTH' && (
+                        <input 
+                          type="month" 
+                          value={customMonth} 
+                          onChange={(e) => setCustomMonth(e.target.value)}
+                          className="filter-date-input"
+                        />
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {isManagement && (
+              <div className="header-actions">
+                <button 
+                  className="watt-btn primary" 
+                  onClick={() => exportToCSV(isManagement ? computedTableLogs : (stats?.recentLogs || []), 'Dashboard_Stats')}
+                >
+                  <CheckCircle2 size={18} />
+                  <span>{t('exportData')}</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </header>
+      )}
 
       {/* Attendance Quick Banner */}
       {user && (user.role === 'EMPLOYEE' || user.role === 'MANAGER') && (

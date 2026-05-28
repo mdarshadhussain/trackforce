@@ -2,11 +2,9 @@ import {
   Sun, 
   Moon, 
   Menu, 
-  Globe,
   Bell,
   HelpCircle
 } from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import './Topbar.css';
 
@@ -18,19 +16,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const Topbar = ({ onMenuClick, hideMenuBtn = false }: { onMenuClick?: () => void; hideMenuBtn?: boolean }) => {
   const { user } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const [showLangDropdown, setShowLangDropdown] = useState(false);
-  const langRef = useRef<HTMLDivElement>(null);
   const { i18n } = useTranslation();
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (langRef.current && !langRef.current.contains(event.target as Node)) {
-        setShowLangDropdown(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   return (
     <header className="topbar">
@@ -42,7 +28,13 @@ const Topbar = ({ onMenuClick, hideMenuBtn = false }: { onMenuClick?: () => void
         )}
         
         <div className="topbar-mobile-logo">
-          TRACK<span>FORCE</span>
+          {user?.role === 'EMPLOYEE' ? (
+            <span className="user-welcome-name" style={{ fontWeight: 800, fontSize: '18px', color: 'var(--text-primary)' }}>
+              {user?.firstName} {user?.lastName}
+            </span>
+          ) : (
+            <>TRACK<span>FORCE</span></>
+          )}
         </div>
         
         <div className="topbar-spacer"></div>
@@ -61,30 +53,49 @@ const Topbar = ({ onMenuClick, hideMenuBtn = false }: { onMenuClick?: () => void
             <HelpCircle size={20} />
           </button>
 
-          <div className="lang-dropdown-wrapper" ref={langRef}>
+          <div className="lang-direct-switch" style={{ display: 'flex', gap: '10px', alignItems: 'center', marginLeft: '6px' }}>
             <button 
-              className={`icon-btn ${showLangDropdown ? 'active' : ''}`} 
-              onClick={() => setShowLangDropdown(!showLangDropdown)}
+              className={`flag-btn ${i18n.language === 'en' ? 'active' : ''}`} 
+              onClick={() => i18n.changeLanguage('en')}
+              title="English"
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '24px',
+                padding: '4px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: i18n.language === 'en' ? 1 : 0.4,
+                transform: i18n.language === 'en' ? 'scale(1.15)' : 'scale(1)',
+                transition: 'all 0.2s ease',
+                filter: i18n.language === 'en' ? 'none' : 'grayscale(30%)'
+              }}
             >
-              <Globe size={24} />
+              🇬🇧
             </button>
-
-            {showLangDropdown && (
-              <div className="premium-dropdown lang-dropdown">
-                <button 
-                  className={`dropdown-item ${i18n.language === 'en' ? 'active' : ''}`} 
-                  onClick={() => { i18n.changeLanguage('en'); setShowLangDropdown(false); }}
-                >
-                  <span>English (UK)</span>
-                </button>
-                <button 
-                  className={`dropdown-item ${i18n.language === 'vi' ? 'active' : ''}`} 
-                  onClick={() => { i18n.changeLanguage('vi'); setShowLangDropdown(false); }}
-                >
-                  <span>Vietnamese (VN)</span>
-                </button>
-              </div>
-            )}
+            <button 
+              className={`flag-btn ${i18n.language === 'vi' ? 'active' : ''}`} 
+              onClick={() => i18n.changeLanguage('vi')}
+              title="Tiếng Việt"
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '24px',
+                padding: '4px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: i18n.language === 'vi' ? 1 : 0.4,
+                transform: i18n.language === 'vi' ? 'scale(1.15)' : 'scale(1)',
+                transition: 'all 0.2s ease',
+                filter: i18n.language === 'vi' ? 'none' : 'grayscale(30%)'
+              }}
+            >
+              🇻🇳
+            </button>
           </div>
           
           <div className="user-profile-mini">

@@ -38,6 +38,7 @@ import PayslipModal from '../components/PayslipModal';
 import { Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import PremiumSelect from '../components/PremiumSelect';
 import './Payroll.css';
+import './PayrollEmployee.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -242,7 +243,7 @@ const Payroll = () => {
   const [toasts, setToasts] = useState<any[]>([]);
   
   // Selection States
-  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(isEmployee && user?.id ? user.id : null);
   const [activeTab, setActiveTab] = useState<'attendance' | 'slips' | 'calculator'>('attendance');
   const [selectedMonth, setSelectedMonth] = useState<string>('');
   
@@ -769,9 +770,20 @@ const Payroll = () => {
     );
   }
 
-  // Employee Specific view (if employee logs in, show personal Earnings Vault)
+  // Employee Specific view (if employee logs in, show personal E
   if (isEmployee) {
     const personalRecord = payrollData.find(item => item.employee?.id === user?.id) || payrollData[0];
+    
+    let lifetimeEarnings = parseFloat(personalRecord?.earnings || '0');
+    let lifetimeHours = parseFloat(personalRecord?.regularHours || '0') + parseFloat(personalRecord?.overtimeHours || '0');
+    let lifetimeOvertime = parseFloat(personalRecord?.overtimeHours || '0');
+    
+    employeePayslips.forEach((slip: any) => {
+      lifetimeEarnings += slip.netPay || 0;
+      lifetimeHours += (slip.regularHours || 0) + (slip.overtimeHours || 0);
+      lifetimeOvertime += slip.overtimeHours || 0;
+    });
+
     return (
       <div className="payroll-page">
         <header className="page-header-premium">
@@ -785,74 +797,98 @@ const Payroll = () => {
           <StatCard 
             icon={<Wallet size={24} />} 
             label={t('totalEarned')} 
-            value={formatVND(personalRecord?.earnings || 0)}
+            value={formatVND(lifetimeEarnings)}
             color="#f59e0b"
           />
           <StatCard 
             icon={<Clock size={24} />} 
             label={t('cumulativeHours')} 
-            value={`${personalRecord?.totalHours || '0.0'}h`}
+            value={`${lifetimeHours.toFixed(1)}h`}
             color="#6366f1"
+          />
+          <StatCard 
+            icon={<Activity size={24} />} 
+            label={t('overtime')} 
+            value={`${lifetimeOvertime.toFixed(1)}h`}
+            color="#10b981"
           />
           <StatCard 
             icon={<CheckCircle2 size={24} />} 
             label={t('verification')} 
             value={t('identityVerified')}
-            color="#10b981"
-          />
-          <StatCard 
-            icon={<Activity size={24} />} 
-            label={t('overtime')} 
-            value={`${personalRecord?.overtimeHours || '0.00'}h`}
-            color="#10b981"
+            color="#14b8a6"
           />
         </div>
 
-        <div className="glass-card table-container">
-          <table className="enterprise-table">
-            <thead>
-              <tr>
-                <th>{t('period')}</th>
-                <th>{t('regularHours')}</th>
-                <th>{t('overtime')}</th>
-                <th>{t('grossAmount')}</th>
-                <th>{t('status')}</th>
-                <th>{t('action')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {personalRecord && (
-                <tr key={personalRecord.id}>
-                  <td data-label={t('period')}>
-                    {personalRecord.periodStart ? new Date(personalRecord.periodStart).toLocaleDateString() : 'Current'} - {personalRecord.periodEnd ? new Date(personalRecord.periodEnd).toLocaleDateString() : 'Period'}
-                  </td>
-                  <td data-label={t('regularHours')}>{personalRecord.regularHours || '0.0'} h</td>
-                  <td data-label={t('overtime')}>{personalRecord.overtimeHours || '0.00'} h</td>
-                  <td data-label={t('grossAmount')} className="amount-cell">
-                    {formatVND(personalRecord.earnings || 0)}
-                  </td>
-                  <td data-label={t('status')}>
-                    <span className={`badge badge-${(personalRecord.status || 'PENDING').toLowerCase()}`}>
-                      {t(personalRecord.status?.toLowerCase() || 'pending')}
-                    </span>
-                  </td>
-                  <td data-label={t('action')}>
-                    <button 
-                      className="icon-btn highlight" 
-                      onClick={() => {
-                        setSelectedPayslip(personalRecord);
-                        setIsPayslipOpen(true);
-                      }}
-                    >
-                      <FileText size={16} />
-                      <span style={{ marginLeft: '6px', fontSize: '12px' }}>{t('viewPayslip')}</span>
-                    </button>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+        <div className="employee-payroll-history">
+          <h2 className="history-section-title"><Calendar size={20} style={{marginRight: '8px', color: 'var(--primary)'}} /> Active Cycle (Unfinalized)</h2>
+          {personalRecord && (
+            <div className="active-cycle-card">
+               <div className="cycle-header">
+                 <div className="cycle-month">Current Period</div>
+                 <div className="cycle-status pending">Pending</div>
+               </div>
+               <div className="cycle-body">
+                 <div className="cycle-metric">
+                   <label>Regular Hours</label>
+                   <span>{personalRecord.regularHours || '0.0'}h</span>
+                 </div>
+                 <div className="cycle-metric">
+                   <label>Overtime</label>
+                   <span>{personalRecord.overtimeHours || '0.0'}h</span>
+                 </div>
+                 <div className="cycle-metric gross">
+                   <label>Estimated Gross</label>
+                   <span className="amount">{formatVND(personalRecord.earnings || 0)}</span>
+                 </div>
+               </div>
+            </div>
+          )}
+
+          <h2 className="history-section-title" style={{ marginTop: '32px' }}><FileText size={20} style={{marginRight: '8px', color: 'var(--primary)'}} /> Payslip History</h2>
+          
+          {employeePayslips.length === 0 ? (
+            <div className="empty-state-card glass-card" style={{padding: '32px', textAlign: 'center', color: 'var(--text-secondary)'}}>
+              <p>No historical payslips found.</p>
+            </div>
+          ) : (
+            <div className="payslip-history-grid">
+              {employeePayslips.map((slip: any, idx: number) => (
+                <motion.div 
+                  key={slip.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.05 }}
+                  className="payslip-card-premium"
+                >
+                  <div className="ps-header">
+                    <div className="ps-month">{slip.month}</div>
+                    <span className={`ps-status ${slip.status.toLowerCase()}`}>{slip.status}</span>
+                  </div>
+                  <div className="ps-metrics">
+                    <div className="ps-metric">
+                      <Clock size={14}/> {slip.regularHours}h Reg
+                    </div>
+                    <div className="ps-metric">
+                      <Activity size={14}/> {slip.overtimeHours}h OT
+                    </div>
+                  </div>
+                  <div className="ps-net">
+                    <label>Net Pay</label>
+                    <div className="ps-amount">{formatVND(slip.netPay)}</div>
+                  </div>
+                  <button 
+                    className="btn-view-slip"
+                    onClick={() => handleViewSlip(slip)}
+                  >
+                    <FileText size={16} /> View Full Payslip
+                  </button>
+                </motion.div>
+              ))}
+            </div>
+          )}
         </div>
+
         <PayslipModal 
           isOpen={isPayslipOpen}
           onClose={() => setIsPayslipOpen(false)}

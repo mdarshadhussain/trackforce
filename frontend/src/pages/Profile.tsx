@@ -2,13 +2,11 @@ import {
   User, 
   RefreshCw,
   Sparkles,
-  CreditCard,
   Smartphone,
   Calendar,
   Landmark,
   Briefcase,
   Fingerprint,
-  DollarSign,
   LogOut,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -165,33 +163,66 @@ const Profile = () => {
         </div>
       )}
 
-      {/* Main Details Grid: Simplified, Uniform Corporate Rows */}
       {!isAdmin && (
         <div className="profile-grid">
-          <section className="profile-section">
-          <div className="section-header">
-            <Fingerprint size={20} />
-            <h3>{t('profile')}</h3>
-          </div>
-          <div className="info-grid-creative" style={{ marginTop: '16px' }}>
-            <DetailsRow icon={<User size={16} />} label={t('employeeID')} value={fullProfile?.employee?.employeeId || user?.employeeId} />
-            <DetailsRow icon={<Smartphone size={16} />} label={t('phoneNum')} value={fullProfile?.employee?.phone || t('noCustomHolidays')} />
-            <DetailsRow icon={<Calendar size={16} />} label={t('dobLabel')} value={fullProfile?.employee?.dob ? new Date(fullProfile?.employee?.dob).toLocaleDateString(i18n.language === 'vi' ? 'vi-VN' : undefined) : t('noCustomHolidays')} />
-            <DetailsRow icon={<Briefcase size={16} />} label={t('designation')} value={getDesignationLabel(fullProfile?.employee?.designation)} />
-          </div>
+          <section className="profile-section" style={{ background: 'transparent', padding: 0, border: 'none', boxShadow: 'none' }}>
+            <h3 className="creative-section-title"><Fingerprint size={18} /> {t('profile')}</h3>
+            <div className="ppd-grid">
+              <div className="ppd-item">
+                <div className="ppd-icon"><User size={20} /></div>
+                <div className="ppd-content">
+                  <label>{t('employeeID')}</label>
+                  <span>{fullProfile?.employee?.employeeId || user?.employeeId}</span>
+                </div>
+              </div>
+              <div className="ppd-item">
+                <div className="ppd-icon"><Smartphone size={20} /></div>
+                <div className="ppd-content">
+                  <label>{t('phoneNum')}</label>
+                  <span>{fullProfile?.employee?.phone || t('noCustomHolidays')}</span>
+                </div>
+              </div>
+              <div className="ppd-item">
+                <div className="ppd-icon"><Calendar size={20} /></div>
+                <div className="ppd-content">
+                  <label>{t('dobLabel')}</label>
+                  <span>{fullProfile?.employee?.dob ? new Date(fullProfile?.employee?.dob).toLocaleDateString(i18n.language === 'vi' ? 'vi-VN' : undefined) : t('noCustomHolidays')}</span>
+                </div>
+              </div>
+              <div className="ppd-item">
+                <div className="ppd-icon"><Briefcase size={20} /></div>
+                <div className="ppd-content">
+                  <label>{t('designation')}</label>
+                  <span>{getDesignationLabel(fullProfile?.employee?.designation)}</span>
+                </div>
+              </div>
+            </div>
           </section>
 
-          <section className="profile-section">
-            <div className="section-header">
-              <Landmark size={20} />
-              <h3>{t('bankAccounts')}</h3>
-            </div>
-            <div className="info-grid-creative" style={{ marginTop: '16px' }}>
-              <DetailsRow icon={<Landmark size={16} />} label={t('bankNameLabel')} value={fullProfile?.employee?.bankName || t('noCustomHolidays')} />
-              <DetailsRow icon={<CreditCard size={16} />} label={t('accountNumberLabel')} value={fullProfile?.employee?.accountNumber || t('noCustomHolidays')} />
-              <DetailsRow icon={<User size={16} />} label={t('accountHolderNameLabel')} value={fullProfile?.employee?.accountHolderName || 'N/A'} />
-              <DetailsRow icon={<DollarSign size={16} />} label={t('salaryPerHour')} value={fullProfile?.employee?.hourlyRate ? `${fullProfile.employee.hourlyRate.toLocaleString()} ₫ / hr` : '0 ₫ / hr'} />
-            </div>
+          <section className="profile-section" style={{ background: 'transparent', padding: 0, border: 'none', boxShadow: 'none' }}>
+             <h3 className="creative-section-title"><Landmark size={18} /> {t('bankAccounts')}</h3>
+             <div className="virtual-bank-card">
+               <div className="vbc-top">
+                 <Landmark size={24} style={{ opacity: 0.8 }} />
+                 <span>{fullProfile?.employee?.bankName || t('noCustomHolidays')}</span>
+               </div>
+               <div className="vbc-middle">
+                 <div className="vbc-chip"></div>
+                 <div className="vbc-number">
+                   {(fullProfile?.employee?.accountNumber || '**** **** **** ****').replace(/(.{4})/g, '$1 ').trim()}
+                 </div>
+               </div>
+               <div className="vbc-bottom">
+                 <div className="vbc-holder">
+                   <label>{t('accountHolderNameLabel')}</label>
+                   <span>{fullProfile?.employee?.accountHolderName || 'N/A'}</span>
+                 </div>
+                 <div className="vbc-salary">
+                   <label>{t('salaryPerHour')}</label>
+                   <span>{fullProfile?.employee?.hourlyRate ? `${fullProfile.employee.hourlyRate.toLocaleString()} ₫/h` : '0 ₫/h'}</span>
+                 </div>
+               </div>
+             </div>
           </section>
         </div>
       )}
@@ -231,15 +262,5 @@ const Profile = () => {
     </div>
   );
 };
-
-const DetailsRow = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) => (
-  <div className="info-node-creative">
-    <div className="node-icon">{icon}</div>
-    <div className="node-text">
-      <label>{label}</label>
-      <span>{value}</span>
-    </div>
-  </div>
-);
 
 export default Profile;

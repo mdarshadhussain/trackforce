@@ -272,7 +272,7 @@ const Tracking = () => {
                 <div className="telemetry-stat">
                   <span className="telemetry-label">{t('checkinDetails')}</span>
                   <div className="telemetry-sub-stats">
-                    <span className="t-icon-label"><Clock size={12} /> {new Date(selectedLog.clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    <span className="t-icon-label"><Clock size={12} /> {new Date(selectedLog.clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</span>
                     <span className="t-icon-label"><MapPin size={12} /> {getSiteNameForCoords(selectedLog.clockInLat, selectedLog.clockInLong)}</span>
                   </div>
                 </div>
@@ -281,7 +281,7 @@ const Tracking = () => {
                   <div className="telemetry-stat">
                     <span className="telemetry-label">{t('checkoutDetails')}</span>
                     <div className="telemetry-sub-stats">
-                      <span className="t-icon-label"><Clock size={12} /> {new Date(selectedLog.clockOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      <span className="t-icon-label"><Clock size={12} /> {new Date(selectedLog.clockOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</span>
                       <span className="t-icon-label"><MapPin size={12} /> {getSiteNameForCoords(selectedLog.clockOutLat, selectedLog.clockOutLong)}</span>
                     </div>
                   </div>
@@ -347,8 +347,8 @@ const Tracking = () => {
                       <span className="time-badge">
                         {isActive ? `${t('inPrefix')}: ` : `${t('outPrefix')}: `}
                         {isActive 
-                          ? new Date(log.clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                          : new Date(log.clockOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                          ? new Date(log.clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
+                          : new Date(log.clockOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
                         }
                       </span>
                     </div>

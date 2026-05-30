@@ -15,6 +15,8 @@ import './Employees.css';
 import { useEffect, useState } from 'react';
 import { fetchEmployees, deleteEmployee, fetchSites } from '../api/api';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 import { exportToCSV } from '../utils/export';
 import { useAuth } from '../context/AuthContext';
 import Toast from '../components/Toast';
@@ -130,22 +132,22 @@ const Employees = () => {
         </AnimatePresence>
       </div>
 
-      <header className="glass-card profile-header" style={{ marginBottom: '24px' }}>
-        <div className="header-content">
-          <h1>{t('workforceIntelligence')}</h1>
-          <p>{t('masterLedger')}</p>
-        </div>
-        <div className="header-actions">
-          <button className="btn btn-ghost" onClick={() => exportToCSV(filteredEmployees, `Workforce_Master_${new Date().toISOString().split('T')[0]}`)}>
-            <Download size={18} /> {t('exportLedger')}
-          </button>
-          {isAdmin && (
+      {isAdmin && (
+        <header className="glass-card profile-header" style={{ marginBottom: '24px' }}>
+          <div className="header-content">
+            <h1>{t('workforceIntelligence')}</h1>
+            <p>{t('masterLedger')}</p>
+          </div>
+          <div className="header-actions">
+            <button className="btn btn-ghost" onClick={() => exportToCSV(filteredEmployees, `Workforce_Master_${new Date().toISOString().split('T')[0]}`)}>
+              <Download size={18} /> {t('exportLedger')}
+            </button>
             <button className="btn btn-primary" onClick={() => navigate('/employees/add')}>
               <UserPlus size={18} /> {t('addNewIdentity')}
             </button>
-          )}
-        </div>
-      </header>
+          </div>
+        </header>
+      )}
 
       <div className="employees-toolbar-premium">
         <div className="search-bar-premium">
@@ -186,67 +188,109 @@ const Employees = () => {
         )}
       </div>
 
-      <div className="glass-card table-container-premium">
-        <table className="employee-table">
-          <thead>
-            <tr>
-              <th>{t('employeeName')}</th>
-              <th>{t('employeeID')}</th>
-              <th>{t('phoneNum')}</th>
-              <th>{t('roleStatus')}</th>
-              <th>{t('site')}</th>
-              <th>{t('action')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredEmployees.map((emp) => (
-              <tr key={emp.id}>
-                <td data-label={t('employeeName')}>
-                  <div className="emp-identity">
-                    <div className="name-stack">
-                      <span className="full-name">{emp.firstName} {emp.lastName}</span>
-                      <span className="designation">{getDesignationLabel(emp.designation)}</span>
-                    </div>
+      {!isAdmin ? (
+        <div className="manager-employee-grid">
+          {filteredEmployees.map((emp) => (
+            <div className="manager-emp-card glass-card" key={emp.id}>
+              <div className="mec-header">
+                <div className="mec-profile">
+                  <div className="avatar-small">
+                    {emp.avatar ? <img src={emp.avatar.startsWith('http') ? emp.avatar : `${API_URL}${emp.avatar}`} alt="Avatar" /> : emp.firstName.charAt(0)}
                   </div>
-                </td>
-                <td data-label={t('employeeID')}><span className="mono-badge">{emp.employeeId}</span></td>
-                <td data-label={t('phoneNum')}><span className="email-text">{emp.phone || 'N/A'}</span></td>
-                <td data-label={t('roleStatus')}>
+                  <div className="name-stack">
+                    <span className="full-name">{emp.firstName} {emp.lastName}</span>
+                    <span className="designation">{getDesignationLabel(emp.designation)}</span>
+                  </div>
+                </div>
+                {emp.phone && (
+                  <a href={`tel:${emp.phone}`} className="mec-call-btn">
+                    <Phone size={18} />
+                  </a>
+                )}
+              </div>
+              <div className="mec-details">
+                <div className="mec-row">
+                  <span className="mec-label">{t('employeeID')}</span>
+                  <span className="mono-badge">{emp.employeeId}</span>
+                </div>
+                <div className="mec-row">
+                  <span className="mec-label">{t('roleStatus')}</span>
                   <div className="role-status">
                     <span className="role-tag">{t(emp.role.toLowerCase())}</span>
                     <span className={`status-dot ${emp.status.toLowerCase()}`}></span>
                   </div>
-                </td>
-                <td data-label={t('site')}>{emp.site?.name || t('unassigned')}</td>
-                <td data-label={t('action')}>
-                    <div className="action-row">
-                      {isAdmin && (
-                        <button className="action-icon-btn" onClick={() => navigate(`/employees/${emp.id}`)} title={t('viewDetailsBtn')}>
-                          <Eye size={18} />
-                        </button>
-                      )}
-                      {(isAdmin || user?.role === 'MANAGER') && emp.phone && (
-                        <a href={`tel:${emp.phone}`} className="action-icon-btn call-btn" title={t('talkArchitect')}>
-                          <Phone size={18} />
-                        </a>
-                      )}
-                      {isAdmin && (
-                        <button className="action-icon-btn" onClick={() => navigate(`/employees/edit/${emp.id}`)} title={t('editProfile')}>
-                          <Edit3 size={18} />
-                        </button>
-                      )}
-                      {isAdmin && (
-                        <button className="action-icon-btn danger" onClick={() => handleDeleteEmployee(emp.id)} title={t('decommissionIdentityNode')}>
-                          <XCircle size={18} />
-                        </button>
-                      )}
-                    </div>
-                </td>
+                </div>
+                <div className="mec-row">
+                  <span className="mec-label">{t('site')}</span>
+                  <span className="mec-value">{emp.site?.name || t('unassigned')}</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="glass-card table-container-premium">
+          <table className="employee-table">
+            <thead>
+              <tr>
+                <th>{t('employeeName')}</th>
+                <th>{t('employeeID')}</th>
+                <th>{t('phoneNum')}</th>
+                <th>{t('roleStatus')}</th>
+                <th>{t('site')}</th>
+                <th>{t('action')}</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {filteredEmployees.map((emp) => (
+                <tr key={emp.id}>
+                  <td data-label={t('employeeName')}>
+                    <div className="emp-identity">
+                      <div className="name-stack">
+                        <span className="full-name">{emp.firstName} {emp.lastName}</span>
+                        <span className="designation">{getDesignationLabel(emp.designation)}</span>
+                      </div>
+                    </div>
+                  </td>
+                  <td data-label={t('employeeID')}><span className="mono-badge">{emp.employeeId}</span></td>
+                  <td data-label={t('phoneNum')}><span className="email-text">{emp.phone || 'N/A'}</span></td>
+                  <td data-label={t('roleStatus')}>
+                    <div className="role-status">
+                      <span className="role-tag">{t(emp.role.toLowerCase())}</span>
+                      <span className={`status-dot ${emp.status.toLowerCase()}`}></span>
+                    </div>
+                  </td>
+                  <td data-label={t('site')}>{emp.site?.name || t('unassigned')}</td>
+                  <td data-label={t('action')}>
+                      <div className="action-row">
+                        {isAdmin && (
+                          <button className="action-icon-btn" onClick={() => navigate(`/employees/${emp.id}`)} title={t('viewDetailsBtn')}>
+                            <Eye size={18} />
+                          </button>
+                        )}
+                        {(isAdmin || user?.role === 'MANAGER') && emp.phone && (
+                          <a href={`tel:${emp.phone}`} className="action-icon-btn call-btn" title={t('talkArchitect')}>
+                            <Phone size={18} />
+                          </a>
+                        )}
+                        {isAdmin && (
+                          <button className="action-icon-btn" onClick={() => navigate(`/employees/edit/${emp.id}`)} title={t('editProfile')}>
+                            <Edit3 size={18} />
+                          </button>
+                        )}
+                        {isAdmin && (
+                          <button className="action-icon-btn danger" onClick={() => handleDeleteEmployee(emp.id)} title={t('decommissionIdentityNode')}>
+                            <XCircle size={18} />
+                          </button>
+                        )}
+                      </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       <ConfirmModal
         isOpen={isConfirmOpen}

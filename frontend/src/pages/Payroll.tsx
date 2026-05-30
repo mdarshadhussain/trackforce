@@ -1285,8 +1285,8 @@ const Payroll = () => {
                         rowDate.setHours(0, 0, 0, 0);
                         const isFutureOrToday = rowDate.getTime() >= todayObj.getTime();
                         
-                        let checkInText = '00:00';
-                        let checkOutText = '00:00';
+                        let checkInText = '--:--';
+                        let checkOutText = '--:--';
                         let totalHoursText = '0.0h';
                         let overtimeHoursText = '0.0h';
                         let badgeClass = 'absent';
@@ -1298,8 +1298,8 @@ const Payroll = () => {
                           const workingStartTime = logSite?.workingStartTime || '07:00';
 
                           const { totalHours, overtimeHours } = getLogHoursAndOvertime(log, workingStartTime);
-                          checkInText = log.clockIn ? new Date(log.clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '00:00';
-                          checkOutText = log.clockOut ? new Date(log.clockOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '00:00';
+                          checkInText = log.clockIn ? new Date(log.clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '--:--';
+                          checkOutText = log.clockOut ? new Date(log.clockOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '--:--';
                           totalHoursText = totalHours > 0 ? `${totalHours.toFixed(1)}h` : '0.0h';
                           overtimeHoursText = overtimeHours > 0 ? `${overtimeHours.toFixed(1)}h` : '0.0h';
                           

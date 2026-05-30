@@ -1304,16 +1304,16 @@ const Attendance = () => {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="glass-card scanner-modal-obsidian proof-card-special"
+              className="image-proof-modal"
               onClick={e => e.stopPropagation()}
             >
-              <div className="modal-header-premium">
+              <div className="image-proof-overlay-header">
                 <h3>{t('biometricSnapshot')}</h3>
-                <button className="close-btn-premium" onClick={() => setSelectedProof(null)}><X size={20} /></button>
+                <button className="image-proof-close" onClick={() => setSelectedProof(null)}><X size={20} /></button>
               </div>
-              <div className="proof-content-obsidian" style={{ position: 'relative' }}>
+              <div className="image-proof-content">
                 {selectedProof && isMockProof(selectedProof) ? (
-                  <div className="mock-biometric-vector">
+                  <div className="mock-biometric-vector" style={{ width: '100%', padding: '40px 0' }}>
                     <svg viewBox="0 0 100 100" className="bio-scan-svg">
                       <circle cx="50" cy="50" r="40" stroke="var(--primary)" strokeWidth="1" fill="none" opacity="0.15" />
                       <circle cx="50" cy="50" r="30" stroke="var(--primary)" strokeWidth="1.5" fill="none" opacity="0.3" strokeDasharray="5,5" className="spinning-circle" />
@@ -1369,7 +1369,7 @@ const Attendance = () => {
                     </div>
                   </>
                 )}
-                <div className="proof-meta-premium">
+                <div className="image-proof-meta">
                   <Shield size={16} />
                   <span>AI-Verified Geometric Match</span>
                 </div>
@@ -1939,53 +1939,163 @@ const Attendance = () => {
           </div>
 
           {activeView === 'timecard' ? (
-            <div className="table-container glass-card">
-              <table className="enterprise-table">
-                <thead>
-                  <tr>
-                    <th>{t('employee')}</th>
-                    <th>{t('date')}</th>
-                    <th>{t('checkin')}</th>
-                    <th>{t('checkout')}</th>
-                    <th>{t('verification')}</th>
-                    <th>{t('status')}</th>
-                    <th>{t('action')}</th>
-                  </tr>
-                </thead>
-                <tbody>
+            <>
+              {/* Desktop Table View */}
+              <div className="table-container glass-card desktop-only-view">
+                <table className="enterprise-table">
+                  <thead>
+                    <tr>
+                      <th>{t('employee')}</th>
+                      <th>{t('date')}</th>
+                      <th>{t('checkin')}</th>
+                      <th>{t('checkout')}</th>
+                      <th>{t('verification')}</th>
+                      <th>{t('status')}</th>
+                      <th>{t('action')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredAllLogs.map((log, idx) => (
+                      <tr key={log.id || idx}>
+                        <td data-label={t('employee')} className="emp-cell">
+                          <span>{log.employee?.firstName || 'Unknown'} {log.employee?.lastName || ''}</span>
+                        </td>
+                        <td data-label={t('date')}>{new Date(log.date).toLocaleDateString()}</td>
+            <td data-label={t('checkin')}>{log.clockIn ? new Date(log.clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '---'}</td>
+            <td data-label={t('checkout')}>{log.clockOut ? new Date(log.clockOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '---'}</td>
+                        <td data-label={t('verification')}>
+                          <div className="proof-stack-mini">
+                            {log.biometricProof && (
+                              <button className="btn-proof-tiny in" title="View Check-in Identity Proof" onClick={() => setSelectedProof(log.biometricProof.startsWith('http') ? log.biometricProof : `${API_URL}${log.biometricProof}`)}>
+                                <Camera size={12} /> PROOF
+                              </button>
+                            )}
+                            {log.biometricProofOut && (
+                              <button className="btn-proof-tiny out" title="View Check-out Identity Proof" onClick={() => setSelectedProof(log.biometricProofOut.startsWith('http') ? log.biometricProofOut : `${API_URL}${log.biometricProofOut}`)}>
+                                <Camera size={12} /> PROOF
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                        <td data-label={t('status')}>
+                          <span className={`badge badge-${(log.status === 'PAID' ? 'APPROVED' : log.status || 'PENDING').toLowerCase()}`}>
+                            {t((log.status === 'PAID' ? 'APPROVED' : log.status || 'PENDING').toLowerCase())}
+                          </span>
+                        </td>
+                        <td data-label={t('action')}>
+                          <div className="approval-actions">
+                            {isAdmin && (
+                              <button 
+                                className="status-btn edit" 
+                                onClick={() => {
+                                  setEditingLog(log);
+                                  setEditForm({
+                                    clockIn: log.clockIn ? new Date(log.clockIn).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit' }) : '',
+                                    clockOut: log.clockOut ? new Date(log.clockOut).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit' }) : ''
+                                  });
+                                  setEditImageFile(null);
+                                  setShowEditModal(true);
+                                }}
+                                title="Edit Times"
+                              >
+                                <Pencil size={14} />
+                              </button>
+                            )}
+                            <button className="status-btn approve" onClick={() => {
+                                if (isManager && (!log.clockIn || !log.clockOut)) {
+                                  addToast('Cannot mark present without full check‑in/out.', 'warning');
+                                  return;
+                                }
+                                handleStatusUpdate(log.id, 'PRESENT');
+                              }} title="Mark Present" style={{ color: '#10b981' }}>
+                                <CheckCircle size={14} />
+                              </button>
+                            <button className="status-btn reject" onClick={() => {
+                                setAbsentLogId(log.id);
+                                setShowAbsentReasonModal(true);
+                              }} title="Mark Absent" style={{ color: '#ef4444' }}>
+                                <XCircle size={14} />
+                              </button>
+                            {log.status === 'PENDING' && (
+                              <>
+                                <button className="status-btn approve" onClick={() => {
+                                if (isManager && (!log.clockIn || !log.clockOut)) {
+                                  addToast('Cannot approve without full check‑in/out.', 'warning');
+                                  return;
+                                }
+                                handleStatusUpdate(log.id, 'APPROVED');
+                              }} title="Approve"><Check size={14} /></button>
+                                <button className="status-btn reject" onClick={() => { setRejectLogId(log.id); setShowRejectReasonModal(true); }} title="Reject"><X size={14} /></button>
+                              </>
+                            )}
+                            {isAdmin && (
+                              <button className="status-btn delete" onClick={() => {
+                                  setPurgeLogId(log.id);
+                                  setShowPurgeReasonModal(true);
+                                }} title="Purge Log" style={{ color: 'var(--error)' }}>
+                                  <Trash2 size={14} />
+                                </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Custom Mobile Cards View */}
+              <div className="mobile-only-view">
+                <div className="attendance-mobile-list">
                   {filteredAllLogs.map((log, idx) => (
-                    <tr key={log.id || idx}>
-                      <td data-label={t('employee')} className="emp-cell">
-                        <span>{log.employee?.firstName || 'Unknown'} {log.employee?.lastName || ''}</span>
-                      </td>
-                      <td data-label={t('date')}>{new Date(log.date).toLocaleDateString()}</td>
-          <td data-label={t('checkin')}>{log.clockIn ? new Date(log.clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '---'}</td>
-          <td data-label={t('checkout')}>{log.clockOut ? new Date(log.clockOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '---'}</td>
-                      <td data-label={t('verification')}>
-                        <div className="proof-stack-mini">
-                          {log.biometricProof && (
-                            <button className="btn-proof-tiny in" title="View Check-in Identity Proof" onClick={() => setSelectedProof(log.biometricProof.startsWith('http') ? log.biometricProof : `${API_URL}${log.biometricProof}`)}>
-                              <Camera size={12} /> PROOF
-                            </button>
-                          )}
-                          {log.biometricProofOut && (
-                            <button className="btn-proof-tiny out" title="View Check-out Identity Proof" onClick={() => setSelectedProof(log.biometricProofOut.startsWith('http') ? log.biometricProofOut : `${API_URL}${log.biometricProofOut}`)}>
-                              <Camera size={12} /> PROOF
-                            </button>
-                          )}
+                    <div className="att-mobile-card" key={`mob-${log.id || idx}`}>
+                      <div className="amc-header">
+                        <div className="amc-profile">
+                          <div className="amc-avatar">
+                            {log.employee?.firstName?.charAt(0) || 'U'}
+                          </div>
+                          <div className="amc-name-col">
+                            <h4>{log.employee?.firstName || 'Unknown'} {log.employee?.lastName || ''}</h4>
+                            <span>{new Date(log.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+                          </div>
                         </div>
-                      </td>
-                      <td data-label={t('status')}>
                         <span className={`badge badge-${(log.status === 'PAID' ? 'APPROVED' : log.status || 'PENDING').toLowerCase()}`}>
                           {t((log.status === 'PAID' ? 'APPROVED' : log.status || 'PENDING').toLowerCase())}
                         </span>
-                      </td>
-                      <td data-label={t('action')}>
-                        <div className="approval-actions">
+                      </div>
+                      
+                      <div className="amc-time-track">
+                        <div className="amc-time-node">
+                          <span className="node-label">IN</span>
+                          <span className="node-time">{log.clockIn ? new Date(log.clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '--:--'}</span>
+                        </div>
+                        <div className="amc-time-line">
+                          <div className="line-dot left"></div>
+                          <div className="line-bar"></div>
+                          <div className="line-dot right"></div>
+                        </div>
+                        <div className="amc-time-node">
+                          <span className="node-label">OUT</span>
+                          <span className="node-time">{log.clockOut ? new Date(log.clockOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '--:--'}</span>
+                        </div>
+                      </div>
+
+                      <div className="amc-footer">
+                        <div className="amc-proofs">
+                          {log.biometricProof && (
+                            <button className="amc-proof-btn" onClick={() => setSelectedProof(log.biometricProof.startsWith('http') ? log.biometricProof : `${API_URL}${log.biometricProof}`)}>
+                              <Camera size={14} /> IN
+                            </button>
+                          )}
+                          {log.biometricProofOut && (
+                            <button className="amc-proof-btn" onClick={() => setSelectedProof(log.biometricProofOut.startsWith('http') ? log.biometricProofOut : `${API_URL}${log.biometricProofOut}`)}>
+                              <Camera size={14} /> OUT
+                            </button>
+                          )}
+                        </div>
+                        <div className="amc-actions">
                           {isAdmin && (
-                            <button 
-                              className="status-btn edit" 
-                              onClick={() => {
+                            <button className="status-btn edit" onClick={() => {
                                 setEditingLog(log);
                                 setEditForm({
                                   clockIn: log.clockIn ? new Date(log.clockIn).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit' }) : '',
@@ -1993,54 +2103,26 @@ const Attendance = () => {
                                 });
                                 setEditImageFile(null);
                                 setShowEditModal(true);
-                              }}
-                              title="Edit Times"
-                            >
+                              }}>
                               <Pencil size={14} />
                             </button>
                           )}
                           <button className="status-btn approve" onClick={() => {
-                              if (isManager && (!log.clockIn || !log.clockOut)) {
-                                addToast('Cannot mark present without full check‑in/out.', 'warning');
-                                return;
-                              }
+                              if (isManager && (!log.clockIn || !log.clockOut)) { addToast('Cannot mark present without full check‑in/out.', 'warning'); return; }
                               handleStatusUpdate(log.id, 'PRESENT');
-                            }} title="Mark Present" style={{ color: '#10b981' }}>
-                              <CheckCircle size={14} />
-                            </button>
-                          <button className="status-btn reject" onClick={() => {
-                              setAbsentLogId(log.id);
-                              setShowAbsentReasonModal(true);
-                            }} title="Mark Absent" style={{ color: '#ef4444' }}>
-                              <XCircle size={14} />
-                            </button>
-                          {log.status === 'PENDING' && (
-                            <>
-                              <button className="status-btn approve" onClick={() => {
-                              if (isManager && (!log.clockIn || !log.clockOut)) {
-                                addToast('Cannot approve without full check‑in/out.', 'warning');
-                                return;
-                              }
-                              handleStatusUpdate(log.id, 'APPROVED');
-                            }} title="Approve"><Check size={14} /></button>
-                              <button className="status-btn reject" onClick={() => { setRejectLogId(log.id); setShowRejectReasonModal(true); }} title="Reject"><X size={14} /></button>
-                            </>
-                          )}
-                          {isAdmin && (
-                            <button className="status-btn delete" onClick={() => {
-                                setPurgeLogId(log.id);
-                                setShowPurgeReasonModal(true);
-                              }} title="Purge Log" style={{ color: 'var(--error)' }}>
-                                <Trash2 size={14} />
-                              </button>
-                          )}
+                            }} style={{ color: '#10b981' }}>
+                            <CheckCircle size={14} />
+                          </button>
+                          <button className="status-btn reject" onClick={() => { setAbsentLogId(log.id); setShowAbsentReasonModal(true); }} style={{ color: '#ef4444' }}>
+                            <XCircle size={14} />
+                          </button>
                         </div>
-                      </td>
-                    </tr>
+                      </div>
+                    </div>
                   ))}
-                </tbody>
-              </table>
-            </div>
+                </div>
+              </div>
+            </>
           ) : activeView === 'timeline' ? (
             <div className="timeline-container glass-card" style={{ paddingBottom: '0px' }}>
               <div className="timeline-grid">

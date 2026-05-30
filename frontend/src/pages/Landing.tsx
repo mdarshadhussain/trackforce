@@ -177,9 +177,6 @@ const Landing = () => {
             <span className="lang-text">{i18n.language === 'en' ? 'VN' : 'EN'}</span>
           </button>
           <Link to="/login" className="nav-link-item">Login</Link>
-          <Link to="/login" className="btn-get-started">
-            {t('startTrial')} <ArrowRight size={18} />
-          </Link>
         </div>
       </nav>
 

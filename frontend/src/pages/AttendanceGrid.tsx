@@ -927,8 +927,79 @@ const AttendanceGrid: React.FC = () => {
           animation: spin 0.8s linear infinite;
         }
 
-        @keyframes spin {
-          to { transform: rotate(360deg); }
+        @media (max-width: 768px) {
+          .matrix-viewport {
+            height: auto;
+            min-height: 100vh;
+          }
+          
+          .matrix-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 16px;
+            padding: 20px;
+          }
+          
+          .header-brand {
+            width: 100%;
+          }
+          
+          .header-actions {
+            width: 100%;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 12px;
+          }
+          
+          .header-actions .search-hub,
+          .header-actions .searchable-dropdown,
+          .header-actions .month-selector button,
+          .header-actions .matrix-btn {
+            width: 100%;
+            justify-content: center;
+          }
+          
+          .matrix-container {
+            padding: 16px;
+          }
+          
+          .employee-info-cell {
+            width: 120px !important;
+            min-width: 120px !important;
+            padding: 12px 10px;
+          }
+          
+          .emp-meta .name {
+            font-size: 12px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100px;
+          }
+          
+          .emp-meta .tag {
+            font-size: 9px;
+          }
+          
+          .day-tick, .status-cell {
+            min-width: 32px;
+          }
+          
+          .matrix-footer {
+            flex-direction: column;
+            gap: 16px;
+            padding: 16px 20px;
+          }
+          
+          .legend {
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 12px;
+          }
+          
+          .matrix-data-hub {
+            border-radius: 12px;
+          }
         }
       `}</style>
     </div>

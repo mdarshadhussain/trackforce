@@ -400,7 +400,8 @@ app.post('/api/auth/login', async (req: Request, res: Response) => {
     }, JWT_SECRET, { expiresIn: '24h' });
     res.json({ token, user: { ...employee, password: undefined } });
   } catch (error) {
-    res.status(500).json({ error: 'Internal server error' });
+    console.error("Login Error:", error);
+    res.status(500).json({ error: 'Internal server error', details: String(error) });
   }
 });
 
@@ -803,6 +804,13 @@ app.post('/api/attendance/clock-out/:id', authenticateToken, upload.single('biom
     const active = await prisma.attendance.findFirst({ where: { employeeId: employee.id, clockOut: null }, orderBy: { createdAt: 'desc' } });
     if (!active) return res.status(400).json({ error: 'No active clock-in' });
     
+    const now = new Date();
+    if (now.getHours() >= 17) {
+      if (active.clockIn && new Date(active.clockIn).getHours() >= 17) {
+        return res.status(400).json({ error: 'Cannot clock out: you must have clocked in before 5 PM.' });
+      }
+    }
+
     let biometricProofOut = null;
     if (req.file) {
       biometricProofOut = `/uploads/${employee.employeeId}/attendance/${req.file.filename}`;

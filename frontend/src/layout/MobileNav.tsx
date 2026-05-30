@@ -47,8 +47,10 @@ const MobileNav = () => {
   return (
     <nav className="mobile-bottom-nav" aria-label="Mobile navigation">
       {tabs.map(tab => {
+        const isExactMatch = tabs.some(t => t.path === location.pathname);
         const isActive = location.pathname === tab.path || 
-          (tab.path !== '/dashboard' && location.pathname.startsWith(tab.path));
+          (!isExactMatch && tab.path !== '/dashboard' && location.pathname.startsWith(tab.path + '/'));
+          
         return (
           <Link
             key={tab.path}

@@ -801,7 +801,7 @@ const Dashboard = () => {
   const formatTime = (timeStr: string) => {
     try {
       const date = new Date(timeStr);
-      return isNaN(date.getTime()) ? timeStr : date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      return isNaN(date.getTime()) ? timeStr : date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
     } catch (e) {
       return timeStr || '--:--';
     }

@@ -190,7 +190,7 @@ const EmployeeAttendance = () => {
       setLogs(today);
       const myLogs = all.filter((l: any) => l.employeeId === user.id);
       setAllLogs(myLogs);
-      setIsClockedIn(today.length > 0 && !today[0].clockOut);
+      setIsClockedIn(today.length > 0 && !today[0].clockOut && today[0].status !== 'ABSENT');
     } catch (err) {
       console.error("Data load error:", err);
     } finally {
@@ -540,8 +540,10 @@ const EmployeeAttendance = () => {
   
   // User cannot check in after 5:00 PM (17:00)
   const isCheckInDisabled = isClockedIn || currentHour >= 17;
-  // User cannot clock out after 22:59 (if hour is >= 23)
-  const isCheckOutDisabled = !isClockedIn || currentHour >= 23;
+  
+  // User cannot clock out after 22:59, OR if it is >= 5 PM and they clocked in >= 5 PM
+  const clockInDate = isClockedIn && logs[0]?.clockIn ? new Date(logs[0].clockIn) : null;
+  const isCheckOutDisabled = !isClockedIn || currentHour >= 23 || (currentHour >= 17 && clockInDate !== null && clockInDate.getHours() >= 17);
 
   if (isLoading) return <div className="dashboard-loading"><div className="loading-spinner-watt"></div><span>{t('processing')}</span></div>;
 
@@ -614,7 +616,53 @@ const EmployeeAttendance = () => {
             
             {step === 'idle' ? (
               <>
-                {logs.length >= 2 && !isClockedIn ? (
+                {logs.length > 0 && logs[0].status === 'ABSENT' ? (
+                  <div className="attendance-submitted-banner" style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '2.5rem 1.5rem',
+                    textAlign: 'center',
+                    background: 'rgba(239, 68, 68, 0.08)',
+                    borderRadius: '16px',
+                    border: '1px dashed rgba(239, 68, 68, 0.3)',
+                    margin: '1rem 0'
+                  }}>
+                    <div style={{
+                      width: '56px',
+                      height: '56px',
+                      borderRadius: '50%',
+                      background: 'rgba(239, 68, 68, 0.15)',
+                      color: '#ef4444',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginBottom: '1rem'
+                    }}>
+                      <UserCheck size={32} />
+                    </div>
+                    <h3 style={{
+                      fontSize: '1.25rem',
+                      fontWeight: 700,
+                      color: '#ef4444',
+                      margin: '0 0 0.5rem 0'
+                    }}>
+                      {i18n.language === 'vi' ? 'Vắng Mặt' : 'Absent'}
+                    </h3>
+                    <p style={{
+                      fontSize: '0.9rem',
+                      color: 'var(--text-secondary)',
+                      margin: 0,
+                      maxWidth: '300px',
+                      lineHeight: '1.4'
+                    }}>
+                      {i18n.language === 'vi' 
+                        ? 'Bạn đã được đánh dấu là vắng mặt cho ngày hôm nay.' 
+                        : 'You have been marked as absent for today.'}
+                    </p>
+                  </div>
+                ) : logs.length >= 2 && !isClockedIn ? (
                   <div className="attendance-submitted-banner" style={{
                     display: 'flex',
                     flexDirection: 'column',
@@ -690,7 +738,7 @@ const EmployeeAttendance = () => {
                   <div className="shift-info-footer">
                     <div className="footer-item">
                       <Clock size={14} /> 
-                      <span>{t('checkin')}: <strong>{new Date(logs[0].clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong></span>
+                      <span>{t('checkin')}: <strong>{new Date(logs[0].clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</strong></span>
                     </div>
                     <div className="footer-item">
                       <MapPin size={14} /> 

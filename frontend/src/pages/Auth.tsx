@@ -145,14 +145,17 @@ export const Login = () => {
 
       {/* Right Panel: Sleek Authentication Form */}
       <div className="auth-right-panel">
-        <div className="right-panel-controls">
-          <button className="panel-btn" onClick={toggleTheme} aria-label="Toggle Theme">
-            {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
-          </button>
-          <button className="panel-btn lang-btn" onClick={toggleLanguage} aria-label="Toggle Language">
-            <Languages size={16} />
-            <span>{i18n.language === 'en' ? 'VN' : 'EN'}</span>
-          </button>
+        <div className="right-panel-top-bar">
+          <div className="mobile-logo">TRACK<span>FORCE</span></div>
+          <div className="right-panel-controls">
+            <button className="panel-btn" onClick={toggleTheme} aria-label="Toggle Theme">
+              {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
+            </button>
+            <button className="panel-btn lang-btn" onClick={toggleLanguage} aria-label="Toggle Language">
+              <Languages size={16} />
+              <span>{i18n.language === 'en' ? 'VN' : 'EN'}</span>
+            </button>
+          </div>
         </div>
 
         <div className="right-panel-auth-deck">
@@ -168,26 +171,7 @@ export const Login = () => {
               <p>{t('signInSubtitle')}</p>
             </div>
 
-            {/* Custom sliding tab selector */}
-            <div className="auth-tabs-slider">
-              <div 
-                className={`tab-slider-bg ${activeTab === 'SSO' ? 'right' : 'left'}`} 
-              />
-              <button 
-                type="button" 
-                className={`tab-btn-slide ${activeTab === 'LOGIN' ? 'active' : ''}`}
-                onClick={() => { setActiveTab('LOGIN'); setError(''); }}
-              >
-                {t('standardSignIn')}
-              </button>
-              <button 
-                type="button" 
-                className={`tab-btn-slide ${activeTab === 'SSO' ? 'active' : ''}`}
-                onClick={() => { setActiveTab('SSO'); setError(''); }}
-              >
-                {t('enterpriseSSO')}
-              </button>
-            </div>
+
 
             {error && (
               <div className="deck-error-box">
@@ -197,7 +181,6 @@ export const Login = () => {
             )}
 
             <AnimatePresence mode="wait">
-              {activeTab === 'LOGIN' ? (
                 <motion.form 
                   key="login"
                   initial={{ opacity: 0, y: 10 }}
@@ -246,59 +229,16 @@ export const Login = () => {
                     <label className="checkbox-deck">
                       <input type="checkbox" /> {t('rememberLogin')}
                     </label>
-                    <a href="mailto:admin@trackforce.com?subject=TrackForce%20Access%20Recovery%20Request" className="forgot-key-link" title="Contact System Administrator for Access Recovery">{t('lostAccessContactAdmin')}</a>
+                    <a href="https://zalo.me/0911907082" target="_blank" rel="noopener noreferrer" className="forgot-key-link" title="Contact Zalo Support for Access Recovery">{t('lostAccessContactAdmin')}</a>
                   </div>
 
                   <button type="submit" className="btn-deck-primary" disabled={loading}>
                     {loading ? t('authorizingNode') : t('signInNow')} <ArrowRight size={18} />
                   </button>
                 </motion.form>
-              ) : (
-                <motion.form 
-                  key="sso"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.3 }}
-                  onSubmit={handleSsoSubmit}
-                  className="deck-form"
-                >
-                  <div className="form-group-deck">
-                    <label>{t('corporateSsoDomain')}</label>
-                    <div className="input-group-deck">
-                      <Fingerprint size={18} className="input-icon-deck" />
-                      <input 
-                        type="text" 
-                        placeholder="e.g. enterprise.com" 
-                        value={ssoDomain}
-                        onChange={(e) => setSsoDomain(e.target.value)}
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <button type="submit" className="btn-deck-primary" disabled={loading}>
-                    {loading ? t('routingToGateway') : t('initiateSingleSignOn')} <ArrowRight size={18} />
-                  </button>
-                </motion.form>
-              )}
             </AnimatePresence>
 
-            {/* Test credentials shortcut row */}
-            <div className="deck-test-credentials">
-              <span className="test-creds-label">{t('testEnvironmentKeys')}</span>
-              <div className="test-creds-grid">
-                <button type="button" className="test-cred-btn" onClick={() => handleQuickCredential('ADMIN')}>
-                  Admin
-                </button>
-                <button type="button" className="test-cred-btn" onClick={() => handleQuickCredential('MANAGER')}>
-                  Manager
-                </button>
-                <button type="button" className="test-cred-btn" onClick={() => handleQuickCredential('EMPLOYEE')}>
-                  Employee
-                </button>
-              </div>
-            </div>
+
 
             <div className="deck-footer-status">
               <div className="security-status-node">

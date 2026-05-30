@@ -1429,9 +1429,16 @@
 
 /* --- Mobile Fixes --- */
 @media (max-width: 1200px) {
+  .hero-section {
+    min-height: auto;
+    padding-bottom: 40px;
+  }
   .hero-container {
     grid-template-columns: 1fr;
-    gap: 48px;
+    gap: 40px;
+  }
+  .stats-strip {
+    padding: 40px 6%;
   }
   .mosaic-grid {
     grid-template-rows: auto;
@@ -1479,6 +1486,16 @@
 }
 
 @media (max-width: 768px) {
+  .hero-section {
+    padding: 90px 6% 20px;
+    min-height: auto;
+  }
+  .stats-strip {
+    padding: 24px 6%;
+  }
+  .features-grid-section {
+    padding: 60px 6% 40px;
+  }
   .terminal-main-display {
     grid-template-columns: 1fr;
   }
@@ -1490,7 +1507,17 @@
     flex-direction: column;
   }
   .stats-container {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+  .stat-node {
+    padding: 24px 20px;
+  }
+  .node-val {
+    font-size: 28px;
+  }
+  .node-label {
+    font-size: 10px;
   }
   .footer-top {
     grid-template-columns: 1fr;

@@ -15,6 +15,7 @@ import * as faceapi from 'face-api.js';
 import { loadFaceApiModels, areModelsLoaded } from '../utils/aiModels';
 import { fetchEmployees, fetchAllLogs, submitManagerLog, fetchTodayLogs, createSecurityAlert, fetchSites, logManualAttendance } from '../api/api';
 import { useAuth } from '../context/AuthContext';
+import PremiumSelect from '../components/PremiumSelect';
 import './ManagerAttendance.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -118,7 +119,7 @@ const ManagerAttendance: React.FC = () => {
   const [attendance, setAttendance] = useState<any[]>([]);
   const [sites, setSites] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
+  const [selectedEmployee, setSelectedEmployee] = useState<any>(user);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [modelsLoaded, setModelsLoaded] = useState(areModelsLoaded());
@@ -140,6 +141,12 @@ const ManagerAttendance: React.FC = () => {
   const [manualCheckOut, setManualCheckOut] = useState<string>('');
   const [manualCheckInPic, setManualCheckInPic] = useState<string>('');
   const [manualCheckOutPic, setManualCheckOutPic] = useState<string>('');
+
+  useEffect(() => {
+    if (user && !selectedEmployee) {
+      setSelectedEmployee(user);
+    }
+  }, [user, selectedEmployee]);
 
   // Personal Status State
   const [myTodayLogs, setMyTodayLogs] = useState<any[]>([]);
@@ -252,12 +259,6 @@ const ManagerAttendance: React.FC = () => {
     }
   }, [selectedEmployee, attendance]);
 
-  // Auto-start verification if manager selects themselves
-  useEffect(() => {
-    if (selectedEmployee && user && selectedEmployee.id === user.id && step === 'idle') {
-      handleStartVerification();
-    }
-  }, [selectedEmployee, user, step]);
 
   const startCamera = async (mode: 'user' | 'environment') => {
     if (streamRef.current) {
@@ -304,6 +305,19 @@ const ManagerAttendance: React.FC = () => {
 
   const handleStartVerification = async () => {
     if (!selectedEmployee || submitting) return;
+
+    // Time restriction: prevent clock-in after 5 PM
+    const isClockingIn = !getActiveSession(selectedEmployee.id);
+    if (isClockingIn) {
+      const currentHour = new Date().getHours();
+      if (currentHour >= 17) {
+        setStep('location_failed'); // Reuse error UI
+        setStatusMessage("Time Restriction");
+        setErrorDetail("Clock-in is not allowed after 5:00 PM.");
+        return;
+      }
+    }
+
     setStep('checking_location');
     setStatusMessage(t('acquiringGps'));
     setErrorDetail("");
@@ -642,41 +656,33 @@ const ManagerAttendance: React.FC = () => {
       </header>
 
       <div className={`manager-att-grid ${selectedEmployee ? 'has-selected' : ''}`}>
-        <div className="emp-selection-card glass-card">
-          <div className="search-employee">
-            <Search size={18} />
-            <input
-              type="text"
-              placeholder={t('searchEmployeesPlaceholder')}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="matrix-search-input"
-            />
-          </div>
-          <div className="emp-list">
-            {filteredEmployees.map(emp => {
-              const active = getActiveSession(emp.id);
-              return (
-                <div 
-                  key={emp.id} 
-                  className={`emp-item ${selectedEmployee?.id === emp.id ? 'selected' : ''}`}
-                  onClick={() => setSelectedEmployee(emp)}
-                >
-                  <div className="emp-avatar">
-                    {emp.avatar ? <img src={emp.avatar.startsWith('http') ? emp.avatar : `${API_URL}${emp.avatar}`} alt="" /> : <User size={20} />}
-                  </div>
-                  <div className="emp-info">
-                    <span className="name">{emp.firstName} {emp.lastName}</span>
-                    <span className="id">{emp.employeeId || 'No ID'}</span>
-                  </div>
-                  <div className={`status-dot ${active ? 'online' : 'offline'}`} title={active ? t('currentlyOnSite') : t('offSite')}></div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
 
         <div className="action-control-card glass-card">
+          <div className="selected-header" style={{ width: '100%', padding: '20px 20px 0', marginBottom: 0, boxSizing: 'border-box' }}>
+            <UserCheck size={24} color="var(--primary)" />
+            <div style={{ flex: 1, zIndex: 50 }}>
+              <PremiumSelect 
+                value={selectedEmployee?.id || user?.id || ''}
+                options={[
+                  { label: `My Attendance (${user?.firstName || 'Me'})`, value: user?.id || 'self' },
+                  ...employees.map(emp => ({
+                    label: `${emp.firstName} ${emp.lastName} ${emp.employeeId ? `- ${emp.employeeId}` : ''}`,
+                    value: emp.id
+                  }))
+                ]}
+                onChange={(val) => {
+                  if (val === user?.id || val === 'self') {
+                    setSelectedEmployee(user);
+                  } else {
+                    const emp = employees.find(emp => emp.id === val);
+                    if (emp) setSelectedEmployee(emp);
+                  }
+                }}
+                placeholder={t('selectPersonnel', 'Select an employee...')}
+              />
+            </div>
+          </div>
+
           <AnimatePresence mode="wait">
             {selectedEmployee ? (
               <motion.div 
@@ -686,10 +692,6 @@ const ManagerAttendance: React.FC = () => {
                 exit={{ opacity: 0, scale: 0.95 }}
                 className="control-surface"
               >
-                <div className="selected-header">
-                  <UserCheck size={24} color="var(--primary)" />
-                  <h3>{t('attendanceForEmployee', { name: `${selectedEmployee.firstName} ${selectedEmployee.lastName}` })}</h3>
-                </div>
 
                 {isAdmin && step === 'idle' && (
                   <div className="attendance-tab-switcher">
@@ -845,7 +847,7 @@ const ManagerAttendance: React.FC = () => {
                             <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-tertiary)' }}>{t('clockOut')}</label>
                             <strong style={{ fontSize: '14px', color: 'var(--text-primary)' }}>
                               {selectedEmpLogs.length > 0 && selectedEmpLogs[0].clockOut && selectedEmpLogs[0].status !== 'ABSENT'
-                                ? new Date(selectedEmpLogs[0].clockOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                                ? new Date(selectedEmpLogs[0].clockOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
                                 : isAbsentForSelected
                                 ? t('absentLabel').toUpperCase()
                                 : activeSessionForSelected 
@@ -907,11 +909,11 @@ const ManagerAttendance: React.FC = () => {
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                   <span style={{ color: 'var(--text-tertiary)', fontWeight: 700 }}>#{selectedEmpLogs.length - idx}</span>
                                   <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
-                                    {log.clockIn && log.status !== 'ABSENT' ? new Date(log.clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                                    {log.clockIn && log.status !== 'ABSENT' ? new Date(log.clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '--:--'}
                                   </span>
                                   <span style={{ color: 'var(--text-tertiary)' }}>→</span>
                                   <span style={{ color: log.clockOut ? 'var(--text-primary)' : log.status === 'ABSENT' ? '#EF4444' : '#10b981', fontWeight: 600 }}>
-                                    {log.clockOut && log.status !== 'ABSENT' ? new Date(log.clockOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : log.status === 'ABSENT' ? t('absentLabel') : t('activeSession')}
+                                    {log.clockOut && log.status !== 'ABSENT' ? new Date(log.clockOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : log.status === 'ABSENT' ? t('absentLabel') : t('activeSession')}
                                   </span>
                                 </div>
                                 {log.verified && (
@@ -1083,86 +1085,42 @@ const ManagerAttendance: React.FC = () => {
           </AnimatePresence>
         </div>
 
-        <div className="personal-status-card glass-card">
-          <div className="profile-card-mini">
-            <div className="avatar-wrapper">
+        <div className="personal-status-card ultra-compact-card">
+          <div className="compact-header-row">
+            <div className="compact-profile">
               <img 
                 src={user?.avatar ? (user.avatar.startsWith('http') ? user.avatar : `${API_URL}${user.avatar}`) : "https://api.dicebear.com/7.x/avataaars/svg?seed=Admin"} 
                 alt="Profile" 
-                className="large-avatar" 
+                className="compact-avatar" 
               />
-              <span className="status-badge">{user?.role || 'Staff'}</span>
-            </div>
-            <div className="profile-details-mini">
-              <h3>{user?.firstName} {user?.lastName}</h3>
-              <p className="role-text">{user?.jobTitle || 'System Administrator'}</p>
-              {user?.isBiometricEnrolled && (
-                <div className="biometric-verified-badge">
-                  <Shield size={14} className="verified-icon" />
-                  <span>{t('biometricSecured')}</span>
-                </div>
-              )}
+              <div className="compact-info">
+                <h3>{user?.firstName || 'Arshad'} {user?.lastName || ''}</h3>
+                <span className="compact-role">MANAGER</span>
+              </div>
             </div>
           </div>
 
           {user?.role !== 'ADMIN' ? (
-            <>
-              <div className="personal-actions-sidebar">
-                <div className={`status-indicator ${isMyClockedIn ? 'active' : 'inactive'}`}>
-                  {isMyClockedIn && <div className="pulse-dot"></div>}
-                  <span>{isMyClockedIn ? t('onDuty') : t('offDuty')}</span>
-                </div>
-                
-                <button 
-                  className={`btn-my-clock ${isMyClockedIn ? 'out' : 'in'}`}
-                  onClick={handleMyClockAction}
-                  disabled={submitting}
-                >
-                  {isMyClockedIn ? <X size={18} /> : <Clock size={18} />}
-                  <span>{isMyClockedIn ? t('clockOut') : t('clockIn')}</span>
-                </button>
-
-                {isMyClockedIn && myTodayLogs[0] && (
-                  <div className="manager-duty-info" style={{
-                    width: '100%',
-                    background: 'var(--surface)',
-                    border: '1px solid var(--border)',
-                    borderRadius: '16px',
-                    padding: '16px',
-                    marginTop: '12px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '12px'
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>{t('clockin').toUpperCase()}</span>
-                      <strong style={{ fontSize: '13px', color: 'var(--text-primary)' }}>
-                        {new Date(myTodayLogs[0].clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </strong>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border)', paddingTop: '10px' }}>
-                      <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>{t('currentShiftTime', 'CURRENT SHIFT TIME')}</span>
-                      <strong style={{ fontSize: '13px', color: 'var(--primary)' }}>
-                        {myElapsedTime || "0h 0m"}
-                      </strong>
-                    </div>
-                  </div>
-                )}
+            <div className="compact-stats-row">
+              <div className="stat-item">
+                <span className="stat-label">{t('clockedIn', 'IN')}</span>
+                <strong className="stat-value">
+                  {isMyClockedIn && myTodayLogs[0] ? new Date(myTodayLogs[0].clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '--:--'}
+                </strong>
               </div>
-
-              <div className="hours-summary-mini">
-                 <div className="hour-item">
-                   <Clock size={16} />
-                   <div className="v-stack">
-                     <span className="val">{personalStats.totalHours.toFixed(2)}</span>
-                     <span className="lab">{t('totalHours')}</span>
-                   </div>
-                 </div>
+              <div className="stat-item">
+                <span className="stat-label">{t('currentShiftTime', 'SHIFT')}</span>
+                <strong className="stat-value">
+                  {isMyClockedIn ? (myElapsedTime || "0h 0m") : '--:--'}
+                </strong>
               </div>
-            </>
+              <div className="stat-item highlight">
+                <span className="stat-label">{t('totalHours', 'TOTAL')}</span>
+                <strong className="stat-value">{personalStats.totalHours.toFixed(2)}h</strong>
+              </div>
+            </div>
           ) : (
-            <div className="admin-exemption-badge">
-              <Shield size={24} color="var(--primary)" />
+            <div className="admin-exemption-badge" style={{ padding: '12px', marginTop: 0 }}>
               <strong>{t('dutyExempt')}</strong>
               <span>{t('adminExemptDesc')}</span>
             </div>

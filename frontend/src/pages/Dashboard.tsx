@@ -257,6 +257,7 @@ const Dashboard = () => {
   const [showAttendancePrompt, setShowAttendancePrompt] = useState(false);
   const [isClockedIn, setIsClockedIn] = useState(false);
   const [todayLogsCount, setTodayLogsCount] = useState(0);
+  const [isAbsentToday, setIsAbsentToday] = useState(false);
 
   useEffect(() => {
     if (user && (user.role === 'EMPLOYEE' || user.role === 'MANAGER')) {
@@ -275,8 +276,10 @@ const Dashboard = () => {
       localStorage.setItem(popupKey, 'shown');
       setShowAttendancePrompt(false);
       const destination = user.role === 'EMPLOYEE' ? '/attendance' : '/attendance/manager';
+      
       const limitReached = todayLogsCount >= 2 && !isClockedIn;
-      if (limitReached) {
+      
+      if (limitReached || isAbsentToday) {
         navigate(destination);
       } else {
         navigate(destination, { state: { autoAction: isClockedIn ? 'OUT' : 'IN' } });
@@ -341,8 +344,9 @@ const Dashboard = () => {
           setStats(statsData);
           if (user) {
             const todayLogs = await fetchTodayLogs(user.id).catch(() => []);
-            setIsClockedIn(todayLogs.length > 0 && !todayLogs[0].clockOut);
+            setIsClockedIn(todayLogs.length > 0 && !todayLogs[0].clockOut && todayLogs[0].status !== 'ABSENT');
             setTodayLogsCount(todayLogs.length);
+            setIsAbsentToday(todayLogs.some((l: any) => l.status === 'ABSENT') || (new Date().getHours() >= 17 && todayLogs.length === 0));
           }
         }
       } catch (err) {
@@ -824,7 +828,7 @@ const Dashboard = () => {
   const formatTime = (timeStr: string) => {
     try {
       const date = new Date(timeStr);
-      return isNaN(date.getTime()) ? timeStr : date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      return isNaN(date.getTime()) ? timeStr : date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
     } catch (e) {
       return timeStr || '--:--';
     }
@@ -1028,15 +1032,23 @@ const Dashboard = () => {
           </div>
           <button 
             className={`banner-btn ${
-              todayLogsCount >= 2 && !isClockedIn 
+              isAbsentToday
+                ? 'absent'
+                : todayLogsCount >= 2 && !isClockedIn 
                 ? 'completed' 
                 : isClockedIn 
                 ? 'clock-out' 
                 : 'clock-in'
             }`}
-            style={todayLogsCount >= 2 && !isClockedIn ? { background: '#10B981', color: '#ffffff', cursor: 'default' } : undefined}
+            style={isAbsentToday
+              ? { background: '#ef4444', color: '#ffffff', cursor: 'default' } 
+              : todayLogsCount >= 2 && !isClockedIn 
+              ? { background: '#10B981', color: '#ffffff', cursor: 'default' } 
+              : undefined}
           >
-            {todayLogsCount >= 2 && !isClockedIn
+            {isAbsentToday
+              ? (i18n.language === 'vi' ? 'Vắng mặt' : 'Absent')
+              : todayLogsCount >= 2 && !isClockedIn
               ? (i18n.language === 'vi' ? 'Đã nộp' : 'Submitted')
               : isClockedIn 
               ? (i18n.language === 'vi' ? 'Ra ca' : 'Clock Out') 

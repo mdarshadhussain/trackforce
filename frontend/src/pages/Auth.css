@@ -143,11 +143,27 @@
   background-color: #f8fafc;
 }
 
-.right-panel-controls {
+.right-panel-top-bar {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
+  width: 100%;
+}
+
+.mobile-logo {
+  display: none;
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: -1px;
+}
+
+.mobile-logo span {
+  color: var(--primary);
+}
+
+.right-panel-controls {
+  display: flex;
   gap: 12px;
-  align-self: flex-end;
 }
 
 .panel-btn {
@@ -500,22 +516,22 @@
   .auth-right-panel {
     padding: 40px;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
+  }
+  .right-panel-top-bar {
+    justify-content: space-between;
+  }
+  .mobile-logo {
+    display: block;
   }
   .right-panel-controls {
-    position: absolute;
-    top: 30px;
-    right: 40px;
+    position: static;
   }
 }
 
 @media (max-width: 480px) {
   .auth-right-panel {
     padding: 24px;
-  }
-  .right-panel-controls {
-    top: 20px;
-    right: 24px;
   }
   .auth-deck-header h2 {
     font-size: 30px;

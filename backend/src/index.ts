@@ -748,7 +748,7 @@ app.post('/api/attendance/clock-in/:id', authenticateToken, upload.single('biome
     
     const distance = getDistance(parseFloat(latitude), parseFloat(longitude), employee.site.latitude || 0, employee.site.longitude || 0);
     const radius = employee.site.geofenceRadius || 500;
-    if (distance > radius && req.user.role === 'EMPLOYEE') {
+    if (distance > radius && req.user.role !== 'ADMIN') {
       await prisma.securityAlert.create({ data: { type: 'GEOFENCE_VIOLATION', message: `${employee.firstName} clocked in from ${Math.round(distance)}m away.`, severity: 'MEDIUM', employeeId: employee.id, siteId: employee.siteId } });
       return res.status(403).json({ error: `Out of bounds (${Math.round(distance)}m away from ${employee.site.name})` });
     }

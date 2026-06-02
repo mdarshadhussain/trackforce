@@ -6,7 +6,8 @@ i18n
   .use(LanguageDetector)
   .use(initReactI18next)
   .init({
-    fallbackLng: 'en',
+    fallbackLng: 'vi',
+    lng: 'vi', // Make Vietnamese the default language
     interpolation: {
       escapeValue: false,
     },

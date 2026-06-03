@@ -539,12 +539,15 @@ app.post('/api/employees/import', authenticateToken, requireAdmin, multer({ stor
     for (const row of data as any[]) {
       try {
         const employeeId = row['Employee ID'];
-        const firstName = row['First Name'];
-        const lastName = row['Last Name'];
-        const role = row['Role'] || 'EMPLOYEE';
+        const fullName = row['Full Name'] || '';
+        const nameParts = String(fullName).trim().split(' ');
+        const firstName = nameParts[0] || 'Unknown';
+        const lastName = nameParts.slice(1).join(' ') || '.';
         
-        if (!employeeId || !firstName || !lastName) {
-          errors.push(`Row missing required fields (Employee ID, First Name, Last Name)`);
+        const role = row['Access Level'] || 'EMPLOYEE';
+        
+        if (!employeeId || !fullName) {
+          errors.push(`Row missing required fields (Employee ID, Full Name)`);
           continue;
         }
         
@@ -554,29 +557,44 @@ app.post('/api/employees/import', authenticateToken, requireAdmin, multer({ stor
           continue;
         }
 
-        const passwordStr = row['Password'] ? String(row['Password']) : '123456';
+        const passwordStr = row['Initial Password'] ? String(row['Initial Password']) : '123456';
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(passwordStr, salt);
         
         let siteId = null;
-        if (row['Site ID']) {
-           const site = await prisma.site.findUnique({ where: { id: String(row['Site ID']) } });
+        if (row['Assigned Site ID']) {
+           const site = await prisma.site.findUnique({ where: { id: String(row['Assigned Site ID']) } });
            if (site) siteId = site.id;
         }
+
+        // Parse dates safely
+        const parseDate = (dString: any) => {
+          if (!dString) return null;
+          const parsed = new Date(dString);
+          return isNaN(parsed.getTime()) ? null : parsed;
+        };
 
         await prisma.employee.create({
           data: {
             employeeId: String(employeeId),
-            firstName: String(firstName),
-            lastName: String(lastName),
-            email: row['Email'] ? String(row['Email']) : null,
-            phone: row['Phone'] ? String(row['Phone']) : null,
+            firstName: firstName,
+            lastName: lastName,
+            phone: row['Phone Number'] ? String(row['Phone Number']) : null,
             role: String(role).toUpperCase(),
             designation: row['Designation'] ? String(row['Designation']) : null,
             password: hashedPassword,
             plainPassword: passwordStr,
-            hourlyRate: row['Hourly Rate'] ? parseFloat(row['Hourly Rate']) : 0,
-            siteId: siteId
+            hourlyRate: row['Salary Per Hour'] ? parseFloat(row['Salary Per Hour']) : 0,
+            siteId: siteId,
+            dob: parseDate(row['Date of Birth']),
+            passportNumber: row['Passport Number'] ? String(row['Passport Number']) : null,
+            passportIssue: parseDate(row['Passport Issue']),
+            passportExpiry: parseDate(row['Passport Expiry']),
+            overtimeType: row['Overtime Protocol'] ? String(row['Overtime Protocol']).toUpperCase() : 'MULTIPLIER',
+            overtimeValue: row['Overtime Value'] ? parseFloat(row['Overtime Value']) : 1.5,
+            bankName: row['Bank Name'] ? String(row['Bank Name']) : null,
+            accountNumber: row['Account Number'] ? String(row['Account Number']) : null,
+            accountHolderName: row['Account Holder Name'] ? String(row['Account Holder Name']) : null
           }
         });
         successCount++;

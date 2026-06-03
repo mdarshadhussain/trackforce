@@ -707,7 +707,7 @@ app.post('/api/employees', authenticateToken, requireAdmin, employeeUploads, asy
     let avatar = null, cvPath = null, idDocPath = null;
     if (req.files) {
       const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-      if (files.avatar) avatar = `/api/media?path=${employeeId}/profile_picture/${files.avatar[0].filename}`;
+      if (files.avatar) avatar = `/api/uploads/${employeeId}/profile_picture/${files.avatar[0].filename}`;
       if (files.cv) cvPath = `/api/media?path=${employeeId}/cv/${files.cv[0].filename}`;
       if (files.idDoc) idDocPath = `/api/media?path=${employeeId}/passport_id/${files.idDoc[0].filename}`;
 
@@ -946,7 +946,7 @@ app.post('/api/attendance/clock-in/:id', authenticateToken, upload.single('biome
     
     let biometricProof = null;
     if (req.file) {
-      biometricProof = `/api/media?path=${employee.employeeId}/attendance/${req.file.filename}`;
+      biometricProof = `/api/uploads/${employee.employeeId}/attendance/${req.file.filename}`;
     } else if (req.body.biometricProof && req.body.biometricProof.startsWith('data:image')) {
       try {
         const base64Data = req.body.biometricProof.replace(/^data:image\/\w+;base64,/, "");
@@ -958,7 +958,7 @@ app.post('/api/attendance/clock-in/:id', authenticateToken, upload.single('biome
         }
         const filePath = path.join(userDir, filename);
         fs.writeFileSync(filePath, buffer);
-        biometricProof = `/api/media?path=${employee.employeeId}/attendance/${filename}`;
+        biometricProof = `/api/uploads/${employee.employeeId}/attendance/${filename}`;
       } catch (err) {
         console.error("Base64 clock-in biometricProof save error:", err);
       }
@@ -1005,7 +1005,7 @@ app.post('/api/attendance/clock-out/:id', authenticateToken, upload.single('biom
 
     let biometricProofOut = null;
     if (req.file) {
-      biometricProofOut = `/api/media?path=${employee.employeeId}/attendance/${req.file.filename}`;
+      biometricProofOut = `/api/uploads/${employee.employeeId}/attendance/${req.file.filename}`;
     } else if (req.body.biometricProof && req.body.biometricProof.startsWith('data:image')) {
       try {
         const base64Data = req.body.biometricProof.replace(/^data:image\/\w+;base64,/, "");
@@ -1017,7 +1017,7 @@ app.post('/api/attendance/clock-out/:id', authenticateToken, upload.single('biom
         }
         const filePath = path.join(userDir, filename);
         fs.writeFileSync(filePath, buffer);
-        biometricProofOut = `/api/media?path=${employee.employeeId}/attendance/${filename}`;
+        biometricProofOut = `/api/uploads/${employee.employeeId}/attendance/${filename}`;
       } catch (err) {
         console.error("Base64 clock-out biometricProof save error:", err);
       }
@@ -1199,7 +1199,7 @@ app.post('/api/attendance/manager-log', authenticateToken, requireManagement, up
 
     let proofPath = null;
     if (req.file) {
-      proofPath = `/api/media?path=${employee.employeeId}/attendance/${req.file.filename}`;
+      proofPath = `/api/uploads/${employee.employeeId}/attendance/${req.file.filename}`;
     } else if (req.body.biometricProof && req.body.biometricProof.startsWith('data:image')) {
       try {
         const base64Data = req.body.biometricProof.replace(/^data:image\/\w+;base64,/, "");
@@ -1211,7 +1211,7 @@ app.post('/api/attendance/manager-log', authenticateToken, requireManagement, up
         }
         const filePath = path.join(userDir, filename);
         fs.writeFileSync(filePath, buffer);
-        proofPath = `/api/media?path=${employee.employeeId}/attendance/${filename}`;
+        proofPath = `/api/uploads/${employee.employeeId}/attendance/${filename}`;
       } catch (err) {
         console.error("Base64 manager-log biometricProof save error:", err);
       }
@@ -1275,7 +1275,7 @@ app.post('/api/attendance/manual', authenticateToken, requireManagement, async (
           }
           const filePath = path.join(userDir, filename);
           fs.writeFileSync(filePath, buffer);
-          checkInPath = `/api/media?path=${employee.employeeId}/attendance/${filename}`;
+          checkInPath = `/api/uploads/${employee.employeeId}/attendance/${filename}`;
         } catch (err) {
           console.error("Manual check-in save error:", err);
         }
@@ -1302,7 +1302,7 @@ app.post('/api/attendance/manual', authenticateToken, requireManagement, async (
           }
           const filePath = path.join(userDir, filename);
           fs.writeFileSync(filePath, buffer);
-          checkOutPath = `/api/media?path=${employee.employeeId}/attendance/${filename}`;
+          checkOutPath = `/api/uploads/${employee.employeeId}/attendance/${filename}`;
         } catch (err) {
           console.error("Manual check-out save error:", err);
         }

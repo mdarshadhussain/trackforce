@@ -580,7 +580,7 @@ app.get('/api/employees/template', authenticateToken, requireAdmin, async (req: 
       sheet.getCell(`N${i}`).dataValidation = {
         type: 'list',
         allowBlank: true,
-        formulae: ['"Experience Worker,Fresh Worker,Store Keeper,Sr Foreman,QA/QC,Specialist"']
+        formulae: ['"Supervisor,Foreman,Experience Worker,Engineer,Fresh Worker,Safety,Drawing,QA/QC,QS,Store keeper,Sr. Foreman"']
       };
     }
 

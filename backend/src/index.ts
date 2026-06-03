@@ -84,22 +84,24 @@ const storage = multer.diskStorage({
       req.user?.id
     ].filter(Boolean);
 
-    if (identifiers.length > 0) {
-      try {
-        // Query the database to find the employee using either UUID (id) or human-readable employeeId
-        const emp = await prisma.employee.findFirst({
-          where: {
-            OR: identifiers.flatMap(val => [
-              { id: val },
-              { employeeId: val }
-            ])
+        if (identifiers.length > 0) {
+      for (const val of identifiers) {
+        try {
+          const emp = await prisma.employee.findFirst({
+            where: {
+              OR: [
+                { id: val },
+                { employeeId: val }
+              ]
+            }
+          });
+          if (emp) {
+            folderId = emp.employeeId;
+            break;
           }
-        });
-        if (emp) {
-          folderId = emp.employeeId;
+        } catch (err) {
+          console.error("Multer destination lookup error:", err);
         }
-      } catch (err) {
-        console.error("Multer destination lookup error:", err);
       }
     }
 

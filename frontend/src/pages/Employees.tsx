@@ -8,12 +8,14 @@ import {
   XCircle,
   Eye,
   Phone,
+  Upload,
+  FileSpreadsheet
 } from 'lucide-react';
 
 import './Employees.css';
 
-import { useEffect, useState } from 'react';
-import { fetchEmployees, deleteEmployee, fetchSites } from '../api/api';
+import React, { useEffect, useState, useRef } from 'react';
+import { fetchEmployees, deleteEmployee, fetchSites, importEmployeesFromExcel, downloadEmployeeTemplate } from '../api/api';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -43,6 +45,49 @@ const Employees = () => {
   const [toasts, setToasts] = useState<any[]>([]);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [employeeToDelete, setEmployeeToDelete] = useState<string | null>(null);
+
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+    const downloadTemplate = async () => {
+    try {
+      setLoading(true);
+      const blob = await downloadEmployeeTemplate();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", "Employee_Import_Template.xlsx");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      addToast(err.message || 'Failed to download template', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    try {
+      setLoading(true);
+      const res = await importEmployeesFromExcel(file);
+      addToast(res.message, 'success');
+      if (res.errors && res.errors.length > 0) {
+        // Show the first error as well if there were partial failures
+        addToast(`${res.errors.length} errors occurred, e.g. ${res.errors[0]}`, 'error');
+      }
+      loadEmployees();
+    } catch (err: any) {
+      addToast(err.message || 'Failed to import employees', 'error');
+    } finally {
+      setLoading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
 
   const addToast = (message: string, type: ToastType = 'info') => {
     const id = Math.random().toString(36).substr(2, 9);
@@ -139,6 +184,20 @@ const Employees = () => {
             <p>{t('masterLedger')}</p>
           </div>
           <div className="header-actions">
+            <input 
+              type="file" 
+              accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" 
+              style={{ display: 'none' }} 
+              ref={fileInputRef}
+              onChange={handleFileUpload} 
+            />
+            <button className="btn btn-ghost" onClick={downloadTemplate}>
+              <FileSpreadsheet size={18} /> {t('Template')}
+            </button>
+            <button className="btn btn-ghost" onClick={() => fileInputRef.current?.click()}>
+              <Upload size={18} /> {t('Import')}
+            </button>
+
             <button className="btn btn-ghost" onClick={() => exportToCSV(filteredEmployees, `Workforce_Master_${new Date().toISOString().split('T')[0]}`)}>
               <Download size={18} /> {t('exportLedger')}
             </button>
@@ -195,7 +254,7 @@ const Employees = () => {
               <div className="mec-header">
                 <div className="mec-profile">
                   <div className="avatar-small">
-                    {emp.avatar ? <img src={emp.avatar.startsWith('http') ? emp.avatar : `${API_URL}${emp.avatar}`} alt="Avatar" /> : emp.firstName.charAt(0)}
+                    {emp.avatar ? <img src={emp.avatar.startsWith('http') ? emp.avatar : `${API_URL}${emp.avatar}`} alt="Avatar" onError={(e) => { e.currentTarget.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${emp.firstName || 'User'}`; }} /> : emp.firstName.charAt(0)}
                   </div>
                   <div className="name-stack">
                     <span className="full-name">{emp.firstName} {emp.lastName}</span>

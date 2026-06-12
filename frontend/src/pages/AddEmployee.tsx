@@ -26,7 +26,7 @@ const AddEmployee = () => {
   const { t } = useTranslation();
   const { id } = useParams();
   const isEditMode = !!id;
-  const { isAdmin } = useAuth();
+  const { isAdmin, user, updateUser } = useAuth();
   const navigate = useNavigate();
   const [sites, setSites] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -149,7 +149,10 @@ const AddEmployee = () => {
       if (files.idDoc) formDataToSend.append('idDoc', files.idDoc);
 
       if (isEditMode) {
-        await updateEmployee(id!, formDataToSend);
+        const updated = await updateEmployee(id!, formDataToSend);
+        if (user && user.id === id) {
+          updateUser({ ...user, ...updated });
+        }
       } else {
         if (!files.avatar) {
           throw new Error(t('profilePicMandatoryNew'));
@@ -216,7 +219,14 @@ const AddEmployee = () => {
                 <div className="avatar-field-compact">
                   <div className="avatar-preview-wrapper-compact">
                     {formData.avatar ? (
-                      <img src={formData.avatar} alt="Preview" className="avatar-img-modern" />
+                      <img 
+                        src={formData.avatar} 
+                        alt="Preview" 
+                        className="avatar-img-modern" 
+                        onError={(e) => {
+                          e.currentTarget.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${formData.fullName || 'User'}`;
+                        }}
+                      />
                     ) : (
                       <div className="avatar-placeholder-modern">
                         <User size={24} />

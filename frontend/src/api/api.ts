@@ -528,3 +528,28 @@ export const deleteHoliday = async (id: string) => {
   return response.json();
 };
 
+export const importEmployeesFromExcel = async (file: File) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  const response = await fetch(`${BASE_URL}/employees/import`, {
+    method: 'POST',
+    headers: getAuthHeaders(true),
+    body: formData
+  });
+  
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || 'Failed to import employees');
+  return data;
+};
+
+export const downloadEmployeeTemplate = async () => {
+  const response = await fetch(`${BASE_URL}/employees/template`, {
+    method: 'GET',
+    headers: getAuthHeaders()
+  });
+  
+  if (!response.ok) throw new Error('Failed to download template');
+  return response.blob();
+};
+

@@ -168,8 +168,8 @@ cron.schedule('0 0 * * *', () => {
 });
 
 // 15-Hour Auto-Checkout Protocol
-// Runs every 30 minutes to find and automatically close sessions active for > 15 hours
-cron.schedule('*/30 * * * *', async () => {
+// Runs every hour at minute 15 to find and automatically close sessions active for > 15 hours
+cron.schedule('15 * * * *', async () => {
   console.log('🔄 [Auto-Checkout Protocol]: Scanning for sessions exceeding 15 hours...');
   const fifteenHoursAgo = new Date(Date.now() - (15 * 60 * 60 * 1000));
 
@@ -219,8 +219,8 @@ cron.schedule('*/30 * * * *', async () => {
 });
 
 // 48-Hour Auto-Approval Protocol
-// Runs every 30 minutes to automatically approve any PENDING attendance older than 48 hours
-cron.schedule('*/30 * * * *', async () => {
+// Runs every hour at minute 45 to automatically approve any PENDING attendance older than 48 hours
+cron.schedule('45 * * * *', async () => {
   console.log('🔄 [Auto-Approval Protocol]: Scanning for pending attendance exceeding 48 hours...');
   const fortyEightHoursAgo = new Date(Date.now() - (48 * 60 * 60 * 1000));
 

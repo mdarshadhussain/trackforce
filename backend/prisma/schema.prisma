@@ -111,6 +111,11 @@ model Attendance {
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([employeeId])
+  @@index([date])
+  @@index([clockIn])
+  @@index([status])
 }
 
 model Break {

@@ -48,8 +48,9 @@ const PayslipModal: React.FC<PayslipModalProps> = ({ isOpen, onClose, data }) =>
             <div className="payslip-content-printable" id="printable-payslip">
               <div className="receipt-container">
                 <header className="receipt-header">
-                  <h1>TRACKFORCE</h1>
-                  <p>{t('salaryReceipt')}</p>
+                  <h1>CÔNG TY TNHH KỸ THUẬT ELEMECS VIỆT NAM</h1>
+                  <p>TAX CODE : 0317597681</p>
+                  <span className="title-tag">{t('salaryReceipt')}</span>
                   <div className="receipt-divider"></div>
                 </header>
 

@@ -777,7 +777,12 @@ const Attendance = () => {
       playSound('facial'); // Checking facial
 
       const detectionsPromise = (async () => {
-        const referenceImg = await faceapi.fetchImage(avatarUrl);
+        let referenceImg;
+        try {
+          referenceImg = await faceapi.fetchImage(avatarUrl);
+        } catch (fetchErr) {
+          throw new Error("Profile picture not found on the server. Please ask the administrator to re-upload your photo.");
+        }
         const capturedImg = await faceapi.fetchImage(biometricProof);
         const ref = await faceapi.detectSingleFace(referenceImg).withFaceLandmarks().withFaceDescriptor();
         const cap = await faceapi.detectSingleFace(capturedImg).withFaceLandmarks().withFaceDescriptor();
@@ -845,7 +850,12 @@ const Attendance = () => {
     if (modelsLoaded && user?.avatar) {
       try {
         const avatarUrl = user.avatar.startsWith('http') ? user.avatar : `${API_URL}${user.avatar}`;
-        const referenceImg = await faceapi.fetchImage(avatarUrl);
+        let referenceImg;
+        try {
+          referenceImg = await faceapi.fetchImage(avatarUrl);
+        } catch (fetchErr) {
+          throw new Error("Profile picture not found on the server. Please ask the administrator to re-upload your photo.");
+        }
         const capturedImg = await faceapi.fetchImage(biometricProof);
 
         // AI Timeout Guard
@@ -862,12 +872,20 @@ const Attendance = () => {
         const result = await Promise.race([detectionsPromise, timeoutPromise]) as any;
         const { ref: refDetection, cap: capDetection } = result;
 
-        if (refDetection?.descriptor && capDetection?.descriptor) {
-          const distance = faceapi.euclideanDistance(refDetection.descriptor, capDetection.descriptor);
-          isMatch = distance < 0.6;
+        if (!refDetection?.descriptor) {
+          throw new Error("No human face detected in the employee's profile picture.");
         }
-      } catch (err) {
+        if (!capDetection?.descriptor) {
+          throw new Error("Face not clearly detected by the camera. Please stand closer and ensure good lighting.");
+        }
+        const distance = faceapi.euclideanDistance(refDetection.descriptor, capDetection.descriptor);
+        isMatch = distance < 0.65;
+      } catch (err: any) {
         console.error("Verification error:", err);
+        addToast(err.message || "Verification failed", 'error');
+        setIsScanning(false);
+        setScanStatus('idle');
+        return;
       }
     }
 

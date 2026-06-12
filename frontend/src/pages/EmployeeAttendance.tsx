@@ -313,7 +313,7 @@ const EmployeeAttendance = () => {
       );
       const radius = emp.site.geofenceRadius || 500;
 
-      if (distance > radius && user.role === 'EMPLOYEE' && type === 'IN') {
+      if (distance > radius && user.role !== 'ADMIN' && type === 'IN') {
         playSound('error'); // Geofence mismatch warning beep
         await createSecurityAlert({
           type: 'GEOFENCE_VIOLATION',
@@ -378,18 +378,26 @@ const EmployeeAttendance = () => {
             isMatch = false; // Must match successfully if avatar exists
             try {
               const avatarUrl = user.avatar.startsWith('http') ? user.avatar : `${API_URL}${user.avatar}`;
-              const referenceImg = await faceapi.fetchImage(avatarUrl);
+              let referenceImg;
+              try {
+                referenceImg = await faceapi.fetchImage(avatarUrl);
+              } catch (fetchErr) {
+                throw new Error("Profile picture not found on the server. Please ask the administrator to re-upload your photo.");
+              }
               const capturedImg = await faceapi.fetchImage(biometricProof);
 
               const refDetection = await faceapi.detectSingleFace(referenceImg).withFaceLandmarks().withFaceDescriptor();
               const capDetection = await faceapi.detectSingleFace(capturedImg).withFaceLandmarks().withFaceDescriptor();
 
-              if (refDetection?.descriptor && capDetection?.descriptor) {
-                const distance = faceapi.euclideanDistance(refDetection.descriptor, capDetection.descriptor);
-                isMatch = distance < 0.6;
-              } else {
-                throw new Error("Face not clearly detected. Ensure your face is centered and well-lit.");
+              if (!refDetection?.descriptor) {
+                throw new Error("No human face detected in your profile picture. Please upload a clear photo of your face.");
               }
+              if (!capDetection?.descriptor) {
+                throw new Error("Your face was not clearly detected by the camera. Ensure you are centered and well-lit.");
+              }
+              const distance = faceapi.euclideanDistance(refDetection.descriptor, capDetection.descriptor);
+              // Make threshold slightly more lenient (0.65 instead of 0.6) to reduce false rejections
+              isMatch = distance < 0.65;
             } catch (err: any) {
               console.error("Biometric matching error:", err);
               throw new Error(err.message || "Face verification failed.");

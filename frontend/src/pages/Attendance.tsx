@@ -1431,111 +1431,129 @@ const Attendance = () => {
                   </div>
                 </motion.div>
               )}
-              {/* Reason Modal for Absent */}
-              {showAbsentReasonModal && (
-                <motion.div 
-                  initial={{ scale: 0.9, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.9, opacity: 0 }}
-                  className="glass-card scanner-modal-obsidian"
-                  style={{ maxWidth: '500px' }}
-                >
-                  <div className="modal-header-premium">
-                    <h3>Reason for Marking Absent</h3>
-                    <button className="close-btn-premium" onClick={() => setShowAbsentReasonModal(false)}><X size={20} /></button>
-                  </div>
-                  <div className="modal-body-premium" style={{ padding: '20px' }}>
-                    <textarea className="premium-input" placeholder="Enter reason..." value={absentReason} onChange={e => setAbsentReason(e.target.value)} rows={4} style={{ width: '100%' }} />
-                  </div>
-                  <div className="modal-actions-premium" style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
-                    <button className="btn btn-primary" onClick={() => {
-                      if (!absentReason.trim()) { addToast('Reason required.', 'warning'); return; }
-                      handleStatusUpdate(absentLogId!, 'ABSENT');
-                      createSecurityAlert({
-                        type: 'ABSENCE_REASON',
-                        message: `Absent reason: ${absentReason}`,
-                        severity: 'LOW',
-                        employeeId: purgeLogId || '',
-                        siteId: ''
-                      });
-                      setAbsentReason('');
-                      setShowAbsentReasonModal(false);
-                    }}>Submit Reason</button>
-                    <button className="btn btn-ghost" onClick={() => setShowAbsentReasonModal(false)}>Cancel</button>
-                  </div>
-                </motion.div>
-              )}
-              {/* Reason Modal for Purge */}
-              {showPurgeReasonModal && (
-                <motion.div 
-                  initial={{ scale: 0.9, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.9, opacity: 0 }}
-                  className="glass-card scanner-modal-obsidian"
-                  style={{ maxWidth: '500px' }}
-                >
-                  <div className="modal-header-premium">
-                    <h3>Reason for Deleting Attendance Record</h3>
-                    <button className="close-btn-premium" onClick={() => setShowPurgeReasonModal(false)}><X size={20} /></button>
-                  </div>
-                  <div className="modal-body-premium" style={{ padding: '20px' }}>
-                    <textarea className="premium-input" placeholder="Enter reason..." value={purgeReason} onChange={e => setPurgeReason(e.target.value)} rows={4} style={{ width: '100%' }} />
-                  </div>
-                  <div className="modal-actions-premium" style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
-                    <button className="btn btn-primary" onClick={() => {
-                      if (!purgeReason.trim()) { addToast('Reason required.', 'warning'); return; }
-                      // Perform actual purge
-                      confirmPurge();
-                      createSecurityAlert({
-                        type: 'PURGE_REASON',
-                        message: `Purge reason: ${purgeReason}`,
-                        severity: 'LOW',
-                        employeeId: purgeLogId || '',
-                        siteId: ''
-                      });
-                      setPurgeReason('');
-                      setShowPurgeReasonModal(false);
-                    }}>Submit Reason & Delete</button>
-                    <button className="btn btn-ghost" onClick={() => setShowPurgeReasonModal(false)}>Cancel</button>
-                  </div>
-                </motion.div>
-              )}
-              {/* Reason Modal for Reject */}
-              {showRejectReasonModal && (
-                <motion.div 
-                  initial={{ scale: 0.9, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.9, opacity: 0 }}
-                  className="glass-card scanner-modal-obsidian"
-                  style={{ maxWidth: '500px' }}
-                >
-                  <div className="modal-header-premium">
-                    <h3>Reason for Rejecting Attendance</h3>
-                    <button className="close-btn-premium" onClick={() => setShowRejectReasonModal(false)}><X size={20} /></button>
-                  </div>
-                  <div className="modal-body-premium" style={{ padding: '20px' }}>
-                    <textarea className="premium-input" placeholder="Enter reason..." value={rejectReason} onChange={e => setRejectReason(e.target.value)} rows={4} style={{ width: '100%' }} />
-                  </div>
-                  <div className="modal-actions-premium" style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
-                    <button className="btn btn-primary" onClick={() => {
-                      if (!rejectReason.trim()) { addToast('Reason required.', 'warning'); return; }
-                      handleStatusUpdate(rejectLogId!, 'REJECTED');
-                      createSecurityAlert({
-                        type: 'REJECTION_REASON',
-                        message: `Reject reason: ${rejectReason}`,
-                        severity: 'LOW',
-                        employeeId: rejectLogId || '',
-                        siteId: ''
-                      });
-                      setRejectReason('');
-                      setShowRejectReasonModal(false);
-                    }}>Submit Reason</button>
-                    <button className="btn btn-ghost" onClick={() => setShowRejectReasonModal(false)}>Cancel</button>
-                  </div>
-                </motion.div>
-              )}
             </AnimatePresence>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Reason Modal for Absent */}
+      <AnimatePresence>
+        {showAbsentReasonModal && (
+          <div className="proof-modal-overlay" onClick={() => setShowAbsentReasonModal(false)}>
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="glass-card scanner-modal-obsidian"
+              onClick={e => e.stopPropagation()}
+              style={{ maxWidth: '500px' }}
+            >
+              <div className="modal-header-premium">
+                <h3>Reason for Marking Absent</h3>
+                <button className="close-btn-premium" onClick={() => setShowAbsentReasonModal(false)}><X size={20} /></button>
+              </div>
+              <div className="modal-body-premium" style={{ padding: '20px' }}>
+                <textarea className="premium-input" placeholder="Enter reason..." value={absentReason} onChange={e => setAbsentReason(e.target.value)} rows={4} style={{ width: '100%' }} />
+              </div>
+              <div className="modal-actions-premium" style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                <button className="btn btn-primary" onClick={() => {
+                  if (!absentReason.trim()) { addToast('Reason required.', 'warning'); return; }
+                  handleStatusUpdate(absentLogId!, 'ABSENT');
+                  createSecurityAlert({
+                    type: 'ABSENCE_REASON',
+                    message: `Absent reason: ${absentReason}`,
+                    severity: 'LOW',
+                    employeeId: absentLogId || '',
+                    siteId: ''
+                  });
+                  setAbsentReason('');
+                  setShowAbsentReasonModal(false);
+                }}>Submit Reason</button>
+                <button className="btn btn-ghost" onClick={() => setShowAbsentReasonModal(false)}>Cancel</button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Reason Modal for Purge */}
+      <AnimatePresence>
+        {showPurgeReasonModal && (
+          <div className="proof-modal-overlay" onClick={() => setShowPurgeReasonModal(false)}>
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="glass-card scanner-modal-obsidian"
+              onClick={e => e.stopPropagation()}
+              style={{ maxWidth: '500px' }}
+            >
+              <div className="modal-header-premium">
+                <h3>Reason for Deleting Attendance Record</h3>
+                <button className="close-btn-premium" onClick={() => setShowPurgeReasonModal(false)}><X size={20} /></button>
+              </div>
+              <div className="modal-body-premium" style={{ padding: '20px' }}>
+                <textarea className="premium-input" placeholder="Enter reason..." value={purgeReason} onChange={e => setPurgeReason(e.target.value)} rows={4} style={{ width: '100%' }} />
+              </div>
+              <div className="modal-actions-premium" style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                <button className="btn btn-primary" onClick={() => {
+                  if (!purgeReason.trim()) { addToast('Reason required.', 'warning'); return; }
+                  // Perform actual purge
+                  confirmPurge();
+                  createSecurityAlert({
+                    type: 'PURGE_REASON',
+                    message: `Purge reason: ${purgeReason}`,
+                    severity: 'LOW',
+                    employeeId: purgeLogId || '',
+                    siteId: ''
+                  });
+                  setPurgeReason('');
+                  setShowPurgeReasonModal(false);
+                }}>Submit Reason & Delete</button>
+                <button className="btn btn-ghost" onClick={() => setShowPurgeReasonModal(false)}>Cancel</button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Reason Modal for Reject */}
+      <AnimatePresence>
+        {showRejectReasonModal && (
+          <div className="proof-modal-overlay" onClick={() => setShowRejectReasonModal(false)}>
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="glass-card scanner-modal-obsidian"
+              onClick={e => e.stopPropagation()}
+              style={{ maxWidth: '500px' }}
+            >
+              <div className="modal-header-premium">
+                <h3>Reason for Rejecting Attendance</h3>
+                <button className="close-btn-premium" onClick={() => setShowRejectReasonModal(false)}><X size={20} /></button>
+              </div>
+              <div className="modal-body-premium" style={{ padding: '20px' }}>
+                <textarea className="premium-input" placeholder="Enter reason..." value={rejectReason} onChange={e => setRejectReason(e.target.value)} rows={4} style={{ width: '100%' }} />
+              </div>
+              <div className="modal-actions-premium" style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                <button className="btn btn-primary" onClick={() => {
+                  if (!rejectReason.trim()) { addToast('Reason required.', 'warning'); return; }
+                  handleStatusUpdate(rejectLogId!, 'REJECTED');
+                  createSecurityAlert({
+                    type: 'REJECTION_REASON',
+                    message: `Reject reason: ${rejectReason}`,
+                    severity: 'LOW',
+                    employeeId: rejectLogId || '',
+                    siteId: ''
+                  });
+                  setRejectReason('');
+                  setShowRejectReasonModal(false);
+                }}>Submit Reason</button>
+                <button className="btn btn-ghost" onClick={() => setShowRejectReasonModal(false)}>Cancel</button>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
       <AnimatePresence>

@@ -547,12 +547,12 @@ const EmployeeAttendance = () => {
   const now = new Date();
   const currentHour = now.getHours();
   
-  // User cannot check in after 5:00 PM (17:00)
-  const isCheckInDisabled = isClockedIn || currentHour >= 17;
+  // User cannot check in after 7:00 PM (19:00)
+  const isCheckInDisabled = isClockedIn || currentHour >= 19;
   
-  // User cannot clock out after 22:59, OR if it is >= 5 PM and they clocked in >= 5 PM
+  // User cannot clock out after 22:59, OR if it is >= 7 PM and they clocked in >= 7 PM
   const clockInDate = isClockedIn && logs[0]?.clockIn ? new Date(logs[0].clockIn) : null;
-  const isCheckOutDisabled = !isClockedIn || currentHour >= 23 || (currentHour >= 17 && clockInDate !== null && clockInDate.getHours() >= 17);
+  const isCheckOutDisabled = !isClockedIn || currentHour >= 23 || (currentHour >= 19 && clockInDate !== null && clockInDate.getHours() >= 19);
 
   if (isLoading) return <div className="dashboard-loading"><div className="loading-spinner-watt"></div><span>{t('processing')}</span></div>;
 

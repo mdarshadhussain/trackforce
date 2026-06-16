@@ -348,7 +348,7 @@ const Dashboard = () => {
             const todayLogs = await fetchTodayLogs(user.id).catch(() => []);
             setIsClockedIn(todayLogs.length > 0 && !todayLogs[0].clockOut && todayLogs[0].status !== 'ABSENT');
             setTodayLogsCount(todayLogs.length);
-            setIsAbsentToday(todayLogs.some((l: any) => l.status === 'ABSENT') || (new Date().getHours() >= 17 && todayLogs.length === 0));
+            setIsAbsentToday(todayLogs.some((l: any) => l.status === 'ABSENT') || (new Date().getHours() >= 19 && todayLogs.length === 0));
           }
         }
       } catch (err) {

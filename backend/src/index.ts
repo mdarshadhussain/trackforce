@@ -419,7 +419,7 @@ app.post('/api/auth/login', async (req: Request, res: Response) => {
       employeeId: employee.employeeId, 
       role: employee.role,
       siteId: employee.siteId // Include siteId for management filtering
-    }, JWT_SECRET, { expiresIn: '24h' });
+    }, JWT_SECRET, { expiresIn: '12h' });
     res.json({ token, user: { ...employee, password: undefined } });
   } catch (error) {
     console.error("Login Error:", error);

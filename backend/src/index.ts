@@ -527,7 +527,7 @@ app.get('/api/sites', authenticateToken, async (req, res) => {
 });
 
 app.post('/api/sites', authenticateToken, requireAdmin, async (req, res) => {
-  const { name, location, displayAddress, managerName, latitude, longitude, geofenceRadius, workingStartTime } = req.body;
+  const { name, location, displayAddress, managerName, latitude, longitude, geofenceRadius, workingStartTime, lunchStartTime, lunchEndTime } = req.body;
   try {
     const site = await prisma.site.create({
       data: {
@@ -535,7 +535,9 @@ app.post('/api/sites', authenticateToken, requireAdmin, async (req, res) => {
         latitude: parseFloat(latitude) || 0,
         longitude: parseFloat(longitude) || 0,
         geofenceRadius: parseFloat(geofenceRadius) || 500,
-        workingStartTime: workingStartTime || "07:00"
+        workingStartTime: workingStartTime || "07:00",
+        lunchStartTime: lunchStartTime !== undefined ? lunchStartTime : "12:00",
+        lunchEndTime: lunchEndTime !== undefined ? lunchEndTime : "13:00"
       }
     });
     res.status(201).json(site);
@@ -545,7 +547,7 @@ app.post('/api/sites', authenticateToken, requireAdmin, async (req, res) => {
 });
 
 app.put('/api/sites/:id', authenticateToken, requireAdmin, async (req, res) => {
-  const { name, location, displayAddress, managerName, geofenceRadius, latitude, longitude, workingStartTime } = req.body;
+  const { name, location, displayAddress, managerName, geofenceRadius, latitude, longitude, workingStartTime, lunchStartTime, lunchEndTime } = req.body;
   try {
     const site = await prisma.site.update({
       where: { id: req.params.id },
@@ -554,7 +556,9 @@ app.put('/api/sites/:id', authenticateToken, requireAdmin, async (req, res) => {
         geofenceRadius: geofenceRadius ? parseFloat(geofenceRadius) : undefined,
         latitude: latitude ? parseFloat(latitude) : undefined,
         longitude: longitude ? parseFloat(longitude) : undefined,
-        workingStartTime: workingStartTime !== undefined ? workingStartTime : undefined
+        workingStartTime: workingStartTime !== undefined ? workingStartTime : undefined,
+        lunchStartTime: lunchStartTime !== undefined ? lunchStartTime : undefined,
+        lunchEndTime: lunchEndTime !== undefined ? lunchEndTime : undefined
       }
     });
     res.json(site);

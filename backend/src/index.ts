@@ -20,6 +20,17 @@ const prisma = new PrismaClient();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
 
+const getFileUrl = (folderId: string, typeDir: string, filename: string) => {
+  if (process.env.MEDIA_URL) {
+    const baseUrl = process.env.MEDIA_URL.endsWith('/') ? process.env.MEDIA_URL.slice(0, -1) : process.env.MEDIA_URL;
+    return `${baseUrl}/${folderId}/${typeDir}/${filename}`;
+  }
+  if (typeDir === 'profile_picture') {
+    return `/api/uploads/${folderId}/${typeDir}/${filename}`;
+  }
+  return `/api/media?path=${folderId}/${typeDir}/${filename}`;
+};
+
 // Middleware
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
@@ -49,7 +60,7 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
 app.use(morgan('combined'));
 
 // Static File Server
-const UPLOADS_DIR = path.join(__dirname, '../uploads');
+const UPLOADS_DIR = process.env.MEDIA_DIR || path.join(__dirname, '../uploads');
 if (!fs.existsSync(UPLOADS_DIR)) {
   fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 }
@@ -707,10 +718,9 @@ app.post('/api/employees', authenticateToken, requireAdmin, employeeUploads, asy
     let avatar = null, cvPath = null, idDocPath = null;
     if (req.files) {
       const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-      if (files.avatar) avatar = `/api/uploads/${employeeId}/profile_picture/${files.avatar[0].filename}`;
-      if (files.cv) cvPath = `/api/media?path=${employeeId}/cv/${files.cv[0].filename}`;
-      if (files.idDoc) idDocPath = `/api/media?path=${employeeId}/passport_id/${files.idDoc[0].filename}`;
-
+      if (files.avatar) avatar = getFileUrl(employeeId, 'profile_picture', files.avatar[0].filename);
+      if (files.cv) cvPath = getFileUrl(employeeId, 'cv', files.cv[0].filename);
+      if (files.idDoc) idDocPath = getFileUrl(employeeId, 'passport_id', files.idDoc[0].filename);
     }
     const parseDate = (d: any) => {
       if (!d || d === '' || d === 'null' || d === 'undefined') return null;
@@ -832,9 +842,9 @@ app.put('/api/employees/:id', authenticateToken, employeeUploads, async (req: an
     }
     if (req.files) {
       const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-      if (files.avatar) data.avatar = `/api/media?path=${existing.employeeId}/profile_picture/${files.avatar[0].filename}`;
-      if (files.cv) data.cvPath = `/api/media?path=${existing.employeeId}/cv/${files.cv[0].filename}`;
-      if (files.idDoc) data.idDocPath = `/api/media?path=${existing.employeeId}/passport_id/${files.idDoc[0].filename}`;
+      if (files.avatar) data.avatar = getFileUrl(existing.employeeId, 'profile_picture', files.avatar[0].filename);
+      if (files.cv) data.cvPath = getFileUrl(existing.employeeId, 'cv', files.cv[0].filename);
+      if (files.idDoc) data.idDocPath = getFileUrl(existing.employeeId, 'passport_id', files.idDoc[0].filename);
     }
     const parseDate = (d: any) => {
       if (!d || d === '' || d === 'null' || d === 'undefined') return null;
@@ -946,7 +956,7 @@ app.post('/api/attendance/clock-in/:id', authenticateToken, upload.single('biome
     
     let biometricProof = null;
     if (req.file) {
-      biometricProof = `/api/uploads/${employee.employeeId}/attendance/${req.file.filename}`;
+      biometricProof = getFileUrl(employee.employeeId, 'attendance', req.file.filename);
     } else if (req.body.biometricProof && req.body.biometricProof.startsWith('data:image')) {
       try {
         const base64Data = req.body.biometricProof.replace(/^data:image\/\w+;base64,/, "");
@@ -958,7 +968,7 @@ app.post('/api/attendance/clock-in/:id', authenticateToken, upload.single('biome
         }
         const filePath = path.join(userDir, filename);
         fs.writeFileSync(filePath, buffer);
-        biometricProof = `/api/uploads/${employee.employeeId}/attendance/${filename}`;
+        biometricProof = getFileUrl(employee.employeeId, 'attendance', filename);
       } catch (err) {
         console.error("Base64 clock-in biometricProof save error:", err);
       }
@@ -1005,7 +1015,7 @@ app.post('/api/attendance/clock-out/:id', authenticateToken, upload.single('biom
 
     let biometricProofOut = null;
     if (req.file) {
-      biometricProofOut = `/api/uploads/${employee.employeeId}/attendance/${req.file.filename}`;
+      biometricProofOut = getFileUrl(employee.employeeId, 'attendance', req.file.filename);
     } else if (req.body.biometricProof && req.body.biometricProof.startsWith('data:image')) {
       try {
         const base64Data = req.body.biometricProof.replace(/^data:image\/\w+;base64,/, "");
@@ -1017,7 +1027,7 @@ app.post('/api/attendance/clock-out/:id', authenticateToken, upload.single('biom
         }
         const filePath = path.join(userDir, filename);
         fs.writeFileSync(filePath, buffer);
-        biometricProofOut = `/api/uploads/${employee.employeeId}/attendance/${filename}`;
+        biometricProofOut = getFileUrl(employee.employeeId, 'attendance', filename);
       } catch (err) {
         console.error("Base64 clock-out biometricProof save error:", err);
       }
@@ -1151,7 +1161,7 @@ app.put('/api/attendance/:id', authenticateToken, requireManagement, upload.sing
     };
 
     if (req.file) {
-      dataToUpdate.biometricProof = `/api/media?path=${existing.employee.employeeId}/attendance/${req.file.filename}`;
+      dataToUpdate.biometricProof = getFileUrl(existing.employee.employeeId, 'attendance', req.file.filename);
       if (existing.status === 'ABSENT') {
         dataToUpdate.status = 'PRESENT';
       }
@@ -1199,7 +1209,7 @@ app.post('/api/attendance/manager-log', authenticateToken, requireManagement, up
 
     let proofPath = null;
     if (req.file) {
-      proofPath = `/api/uploads/${employee.employeeId}/attendance/${req.file.filename}`;
+      proofPath = getFileUrl(employee.employeeId, 'attendance', req.file.filename);
     } else if (req.body.biometricProof && req.body.biometricProof.startsWith('data:image')) {
       try {
         const base64Data = req.body.biometricProof.replace(/^data:image\/\w+;base64,/, "");
@@ -1211,7 +1221,7 @@ app.post('/api/attendance/manager-log', authenticateToken, requireManagement, up
         }
         const filePath = path.join(userDir, filename);
         fs.writeFileSync(filePath, buffer);
-        proofPath = `/api/uploads/${employee.employeeId}/attendance/${filename}`;
+        proofPath = getFileUrl(employee.employeeId, 'attendance', filename);
       } catch (err) {
         console.error("Base64 manager-log biometricProof save error:", err);
       }
@@ -1565,7 +1575,7 @@ app.post('/api/payroll/payslips/pay', authenticateToken, requireManagement, uplo
 
     let receiptPath = null;
     if (req.file) {
-      receiptPath = `/api/media?path=${existingPayslip.employee.employeeId}/receipts/${req.file.filename}`;
+      receiptPath = getFileUrl(existingPayslip.employee.employeeId, 'receipts', req.file.filename);
     }
 
     const payslip = await prisma.payslip.update({

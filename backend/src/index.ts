@@ -1956,7 +1956,7 @@ app.get('/api/stats', authenticateToken, async (req: any, res: Response) => {
         recentLogs.push({
           type: 'LOG',
           title: l.clockOut ? 'Shift Completed' : 'Session Active',
-          message: `Check-in recorded at ${l.clockIn ? new Date(l.clockIn).toLocaleTimeString() : 'N/A'}`,
+          message: `Check-in recorded at ${l.clockIn ? new Date(l.clockIn).toLocaleTimeString('en-US', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit', hour12: true }) : 'N/A'}`,
           time: l.createdAt
         });
       });

@@ -20,15 +20,16 @@ const prisma = new PrismaClient();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
 
-const getFileUrl = (folderId: string, typeDir: string, filename: string) => {
+const getFileUrl = (subPath: string) => {
+  const normalized = subPath.replace(/\\/g, '/');
   if (process.env.MEDIA_URL) {
     const baseUrl = process.env.MEDIA_URL.endsWith('/') ? process.env.MEDIA_URL.slice(0, -1) : process.env.MEDIA_URL;
-    return `${baseUrl}/${folderId}/${typeDir}/${filename}`;
+    return `${baseUrl}/${normalized}`;
   }
-  if (typeDir === 'profile_picture') {
-    return `/api/uploads/${folderId}/${typeDir}/${filename}`;
+  if (normalized.startsWith('PROFILE/') && normalized.includes('/photo/')) {
+    return `/api/uploads/${normalized}`;
   }
-  return `/api/media?path=${folderId}/${typeDir}/${filename}`;
+  return `/api/media?path=${normalized}`;
 };
 
 // Middleware
@@ -118,15 +119,17 @@ const storage = multer.diskStorage({
       }
     }
 
-    let typeDir = 'documents';
-
-    if (file.fieldname === 'avatar') typeDir = 'profile_picture';
-    else if (file.fieldname === 'cv') typeDir = 'cv';
-    else if (file.fieldname === 'idDoc') typeDir = 'passport_id';
-    else if (file.fieldname === 'biometricProof') typeDir = 'attendance';
-    else if (file.fieldname === 'receipt') typeDir = 'receipts';
-
-    const userDir = path.join(UPLOADS_DIR, folderId, typeDir);
+    let userDir;
+    if (file.fieldname === 'avatar') {
+      userDir = path.join(UPLOADS_DIR, 'PROFILE', folderId, 'photo');
+    } else if (file.fieldname === 'cv' || file.fieldname === 'idDoc' || file.fieldname === 'receipt') {
+      userDir = path.join(UPLOADS_DIR, 'PROFILE', folderId, 'docs');
+    } else if (file.fieldname === 'biometricProof') {
+      const dateStr = req.body.date || new Date().toISOString().split('T')[0];
+      userDir = path.join(UPLOADS_DIR, 'ATTENDANCE', folderId, dateStr);
+    } else {
+      userDir = path.join(UPLOADS_DIR, 'PROFILE', folderId, 'docs');
+    }
 
     if (!fs.existsSync(userDir)) {
       fs.mkdirSync(userDir, { recursive: true });
@@ -718,9 +721,9 @@ app.post('/api/employees', authenticateToken, requireAdmin, employeeUploads, asy
     let avatar = null, cvPath = null, idDocPath = null;
     if (req.files) {
       const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-      if (files.avatar) avatar = getFileUrl(employeeId, 'profile_picture', files.avatar[0].filename);
-      if (files.cv) cvPath = getFileUrl(employeeId, 'cv', files.cv[0].filename);
-      if (files.idDoc) idDocPath = getFileUrl(employeeId, 'passport_id', files.idDoc[0].filename);
+      if (files.avatar) avatar = getFileUrl(`PROFILE/${employeeId}/photo/${files.avatar[0].filename}`);
+      if (files.cv) cvPath = getFileUrl(`PROFILE/${employeeId}/docs/${files.cv[0].filename}`);
+      if (files.idDoc) idDocPath = getFileUrl(`PROFILE/${employeeId}/docs/${files.idDoc[0].filename}`);
     }
     const parseDate = (d: any) => {
       if (!d || d === '' || d === 'null' || d === 'undefined') return null;
@@ -842,9 +845,9 @@ app.put('/api/employees/:id', authenticateToken, employeeUploads, async (req: an
     }
     if (req.files) {
       const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-      if (files.avatar) data.avatar = getFileUrl(existing.employeeId, 'profile_picture', files.avatar[0].filename);
-      if (files.cv) data.cvPath = getFileUrl(existing.employeeId, 'cv', files.cv[0].filename);
-      if (files.idDoc) data.idDocPath = getFileUrl(existing.employeeId, 'passport_id', files.idDoc[0].filename);
+      if (files.avatar) data.avatar = getFileUrl(`PROFILE/${existing.employeeId}/photo/${files.avatar[0].filename}`);
+      if (files.cv) data.cvPath = getFileUrl(`PROFILE/${existing.employeeId}/docs/${files.cv[0].filename}`);
+      if (files.idDoc) data.idDocPath = getFileUrl(`PROFILE/${existing.employeeId}/docs/${files.idDoc[0].filename}`);
     }
     const parseDate = (d: any) => {
       if (!d || d === '' || d === 'null' || d === 'undefined') return null;
@@ -955,20 +958,21 @@ app.post('/api/attendance/clock-in/:id', authenticateToken, upload.single('biome
     }
     
     let biometricProof = null;
+    const dateStr = new Date().toISOString().split('T')[0];
     if (req.file) {
-      biometricProof = getFileUrl(employee.employeeId, 'attendance', req.file.filename);
+      biometricProof = getFileUrl(`ATTENDANCE/${employee.employeeId}/${dateStr}/${req.file.filename}`);
     } else if (req.body.biometricProof && req.body.biometricProof.startsWith('data:image')) {
       try {
         const base64Data = req.body.biometricProof.replace(/^data:image\/\w+;base64,/, "");
         const buffer = Buffer.from(base64Data, 'base64');
         const filename = `proof_${employee.employeeId}_${Date.now()}.jpg`;
-        const userDir = path.join(UPLOADS_DIR, employee.employeeId, 'attendance');
+        const userDir = path.join(UPLOADS_DIR, 'ATTENDANCE', employee.employeeId, dateStr);
         if (!fs.existsSync(userDir)) {
           fs.mkdirSync(userDir, { recursive: true });
         }
         const filePath = path.join(userDir, filename);
         fs.writeFileSync(filePath, buffer);
-        biometricProof = getFileUrl(employee.employeeId, 'attendance', filename);
+        biometricProof = getFileUrl(`ATTENDANCE/${employee.employeeId}/${dateStr}/${filename}`);
       } catch (err) {
         console.error("Base64 clock-in biometricProof save error:", err);
       }
@@ -1014,20 +1018,21 @@ app.post('/api/attendance/clock-out/:id', authenticateToken, upload.single('biom
     }
 
     let biometricProofOut = null;
+    const dateStr = new Date().toISOString().split('T')[0];
     if (req.file) {
-      biometricProofOut = getFileUrl(employee.employeeId, 'attendance', req.file.filename);
+      biometricProofOut = getFileUrl(`ATTENDANCE/${employee.employeeId}/${dateStr}/${req.file.filename}`);
     } else if (req.body.biometricProof && req.body.biometricProof.startsWith('data:image')) {
       try {
         const base64Data = req.body.biometricProof.replace(/^data:image\/\w+;base64,/, "");
         const buffer = Buffer.from(base64Data, 'base64');
         const filename = `proof_out_${employee.employeeId}_${Date.now()}.jpg`;
-        const userDir = path.join(UPLOADS_DIR, employee.employeeId, 'attendance');
+        const userDir = path.join(UPLOADS_DIR, 'ATTENDANCE', employee.employeeId, dateStr);
         if (!fs.existsSync(userDir)) {
           fs.mkdirSync(userDir, { recursive: true });
         }
         const filePath = path.join(userDir, filename);
         fs.writeFileSync(filePath, buffer);
-        biometricProofOut = getFileUrl(employee.employeeId, 'attendance', filename);
+        biometricProofOut = getFileUrl(`ATTENDANCE/${employee.employeeId}/${dateStr}/${filename}`);
       } catch (err) {
         console.error("Base64 clock-out biometricProof save error:", err);
       }
@@ -1161,7 +1166,8 @@ app.put('/api/attendance/:id', authenticateToken, requireManagement, upload.sing
     };
 
     if (req.file) {
-      dataToUpdate.biometricProof = getFileUrl(existing.employee.employeeId, 'attendance', req.file.filename);
+      const dateStr = new Date(existing.date || (clockIn ? new Date(clockIn) : new Date())).toISOString().split('T')[0];
+      dataToUpdate.biometricProof = getFileUrl(`ATTENDANCE/${existing.employee.employeeId}/${dateStr}/${req.file.filename}`);
       if (existing.status === 'ABSENT') {
         dataToUpdate.status = 'PRESENT';
       }
@@ -1208,20 +1214,21 @@ app.post('/api/attendance/manager-log', authenticateToken, requireManagement, up
     }
 
     let proofPath = null;
+    const dateStr = req.body.date || new Date().toISOString().split('T')[0];
     if (req.file) {
-      proofPath = getFileUrl(employee.employeeId, 'attendance', req.file.filename);
+      proofPath = getFileUrl(`ATTENDANCE/${employee.employeeId}/${dateStr}/${req.file.filename}`);
     } else if (req.body.biometricProof && req.body.biometricProof.startsWith('data:image')) {
       try {
         const base64Data = req.body.biometricProof.replace(/^data:image\/\w+;base64,/, "");
         const buffer = Buffer.from(base64Data, 'base64');
         const filename = `proof_manager_${employee.employeeId}_${Date.now()}.jpg`;
-        const userDir = path.join(UPLOADS_DIR, employee.employeeId, 'attendance');
+        const userDir = path.join(UPLOADS_DIR, 'ATTENDANCE', employee.employeeId, dateStr);
         if (!fs.existsSync(userDir)) {
           fs.mkdirSync(userDir, { recursive: true });
         }
         const filePath = path.join(userDir, filename);
         fs.writeFileSync(filePath, buffer);
-        proofPath = getFileUrl(employee.employeeId, 'attendance', filename);
+        proofPath = getFileUrl(`ATTENDANCE/${employee.employeeId}/${dateStr}/${filename}`);
       } catch (err) {
         console.error("Base64 manager-log biometricProof save error:", err);
       }
@@ -1575,7 +1582,7 @@ app.post('/api/payroll/payslips/pay', authenticateToken, requireManagement, uplo
 
     let receiptPath = null;
     if (req.file) {
-      receiptPath = getFileUrl(existingPayslip.employee.employeeId, 'receipts', req.file.filename);
+      receiptPath = getFileUrl(`PROFILE/${existingPayslip.employee.employeeId}/docs/${req.file.filename}`);
     }
 
     const payslip = await prisma.payslip.update({

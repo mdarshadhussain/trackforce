@@ -17,6 +17,7 @@ import { useAuth } from '../context/AuthContext';
 import { clockIn, clockOut, fetchTodayLogs, fetchAllLogs, createSecurityAlert, fetchEmployeeById } from '../api/api';
 import { loadFaceApiModels, areModelsLoaded } from '../utils/aiModels';
 import './EmployeeAttendance.css';
+import { getAbsoluteFileUrl } from '../utils/url';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -377,7 +378,7 @@ const EmployeeAttendance = () => {
           if (modelsLoaded && user?.avatar) {
             isMatch = false; // Must match successfully if avatar exists
             try {
-              const avatarUrl = user.avatar.startsWith('http') ? user.avatar : `${API_URL}${user.avatar}`;
+              const avatarUrl = getAbsoluteFileUrl(user.avatar, API_URL);
               let referenceImg;
               try {
                 referenceImg = await faceapi.fetchImage(avatarUrl);
@@ -564,9 +565,7 @@ const EmployeeAttendance = () => {
             className="vp-avatar"
             src={
               user?.avatar 
-                ? (user.avatar.startsWith('http') || user.avatar.startsWith('data:') 
-                    ? user.avatar 
-                    : `${API_URL}${user.avatar.startsWith('/') ? user.avatar : `/${user.avatar}`}`) 
+                ? getAbsoluteFileUrl(user.avatar, API_URL) 
                 : "https://api.dicebear.com/7.x/avataaars/svg?seed=Staff"
             } 
             alt="Avatar" 

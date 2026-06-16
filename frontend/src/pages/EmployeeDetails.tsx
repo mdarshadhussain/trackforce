@@ -32,10 +32,10 @@ import { motion } from 'framer-motion';
 
 import { fetchEmployeeFullProfile } from '../api/api';
 import DocumentModal from '../components/DocumentModal';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import './EmployeeDetails.css';
-import { useTranslation } from 'react-i18next';
-
+import { getAbsoluteFileUrl } from '../utils/url';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -122,7 +122,7 @@ const EmployeeDetails = () => {
         <div className="hero-avatar-wrapper">
           <div className="hero-avatar-large">
             {employee.avatar ? (
-              <img src={employee.avatar.startsWith('http') ? employee.avatar : `${API_URL}${employee.avatar}`} alt="" onError={(e) => { e.currentTarget.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${employee.firstName || 'User'}`; }} />
+              <img src={getAbsoluteFileUrl(employee.avatar, API_URL)} alt="" onError={(e) => { e.currentTarget.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${employee.firstName || 'User'}`; }} />
             ) : (
               <User size={64} />
             )}

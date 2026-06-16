@@ -20,6 +20,7 @@ import { fetchEmployees, deleteEmployee, fetchSites, importEmployeesFromExcel, d
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 import { exportToCSV } from '../utils/export';
+import { getAbsoluteFileUrl } from '../utils/url';
 import { useAuth } from '../context/AuthContext';
 import Toast from '../components/Toast';
 import type { ToastType } from '../components/Toast';
@@ -254,7 +255,13 @@ const Employees = () => {
               <div className="mec-header">
                 <div className="mec-profile">
                   <div className="avatar-small">
-                    {emp.avatar ? <img src={emp.avatar.startsWith('http') ? emp.avatar : `${API_URL}${emp.avatar}`} alt="Avatar" onError={(e) => { e.currentTarget.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${emp.firstName || 'User'}`; }} /> : emp.firstName.charAt(0)}
+                    {emp.avatar ? (
+                      <img 
+                        src={getAbsoluteFileUrl(emp.avatar, API_URL)} 
+                        alt="Avatar" 
+                        onError={(e) => { e.currentTarget.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${emp.firstName || 'User'}`; }} 
+                      />
+                    ) : emp.firstName.charAt(0)}
                   </div>
                   <div className="name-stack">
                     <span className="full-name">{emp.firstName} {emp.lastName}</span>
@@ -308,7 +315,7 @@ const Employees = () => {
                       <div className="avatar-small" style={{ marginRight: '8px' }}>
                         {emp.avatar ? (
                           <img 
-                            src={emp.avatar.startsWith('http') ? emp.avatar : `${API_URL}${emp.avatar}`} 
+                            src={getAbsoluteFileUrl(emp.avatar, API_URL)} 
                             alt="Avatar" 
                             onError={(e) => { 
                               e.currentTarget.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${emp.firstName || 'User'}`; 

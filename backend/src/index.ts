@@ -65,6 +65,21 @@ const UPLOADS_DIR = process.env.MEDIA_DIR || path.join(__dirname, '../uploads');
 if (!fs.existsSync(UPLOADS_DIR)) {
   fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 }
+
+// Ensure .htaccess exists with CORS configuration in UPLOADS_DIR to allow frontend origins to fetch media assets
+try {
+  const htaccessPath = path.join(UPLOADS_DIR, '.htaccess');
+  const htaccessContent = `<IfModule mod_headers.c>
+    Header set Access-Control-Allow-Origin "*"
+    Header set Access-Control-Allow-Methods "GET, OPTIONS"
+    Header set Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept"
+</IfModule>
+`;
+  fs.writeFileSync(htaccessPath, htaccessContent);
+} catch (err) {
+  console.error("Failed to write .htaccess to UPLOADS_DIR:", err);
+}
+
 app.use('/uploads', express.static(UPLOADS_DIR));
 app.use('/api/uploads', express.static(UPLOADS_DIR));
 

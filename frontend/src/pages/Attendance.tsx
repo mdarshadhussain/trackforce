@@ -1013,12 +1013,12 @@ const Attendance = () => {
   // };
 
   const confirmPurge = async () => {
-    if (!logToPurge) return;
+    if (!purgeLogId) return;
     try {
-      await deleteAttendance(logToPurge);
+      await deleteAttendance(purgeLogId);
       addToast('Log purged successfully', 'success');
       setShowPurgeConfirm(false);
-      setLogToPurge(null);
+      setPurgeLogId(null);
       loadData();
     } catch (err) {
       addToast('Failed to purge log', 'error');

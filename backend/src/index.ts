@@ -17,6 +17,65 @@ dotenv.config();
 
 const app = express();
 const prisma = new PrismaClient();
+
+// One-off database cleanup for TF001, TF002, TF003, TF004
+const cleanupEmployees = async () => {
+  const idsToDelete = ['TF001', 'TF002', 'TF003', 'TF004'];
+  console.log("Starting database cleanup for employees:", idsToDelete);
+  try {
+    const employees = await prisma.employee.findMany({
+      where: { employeeId: { in: idsToDelete } }
+    });
+    if (employees.length === 0) {
+      console.log("No employees found matching these IDs.");
+      return;
+    }
+    const dbIds = employees.map(e => e.id);
+    console.log(`Found db IDs to delete: ${dbIds.join(', ')}`);
+    
+    // 1. Delete Break records
+    const attendanceRecords = await prisma.attendance.findMany({
+      where: { employeeId: { in: dbIds } },
+      select: { id: true }
+    });
+    const attendanceIds = attendanceRecords.map(a => a.id);
+    if (attendanceIds.length > 0) {
+      const deletedBreaks = await prisma.break.deleteMany({
+        where: { attendanceId: { in: attendanceIds } }
+      });
+      console.log(`Deleted ${deletedBreaks.count} Break records.`);
+    }
+    
+    // 2. Delete Attendance records
+    const deletedAttendance = await prisma.attendance.deleteMany({
+      where: { employeeId: { in: dbIds } }
+    });
+    console.log(`Deleted ${deletedAttendance.count} Attendance records.`);
+    
+    // 3. Delete Tracking records
+    const deletedTracking = await prisma.tracking.deleteMany({
+      where: { employeeId: { in: dbIds } }
+    });
+    console.log(`Deleted ${deletedTracking.count} Tracking records.`);
+    
+    // 4. Delete Payslip records
+    const deletedPayslips = await prisma.payslip.deleteMany({
+      where: { employeeId: { in: dbIds } }
+    });
+    console.log(`Deleted ${deletedPayslips.count} Payslip records.`);
+    
+    // 5. Delete Employee records
+    const deletedEmployees = await prisma.employee.deleteMany({
+      where: { id: { in: dbIds } }
+    });
+    console.log(`Deleted ${deletedEmployees.count} Employee records.`);
+    console.log("Database cleanup completed successfully.");
+  } catch (err) {
+    console.error("Error during database cleanup:", err);
+  }
+};
+cleanupEmployees();
+
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
 

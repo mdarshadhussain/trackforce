@@ -161,14 +161,18 @@ const calculateAdjustedDuration = (
   const clockOut = new Date(clockOutStr);
   if (isNaN(clockIn.getTime()) || isNaN(clockOut.getTime())) return 0;
 
-  let start = new Date(clockIn);
-  if (workingStartTime) {
-    const expectedStart = new Date(clockIn);
-    const [startHH, startMM] = workingStartTime.split(':').map(Number);
-    expectedStart.setHours(startHH, startMM, 0, 0);
+  // Shift to Vietnam timezone (GMT+7)
+  const localClockIn = new Date(clockIn.getTime() + 7 * 60 * 60 * 1000);
+  const localClockOut = new Date(clockOut.getTime() + 7 * 60 * 60 * 1000);
 
-    if (clockIn > expectedStart) {
-      const minsLate = (clockIn.getTime() - expectedStart.getTime()) / (1000 * 60);
+  let start = new Date(localClockIn);
+  if (workingStartTime) {
+    const expectedStart = new Date(localClockIn);
+    const [startHH, startMM] = workingStartTime.split(':').map(Number);
+    expectedStart.setUTCHours(startHH, startMM, 0, 0);
+
+    if (localClockIn > expectedStart) {
+      const minsLate = (localClockIn.getTime() - expectedStart.getTime()) / (1000 * 60);
       const blockNumber = Math.floor(minsLate / 30);
       const blockStartMs = expectedStart.getTime() + blockNumber * 30 * 60 * 1000;
       const offset = minsLate - blockNumber * 30;
@@ -182,7 +186,7 @@ const calculateAdjustedDuration = (
     }
   }
 
-  let durationMs = clockOut.getTime() - start.getTime();
+  let durationMs = localClockOut.getTime() - start.getTime();
   if (breaks && breaks.length > 0) {
     breaks.forEach(b => {
       if (b.startTime && b.endTime) {
@@ -191,20 +195,20 @@ const calculateAdjustedDuration = (
     });
   }
 
-  if (start && clockOut) {
+  if (start && localClockOut) {
     const startOfDay = new Date(start);
-    startOfDay.setHours(0, 0, 0, 0);
+    startOfDay.setUTCHours(0, 0, 0, 0);
     const [lS_HH, lS_MM] = (lunchStartTime || "12:00").split(":").map(Number);
     const [lE_HH, lE_MM] = (lunchEndTime || "13:00").split(":").map(Number);
     
     const lunchStart = new Date(startOfDay);
-    lunchStart.setHours(lS_HH, lS_MM, 0, 0);
+    lunchStart.setUTCHours(lS_HH, lS_MM, 0, 0);
     
     const lunchEnd = new Date(startOfDay);
-    lunchEnd.setHours(lE_HH, lE_MM, 0, 0);
+    lunchEnd.setUTCHours(lE_HH, lE_MM, 0, 0);
 
     const overlapStart = new Date(Math.max(start.getTime(), lunchStart.getTime()));
-    const overlapEnd = new Date(Math.min(clockOut.getTime(), lunchEnd.getTime()));
+    const overlapEnd = new Date(Math.min(localClockOut.getTime(), lunchEnd.getTime()));
     const overlapMs = Math.max(0, overlapEnd.getTime() - overlapStart.getTime());
     
     durationMs -= overlapMs;

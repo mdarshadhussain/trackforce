@@ -207,11 +207,36 @@ const formatDateDDMMYYYY = (date: Date) => {
 };
 
 
-const getLogHoursAndOvertime = (log: any, workingStartTimeStr: string = '07:00') => {
+const getLogHoursAndOvertime = (log: any, workingStartTimeStr: string = '07:00', lunchStartStr?: string, lunchEndStr?: string) => {
   if (!log.clockIn || !log.clockOut) return { totalHours: 0, overtimeHours: 0 };
   const adjustedInTime = getAdjustedClockIn(log.clockIn, workingStartTimeStr);
   const outTime = new Date(log.clockOut).getTime();
   let diffMins = Math.round((outTime - adjustedInTime) / 60000);
+
+  // Subtract lunch overlap if specified
+  const shiftDate = new Date(log.clockIn);
+  if (lunchStartStr && lunchEndStr) {
+    try {
+      const [startH, startM] = lunchStartStr.split(':').map(Number);
+      const [endH, endM] = lunchEndStr.split(':').map(Number);
+      
+      const lunchStart = new Date(shiftDate);
+      lunchStart.setHours(startH, startM, 0, 0);
+      
+      const lunchEnd = new Date(shiftDate);
+      lunchEnd.setHours(endH, endM, 0, 0);
+      
+      const overlapStart = Math.max(adjustedInTime, lunchStart.getTime());
+      const overlapEnd = Math.min(outTime, lunchEnd.getTime());
+      
+      if (overlapStart < overlapEnd) {
+        const lunchOverlapMins = Math.round((overlapEnd - overlapStart) / 60000);
+        diffMins -= lunchOverlapMins;
+      }
+    } catch (err) {
+      console.error("Error calculating lunch overlap:", err);
+    }
+  }
 
   if (log.breaks && Array.isArray(log.breaks)) {
     log.breaks.forEach((b: any) => {
@@ -1298,7 +1323,12 @@ const Payroll = () => {
                           const logSite = sites.find((s: any) => s.id === siteId);
                           const workingStartTime = logSite?.workingStartTime || '07:00';
 
-                          const { totalHours, overtimeHours } = getLogHoursAndOvertime(log, workingStartTime);
+                          const { totalHours, overtimeHours } = getLogHoursAndOvertime(
+                             log,
+                             workingStartTime,
+                             logSite?.lunchStartTime,
+                             logSite?.lunchEndTime
+                           );
                           checkInText = log.clockIn ? new Date(log.clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '--:--';
                           checkOutText = log.clockOut ? new Date(log.clockOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '--:--';
                           totalHoursText = totalHours > 0 ? `${totalHours.toFixed(1)}h` : '0.0h';

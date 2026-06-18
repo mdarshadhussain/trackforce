@@ -1827,7 +1827,10 @@ app.get('/api/stats', authenticateToken, async (req: any, res: Response) => {
     
     // 1. Core Counts
     const totalEmployees = await prisma.employee.count({ 
-      where: isManager ? { siteId: req.user.siteId } : (isAdmin ? {} : { id: req.user.id }) 
+      where: {
+        role: { not: 'ADMIN' },
+        ...(isManager ? { siteId: req.user.siteId } : (isAdmin ? {} : { id: req.user.id }))
+      }
     });
     const activeNow = await prisma.attendance.count({ 
       where: { 
@@ -1848,18 +1851,13 @@ app.get('/api/stats', authenticateToken, async (req: any, res: Response) => {
       where: {
         date: { gte: todayStart, lte: todayEnd },
         status: { not: 'ABSENT' },
+        employee: { role: { not: 'ADMIN' } },
         ...(isManager ? { siteId: req.user.siteId } : (isAdmin ? {} : { employeeId: req.user.id }))
       }
     }).then(groups => groups.length);
 
-    const absentToday = await prisma.attendance.groupBy({
-      by: ['employeeId'],
-      where: {
-        date: { gte: todayStart, lte: todayEnd },
-        status: 'ABSENT',
-        ...(isManager ? { siteId: req.user.siteId } : (isAdmin ? {} : { employeeId: req.user.id }))
-      }
-    }).then(groups => groups.length);
+    // total worker - clock in workers = absent
+    const absentToday = Math.max(0, totalEmployees - presentToday);
     
     // 2. Site Performance (Active employees per site with names)
     const activeAttendances = await prisma.attendance.findMany({

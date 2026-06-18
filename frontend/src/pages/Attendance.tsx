@@ -475,7 +475,14 @@ const Attendance = () => {
 
   const isMockProof = (proof: string | null) => {
     if (!proof) return true;
-    return !proof.includes('/uploads/') && !proof.startsWith('data:') && !proof.startsWith('http://localhost:5000/uploads') && !proof.startsWith('https://');
+    const lower = proof.toLowerCase();
+    return !lower.includes('/uploads/') && !lower.startsWith('data:') && !lower.startsWith('http://localhost:5000/uploads') && !lower.startsWith('https://') && !lower.startsWith('http://');
+  };
+
+  const isUrlProof = (proof: string | null) => {
+    if (!proof) return false;
+    const lower = proof.toLowerCase();
+    return lower.startsWith('http://') || lower.startsWith('https://') || lower.includes('/attendance/') || lower.includes('/uploads/');
   };
 
   useEffect(() => {
@@ -1355,9 +1362,18 @@ const Attendance = () => {
                       <circle cx="58" cy="48" r="1.5" fill="var(--success)" />
                       <circle cx="50" cy="58" r="1.5" fill="var(--success)" />
                     </svg>
-                    <div className="mock-biometric-label">
-                      <span className="token-text">ID: {selectedProof}</span>
+                     <div className="mock-biometric-label" style={{ padding: '0 20px', width: '100%', boxSizing: 'border-box' }}>
+                      <span className="token-text" style={{ wordBreak: 'break-all', textAlign: 'center', display: 'block', marginBottom: '8px' }}>ID: {selectedProof}</span>
                       <span className="badge-verified">SYSTEM VERIFIED</span>
+                      {isUrlProof(selectedProof) && (
+                        <button 
+                          onClick={() => window.open(selectedProof || '', '_blank')}
+                          className="btn btn-primary" 
+                          style={{ marginTop: '16px', fontSize: '12px', padding: '8px 16px', borderRadius: '8px', zIndex: 100 }}
+                        >
+                          Open Image in Browser
+                        </button>
+                      )}
                     </div>
                   </div>
                 ) : (
@@ -1375,13 +1391,22 @@ const Attendance = () => {
                         }
                       }} 
                     />
-                    <div className="fallback-vector-overlay" style={{ display: 'none', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', minHeight: '320px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px dashed rgba(255,255,255,0.05)' }}>
+                    <div className="fallback-vector-overlay" style={{ display: 'none', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', minHeight: '320px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px dashed rgba(255,255,255,0.05)', padding: '20px', boxSizing: 'border-box' }}>
                       <svg viewBox="0 0 100 100" style={{ width: '80px', height: '80px' }}>
                         <path d="M50,25 C40,25 35,32 35,45 C35,55 42,65 50,65 C58,65 65,55 65,45 C65,32 60,25 50,25 Z" fill="none" stroke="var(--text-dim)" strokeWidth="1.5" />
                         <path d="M30,80 C30,70 38,68 50,68 C62,68 70,70 70,80" fill="none" stroke="var(--text-dim)" strokeWidth="1.5" />
                         <line x1="20" y1="50" x2="80" y2="50" stroke="var(--error)" strokeWidth="1.5" />
                       </svg>
                       <span style={{ fontSize: '11px', color: 'var(--text-dim)', marginTop: '12px', letterSpacing: '0.05em' }}>BIOMETRIC SNAPSHOT OFFLINE</span>
+                      {isUrlProof(selectedProof) && (
+                        <button 
+                          onClick={() => window.open(selectedProof || '', '_blank')}
+                          className="btn btn-primary" 
+                          style={{ marginTop: '16px', fontSize: '12px', padding: '8px 16px', borderRadius: '8px', zIndex: 100 }}
+                        >
+                          Open Image in Browser
+                        </button>
+                      )}
                     </div>
                   </>
                 )}

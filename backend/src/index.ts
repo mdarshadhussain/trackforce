@@ -1096,7 +1096,7 @@ app.post('/api/attendance/clock-out/:id', authenticateToken, upload.single('biom
       }
     });
     if (!employee) return res.status(404).json({ error: 'Employee not found' });
-    const active = await prisma.attendance.findFirst({ where: { employeeId: employee.id, clockOut: null }, orderBy: { createdAt: 'desc' } });
+    const active = await prisma.attendance.findFirst({ where: { employeeId: employee.id, clockOut: null, status: { not: 'ABSENT' } }, orderBy: { createdAt: 'desc' } });
     if (!active) return res.status(400).json({ error: 'No active clock-in' });
     
     // Use Vietnam local time hours (GMT+7) for validation
@@ -1211,7 +1211,7 @@ app.get('/api/attendance/today/:id', authenticateToken, async (req, res) => {
       where: { 
         employeeId: employee.id, 
         OR: [
-          { clockOut: null },
+          { clockOut: null, status: { not: 'ABSENT' } },
           { date: { gte: startOfTodayUtc } }
         ]
       }, 
@@ -1358,7 +1358,7 @@ app.post('/api/attendance/manager-log', authenticateToken, requireManagement, up
       });
       return res.status(201).json(att);
     } else {
-      const active = await prisma.attendance.findFirst({ where: { employeeId: employee.id, clockOut: null }, orderBy: { createdAt: 'desc' } });
+      const active = await prisma.attendance.findFirst({ where: { employeeId: employee.id, clockOut: null, status: { not: 'ABSENT' } }, orderBy: { createdAt: 'desc' } });
       if (!active) return res.status(400).json({ error: 'No active session found for this employee.' });
       
       const updated = await prisma.attendance.update({
@@ -1488,7 +1488,7 @@ app.post('/api/attendance/break-start/:id', authenticateToken, async (req, res) 
   try {
     const employee = await prisma.employee.findUnique({ where: { id: req.params.id } });
     if (!employee) return res.status(404).json({ error: 'Employee not found' });
-    const active = await prisma.attendance.findFirst({ where: { employeeId: employee.id, clockOut: null }, orderBy: { createdAt: 'desc' } });
+    const active = await prisma.attendance.findFirst({ where: { employeeId: employee.id, clockOut: null, status: { not: 'ABSENT' } }, orderBy: { createdAt: 'desc' } });
     if (!active) return res.status(400).json({ error: 'Not clocked in' });
     const b = await prisma.break.create({ data: { attendanceId: active.id } });
     res.json(b);
@@ -1501,7 +1501,7 @@ app.post('/api/attendance/break-end/:id', authenticateToken, async (req, res) =>
   try {
     const employee = await prisma.employee.findUnique({ where: { id: req.params.id } });
     if (!employee) return res.status(404).json({ error: 'Employee not found' });
-    const active = await prisma.attendance.findFirst({ where: { employeeId: employee.id, clockOut: null }, include: { breaks: { where: { endTime: null } } } });
+    const active = await prisma.attendance.findFirst({ where: { employeeId: employee.id, clockOut: null, status: { not: 'ABSENT' } }, include: { breaks: { where: { endTime: null } } } });
     if (!active?.breaks[0]) return res.status(400).json({ error: 'No active break' });
     const updated = await prisma.break.update({ where: { id: active.breaks[0].id }, data: { endTime: new Date() } });
     res.json(updated);

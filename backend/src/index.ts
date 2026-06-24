@@ -1025,7 +1025,7 @@ app.post('/api/attendance/clock-in/:id', authenticateToken, upload.single('biome
     if (!employee) return res.status(404).json({ error: 'Employee not found' });
     if (!employee.site) return res.status(400).json({ error: 'No operational site assigned to your profile. Please contact admin.' });
 
-    // Restrict to max 2 clock-ins per day
+    // Restrict to max 1 clock-in per day
     const todayStr = new Date().toISOString().split('T')[0];
     const todayLogsCount = await prisma.attendance.count({
       where: {
@@ -1035,8 +1035,8 @@ app.post('/api/attendance/clock-in/:id', authenticateToken, upload.single('biome
         }
       }
     });
-    if (todayLogsCount >= 2) {
-      return res.status(400).json({ error: 'Daily clock-in limit reached. You can only clock in up to two times per day.' });
+    if (todayLogsCount >= 1) {
+      return res.status(400).json({ error: 'Daily clock-in limit reached. You can only clock in once per day.' });
     }
     
     const distance = getDistance(parseFloat(latitude), parseFloat(longitude), employee.site.latitude || 0, employee.site.longitude || 0);
@@ -1099,10 +1099,14 @@ app.post('/api/attendance/clock-out/:id', authenticateToken, upload.single('biom
     const active = await prisma.attendance.findFirst({ where: { employeeId: employee.id, clockOut: null }, orderBy: { createdAt: 'desc' } });
     if (!active) return res.status(400).json({ error: 'No active clock-in' });
     
-    const now = new Date();
-    if (now.getHours() >= 17) {
-      if (active.clockIn && new Date(active.clockIn).getHours() >= 17) {
-        return res.status(400).json({ error: 'Cannot clock out: you must have clocked in before 5 PM.' });
+    // Use Vietnam local time hours (GMT+7) for validation
+    const localNow = new Date(Date.now() + 7 * 60 * 60 * 1000);
+    if (localNow.getUTCHours() >= 17) {
+      if (active.clockIn) {
+        const localClockIn = new Date(active.clockIn.getTime() + 7 * 60 * 60 * 1000);
+        if (localClockIn.getUTCHours() >= 17) {
+          return res.status(400).json({ error: 'Cannot clock out: you must have clocked in before 5 PM.' });
+        }
       }
     }
 
@@ -1195,7 +1199,25 @@ app.get('/api/attendance/today/:id', authenticateToken, async (req, res) => {
     await autoMarkAbsents();
     const employee = await prisma.employee.findUnique({ where: { id: req.params.id } });
     if (!employee) return res.status(404).json({ error: 'Employee not found' });
-    const logs = await prisma.attendance.findMany({ where: { employeeId: employee.id, date: { gte: new Date(new Date().setHours(0,0,0,0)) } }, orderBy: { createdAt: 'desc' }, include: { breaks: true } });
+    
+    // Shift calculations to Vietnam timezone (GMT+7)
+    const now = new Date();
+    const localTime = new Date(now.getTime() + 7 * 60 * 60 * 1000);
+    const startOfLocalDay = new Date(localTime);
+    startOfLocalDay.setUTCHours(0, 0, 0, 0);
+    const startOfTodayUtc = new Date(startOfLocalDay.getTime() - 7 * 60 * 60 * 1000);
+
+    const logs = await prisma.attendance.findMany({ 
+      where: { 
+        employeeId: employee.id, 
+        OR: [
+          { clockOut: null },
+          { date: { gte: startOfTodayUtc } }
+        ]
+      }, 
+      orderBy: { createdAt: 'desc' }, 
+      include: { breaks: true } 
+    });
     res.json(logs);
   } catch (error) {
     res.status(500).json({ error: 'Fetch failed' });
